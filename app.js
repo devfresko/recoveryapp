@@ -12,7 +12,7 @@
 // service-worker registration.
 // ============================================================
 
-var APP_URL = 'https://script.google.com/a/macros/ishasteels.com/s/AKfycbzunLGk_9P3njua1DvPmMt3BIaJuza_LUyrpnfi-mr1iqhm-FbNaAFZOfOSk_fy9vpaAg/exec';
+var APP_URL = 'https://script.google.com/macros/s/AKfycbwMRT3frAafqZrH1Myas1Bom7DHchzypzTk6y4G3nZrKUdj3k9_-dYVCSIr2lCiuuos/exec';
 
 var frame   = document.getElementById('frame');
 var splash  = document.getElementById('splash');
