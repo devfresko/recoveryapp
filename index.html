@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ISE Payment Follow-up</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<meta name="description" content="Isha Steels Enterprises — Payment Follow-up & Collections System">
+
+<!-- PWA manifest -->
+<link rel="manifest" href="./manifest.json">
+
+<!-- Icons -->
+<link rel="icon" href="./favicon-32.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-180.png">
+
+<!-- iOS standalone support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ISE Payments">
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    width: 100%;
+    background: #0F172A;
+    overflow: hidden;
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  }
+  #frame {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #0F172A;
+  }
+  #splash {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    background: #0F172A;
+    z-index: 10;
+    transition: opacity .35s ease;
+  }
+  #splash img {
+    width: 84px;
+    height: 84px;
+    border-radius: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  #splash .title {
+    color: #E2E8F0;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: .01em;
+  }
+  #splash .sub {
+    color: #64748B;
+    font-size: 12px;
+  }
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(255,255,255,.15);
+    border-top-color: #C0152A;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #retryBox {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  #retryBox button {
+    background: #C0152A;
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #retryBox a {
+    color: #64748B;
+    font-size: 12px;
+    text-decoration: underline;
+  }
+
+  #offlineBanner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #C0152A;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    padding: 6px 10px;
+    z-index: 20;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+  <div id="offlineBanner">No internet connection — reconnect to use the app</div>
+
+  <div id="splash">
+    <img src="./icon-192.png" alt="ISE Payments">
+    <div class="spinner" id="spinner"></div>
+    <div class="title">ISE Payment Follow-up</div>
+    <div class="sub" id="splashSub">Loading...</div>
+
+    <div id="retryBox">
+      <div class="sub">Taking longer than usual</div>
+      <button onclick="retryLoad()">Retry</button>
+      <a href="https://script.google.com/a/macros/ishasteels.com/s/AKfycbzunLGk_9P3njua1DvPmMt3BIaJuza_LUyrpnfi-mr1iqhm-FbNaAFZOfOSk_fy9vpaAg/exec" target="_blank" rel="noopener">Open in browser instead</a>
+    </div>
+  </div>
+
+  <iframe id="frame" title="ISE Payment Follow-up" allow="clipboard-read; clipboard-write"></iframe>
+
+<script>
+  var APP_URL = 'https://script.google.com/a/macros/ishasteels.com/s/AKfycbzunLGk_9P3njua1DvPmMt3BIaJuza_LUyrpnfi-mr1iqhm-FbNaAFZOfOSk_fy9vpaAg/exec';
+  var frame = document.getElementById('frame');
+  var splash = document.getElementById('splash');
+  var spinner = document.getElementById('spinner');
+  var splashSub = document.getElementById('splashSub');
+  var retryBox = document.getElementById('retryBox');
+  var slowTimer, loaded = false;
+
+  function hideSplash() {
+    loaded = true;
+    clearTimeout(slowTimer);
+    splash.style.opacity = '0';
+    setTimeout(function () { splash.style.display = 'none'; }, 350);
+  }
+
+  function retryLoad() {
+    loaded = false;
+    spinner.style.display = 'block';
+    splashSub.style.display = 'block';
+    retryBox.style.display = 'none';
+    splash.style.opacity = '1';
+    splash.style.display = 'flex';
+    frame.src = APP_URL + (APP_URL.indexOf('?') > -1 ? '&' : '?') + '_r=' + Date.now();
+    startSlowTimer();
+  }
+
+  function startSlowTimer() {
+    clearTimeout(slowTimer);
+    slowTimer = setTimeout(function () {
+      if (!loaded) {
+        spinner.style.display = 'none';
+        splashSub.style.display = 'none';
+        retryBox.style.display = 'flex';
+      }
+    }, 15000);
+  }
+
+  frame.addEventListener('load', hideSplash);
+  frame.src = APP_URL;
+  startSlowTimer();
+
+  // Offline / online banner
+  var banner = document.getElementById('offlineBanner');
+  function updateOnlineState() { banner.style.display = navigator.onLine ? 'none' : 'block'; }
+  window.addEventListener('online', updateOnlineState);
+  window.addEventListener('offline', updateOnlineState);
+  updateOnlineState();
+
+  // Register service worker (caches this shell only, never the app itself)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>
