@@ -1,13 +1,13 @@
 {
-  "name": "ISE Payment Follow-up",
-  "short_name": "ISE Payments",
-  "description": "Isha Steels Enterprises — Payment Follow-up & Collections System",
+  "name": "Fresko Payment Follow-up",
+  "short_name": "Fresko Payments",
+  "description": "Fresko — Payment Follow-up & Collections System",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#0F172A",
-  "background_color": "#0F172A",
+  "theme_color": "#005F73",
+  "background_color": "#005F73",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
