@@ -182,13 +182,13 @@
             img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
             img.onerror = () => {
               avatarEl.innerHTML = initials;
-              avatarEl.style.background = 'linear-gradient(135deg,#B91C1C,#C0152A)';
+              avatarEl.style.background = 'linear-gradient(135deg,#C5221F,#EA4335)';
               avatarEl.style.padding = '';
             };
             avatarEl.appendChild(img);
           } else {
             avatarEl.textContent = initials;
-            avatarEl.style.background = 'linear-gradient(135deg,#B91C1C,#C0152A)';
+            avatarEl.style.background = 'linear-gradient(135deg,#C5221F,#EA4335)';
           }
         }
 
@@ -242,7 +242,7 @@
         const deptEl = document.getElementById('sb-dept');
         if (deptEl) {
           const label = isAdmin ? 'Admin' : 'User';
-          const color = isAdmin ? '#C0152A' : '#475569';
+          const color = isAdmin ? '#EA4335' : '#475569';
           const dept = (USER.dept || URL_DEPT || '').toString().trim().toUpperCase() || 'ACCOUNT';
           deptEl.innerHTML =
             `<span style="color:#475569;font-size:10px">${dept}</span>` +
@@ -469,7 +469,7 @@
       }
 
       function modeBg(m) {
-        const bg = { 'Phone Call': '#EFF6FF;color:#1D4ED8', 'WhatsApp': '#F0FDF4;color:#166534', 'In Person': '#FEF2F2;color:#C0152A', 'Email': '#F8FAFC;color:#475569' };
+        const bg = { 'Phone Call': '#E8F0FE;color:#1967D2', 'WhatsApp': '#E6F4EA;color:#137333', 'In Person': '#FCE8E6;color:#EA4335', 'Email': '#F8FAFC;color:#475569' };
         return bg[m] || '#F8FAFC;color:#475569';
       }
 
@@ -1291,7 +1291,7 @@
             '<tr class="pay-det" style="font-size:11px">' +
             '<td style="padding-left:22px">' + escHTML(p.partyName) + '</td>' +
             '<td style="font-size:11px">' + p.paymentDate + '</td>' +
-            '<td><span class="badge badge-pending" style="background:#EFF6FF;font-size:10px">' + p.mode + '</span></td>' +
+            '<td><span class="badge badge-pending" style="background:#E8F0FE;font-size:10px">' + p.mode + '</span></td>' +
             '<td style="color:var(--muted);font-size:11px">' + (p.refNo||'--') + '</td>' +
             '<td class="num" style="color:var(--green);font-weight:700">' + INR(p.amount) + '</td>' +
             '<td style="color:var(--muted);font-size:10px;max-width:110px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + (p.appliedTo||'--') + '</td>' +
@@ -1389,7 +1389,7 @@
         const tbody = document.getElementById(prefix + '-tbody');
         if (!tbody) return;
 
-        const accentColor = key === '15' ? '#16A34A' : key === '1' ? '#D97706' : '#475569';
+        const accentColor = key === '15' ? '#34A853' : key === '1' ? '#F9AB00' : '#475569';
 
         tbody.innerHTML = page.length === 0
           ? emptyRow(isNil ? 9 : 10, 'No pending invoices for this slab')
@@ -1405,7 +1405,7 @@
           <td class="num">${INR(netVal)}</td>
           <td class="num" style="color:var(--muted)">${tds > 0 ? '- ' + INR(tds) : '--'}</td>
           ${!isNil ? `<td class="num" style="color:${accentColor}">${disc > 0 ? '- ' + INR(disc) : '--'}</td>` : ''}
-          <td class="num" style="padding:6px 8px"><div style="font-weight:800;font-size:13px;color:${accentColor}">${INR(expected)}</div><div style="font-size:10px;margin-top:3px;line-height:1.6"><div style="color:#059669;font-weight:600"><span style="background:#ECFDF5;border-radius:3px;padding:0 4px">1.5%</span> ${INR(exp15)}</div><div style="color:#D97706;font-weight:600"><span style="background:#FFFBEB;border-radius:3px;padding:0 4px">1%</span> ${INR(exp1)}</div><div style="color:#6B7280;font-weight:600"><span style="background:#F9FAFB;border-radius:3px;padding:0 4px">Nil</span> ${INR(expNil)}</div></div></td>
+          <td class="num" style="padding:6px 8px"><div style="font-weight:800;font-size:13px;color:${accentColor}">${INR(expected)}</div><div style="font-size:10px;margin-top:3px;line-height:1.6"><div style="color:#1E8E3E;font-weight:600"><span style="background:#E6F4EA;border-radius:3px;padding:0 4px">1.5%</span> ${INR(exp15)}</div><div style="color:#F9AB00;font-weight:600"><span style="background:#FEF7E0;border-radius:3px;padding:0 4px">1%</span> ${INR(exp1)}</div><div style="color:#6B7280;font-weight:600"><span style="background:#F9FAFB;border-radius:3px;padding:0 4px">Nil</span> ${INR(expNil)}</div></div></td>
           <td>${statusBadge(sts)}</td>
           <td style="white-space:nowrap;text-align:right">
             <button class="act-btn ab-edit admin-only" onclick="openEditInvoiceModal('${escQ(inv.invoiceID)}')" title="Edit Invoice"><i class="fas fa-edit"></i></button>
@@ -1505,11 +1505,11 @@ function shortPage(d) {
             const tdsPaid   = _tdsForInvoice(inv.invoiceNo);
             const shortAmt  = Math.max(0, expected - paidAmt - tdsPaid - discGiven - writeOff);
             const od = daysOD(inv);
-            return `<tr style="${shortAmt > 0 ? 'background:#FFFBEB' : ''}">
+            return `<tr style="${shortAmt > 0 ? 'background:#FEF7E0' : ''}">
           <td style="font-family:monospace;font-size:11px;font-weight:600">${inv.invoiceNo}</td>
           <td style="font-size:12px;font-weight:600;cursor:pointer" onclick="openPartyModal('${escQ(inv.partyID)}')">${inv.partyName}</td>
           <td style="font-size:11px${od > 0 ? ';color:var(--red);font-weight:700' : ''}">${inv.dueDate}${od > 0 ? ' ' + ageBadge(od) : ''}</td>
-          <td class="num" style="color:#16A34A;font-weight:700">${INR(expected)}</td>
+          <td class="num" style="color:#34A853;font-weight:700">${INR(expected)}</td>
           <td class="num" style="color:var(--green)">${INR(paidAmt)}</td>
           <td class="num" style="color:#7C3AED">${discGiven > 0 ? INR(discGiven) : '--'}</td>
           <td class="num" style="font-weight:800;color:var(--red);font-size:13px">- ${INR(shortAmt)}</td>
@@ -1648,7 +1648,7 @@ function shortPage(d) {
           ? emptyRow(6, '[OK] No late payments found')
           : page.map((group, idx) => {
             const avgLate = Math.round(group.totalLateDays / group.count);
-            const lateColor = group.maxLateDays > 30 ? 'var(--red)' : group.maxLateDays > 15 ? '#D97706' : '#92400E';
+            const lateColor = group.maxLateDays > 30 ? 'var(--red)' : group.maxLateDays > 15 ? '#F9AB00' : '#EA8600';
             const isOpen = _lpExp[idx] !== false;
             return `
         <tr class="lp-group-hdr" data-idx="${idx}" data-isopen="${isOpen?'1':'0'}" style="background:#F8FAFC;cursor:pointer" onclick="toggleLPGroup(this)">
@@ -1706,7 +1706,7 @@ function shortPage(d) {
             const { expected, exp15, exp1, expNil, billVal } = calcExpected(i);
             const hasSlab = i.slabPct && i.slabPct !== '0';
             return `
-      <div style="background:#F8FAFC;border-radius:8px;padding:9px 12px;border:1px solid ${od > 0 ? '#FECACA' : 'var(--border)'}">
+      <div style="background:#F8FAFC;border-radius:8px;padding:9px 12px;border:1px solid ${od > 0 ? '#F6AEA9' : 'var(--border)'}">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:6px">
@@ -1716,12 +1716,12 @@ function shortPage(d) {
             </div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">
               Due: ${i.dueDate}
-              ${hasSlab ? `<span style="color:#16A34A;font-weight:600;margin-left:6px">Exp: ${INR(expected)}</span>` : ''}
+              ${hasSlab ? `<span style="color:#34A853;font-weight:600;margin-left:6px">Exp: ${INR(expected)}</span>` : ''}
             </div>
             <div style="font-size:9px;color:var(--muted);margin-top:3px">
               Bill: <b>${INR(billVal)}</b>
-              &nbsp;<span style="color:#059669">1.5%→${INR(exp15)}</span>
-              &nbsp;<span style="color:#D97706">1%→${INR(exp1)}</span>
+              &nbsp;<span style="color:#1E8E3E">1.5%→${INR(exp15)}</span>
+              &nbsp;<span style="color:#F9AB00">1%→${INR(exp1)}</span>
               &nbsp;<span style="color:#6B7280">Nil→${INR(expNil)}</span>
             </div>
           </div>
@@ -1785,15 +1785,15 @@ function shortPage(d) {
         if (woSec) woSec.style.display = hasWO ? 'block' : 'none';
         const pmWoEl = document.getElementById('pm-wo');
         if (pmWoEl) pmWoEl.innerHTML = !hasWO ? '' : [
-          ...partyPaymentsDisc.map(p => `<div style="background:#ECFDF5;border-radius:7px;padding:7px 10px;border:1px solid #A7F3D0;display:flex;justify-content:space-between">
-            <div><span style="font-size:11px;font-weight:700;color:#059669">Discount Given</span>
+          ...partyPaymentsDisc.map(p => `<div style="background:#E6F4EA;border-radius:7px;padding:7px 10px;border:1px solid #A7F3D0;display:flex;justify-content:space-between">
+            <div><span style="font-size:11px;font-weight:700;color:#1E8E3E">Discount Given</span>
             <div style="font-size:10px;color:var(--muted)">${p.paymentDate} · ${p.appliedTo||'--'}</div></div>
-            <span style="font-weight:800;color:#059669">${INR(p.discountGiven)}</span>
+            <span style="font-weight:800;color:#1E8E3E">${INR(p.discountGiven)}</span>
           </div>`),
-          ...woInvoices.map(i => `<div style="background:#FEF3C7;border-radius:7px;padding:7px 10px;border:1px solid #FDE68A;display:flex;justify-content:space-between">
-            <div><span style="font-size:11px;font-weight:700;color:#D97706">Written-Off</span>
+          ...woInvoices.map(i => `<div style="background:#FEF3C7;border-radius:7px;padding:7px 10px;border:1px solid #FDD663;display:flex;justify-content:space-between">
+            <div><span style="font-size:11px;font-weight:700;color:#F9AB00">Written-Off</span>
             <div style="font-size:10px;color:var(--muted)">${i.invoiceNo} · ${i.dueDate}</div></div>
-            <span style="font-weight:800;color:#D97706">${INR(i.writeOff||0)}</span>
+            <span style="font-weight:800;color:#F9AB00">${INR(i.writeOff||0)}</span>
           </div>`)
         ].join('');
 
@@ -1818,8 +1818,8 @@ function shortPage(d) {
           const amtEl = document.getElementById('rp-amount');
           if (amtEl && amount > 0) {
             amtEl.value = amount;
-            amtEl.style.borderColor = '#16A34A';
-            amtEl.style.background = '#F0FDF4';
+            amtEl.style.borderColor = '#34A853';
+            amtEl.style.background = '#E6F4EA';
             setTimeout(() => { amtEl.style.borderColor = ''; amtEl.style.background = ''; }, 2000);
           }
           onRPParty(partyID);
@@ -1839,7 +1839,7 @@ function shortPage(d) {
           showCancelButton: true,
           confirmButtonText: '<i class="fas fa-times-circle"></i> Write-Off',
           cancelButtonText: 'Cancel',
-          confirmButtonColor: '#C0152A',
+          confirmButtonColor: '#EA4335',
           preConfirm: () => {
             const amt = parseFloat(document.getElementById('swal-wo-amt').value);
             const reason = document.getElementById('swal-wo-reason').value.trim();
@@ -1874,7 +1874,7 @@ function shortPage(d) {
           showCancelButton: true,
           confirmButtonText: '<i class="fas fa-times-circle"></i> Close Invoice',
           cancelButtonText: 'Cancel',
-          confirmButtonColor: '#C0152A',
+          confirmButtonColor: '#EA4335',
           preConfirm: () => {
             const reason = document.getElementById('swal-reason').value.trim();
             if (!reason) { Swal.showValidationMessage('Please enter a reason'); return false; }
@@ -2091,7 +2091,7 @@ function shortPage(d) {
           const pend = pending(inv);
           const { netVal, billVal, tds, disc, disc15, disc1, expected, exp15, exp1, expNil, pct } = calcExpected(inv);
           const discLabel = pct > 0 ? (pct * 100) + '% disc' : '';
-          const borderClr = od > 0 ? '#FECACA' : '#E2E8F0';
+          const borderClr = od > 0 ? '#F6AEA9' : '#E2E8F0';
 
           return `<div style="background:#F8FAFC;border-radius:8px;padding:10px 12px;border:1.5px solid ${borderClr};display:flex;gap:12px;transition:all .15s" class="rp-inv-row">
             <div style="padding-top:2px">
@@ -2106,13 +2106,13 @@ function shortPage(d) {
                   <div style="font-size:10px;color:var(--muted)">Bill: ${inv.invoiceDate}&nbsp;&nbsp;|&nbsp;&nbsp;Due: ${inv.dueDate} ${od > 0 ? ageBadge(od) : ''}</div>
                 </div>
                 <div style="text-align:right">
-                  ${inv.paidAmount > 0 ? `<div style="font-size:10px;color:#059669;font-weight:600">Paid: ${INR(inv.paidAmount)}</div>` : ''}
-                  <div style="font-size:13px;font-weight:800;color:${pend > 0 ? 'var(--red)' : '#059669'}">${INR(pend > 0 ? pend : billVal)}</div>
+                  ${inv.paidAmount > 0 ? `<div style="font-size:10px;color:#1E8E3E;font-weight:600">Paid: ${INR(inv.paidAmount)}</div>` : ''}
+                  <div style="font-size:13px;font-weight:800;color:${pend > 0 ? 'var(--red)' : '#1E8E3E'}">${INR(pend > 0 ? pend : billVal)}</div>
                   <div style="font-size:9px;color:var(--muted);font-weight:500">${pend > 0 ? 'Remaining' : 'Bill Value'}</div>
                 </div>
               </div>
               <div style="background:#fff;border-radius:6px;padding:7px 10px;border:1px solid #E2E8F0;font-size:11px">
-                ${inv.paidAmount > 0 ? `<div style="display:flex;justify-content:space-between;color:#059669;margin-bottom:3px;padding-bottom:3px;border-bottom:1px solid #ECFDF5">
+                ${inv.paidAmount > 0 ? `<div style="display:flex;justify-content:space-between;color:#1E8E3E;margin-bottom:3px;padding-bottom:3px;border-bottom:1px solid #E6F4EA">
                   <span style="font-weight:600"><i class="fas fa-check-circle" style="margin-right:3px"></i>Already Paid</span>
                   <span style="font-weight:700">${INR(inv.paidAmount)}</span>
                 </div>` : ''}
@@ -2120,7 +2120,7 @@ function shortPage(d) {
                   <span>Bill Value</span><span style="font-weight:600">${INR(netVal)}</span>
                 </div>
                 ${inv.paidAmount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                  <span style="color:#059669">Already Paid</span><span style="color:#059669;font-weight:600">- ${INR(inv.paidAmount)}</span>
+                  <span style="color:#1E8E3E">Already Paid</span><span style="color:#1E8E3E;font-weight:600">- ${INR(inv.paidAmount)}</span>
                 </div>` : ''}
                 ${_discForInvoice(inv.invoiceNo) > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:3px">
                   <span style="color:#7C3AED">Disc Given</span><span style="color:#7C3AED;font-weight:600">- ${INR(_discForInvoice(inv.invoiceNo))}</span>
@@ -2134,19 +2134,19 @@ function shortPage(d) {
                   <span>- Cash Discount (${discLabel})</span><span style="color:var(--red)">- ${INR(disc)}</span>
                 </div>` : ''}
                 <div style="display:flex;justify-content:space-between;font-weight:800;border-top:1px solid #E2E8F0;padding-top:5px;margin-top:3px">
-                  <span style="color:${pend > 0 ? 'var(--red)' : '#16A34A'}">${pend > 0 ? 'Remaining to Pay' : 'Fully Settled'}</span>
-                  <span style="color:${pend > 0 ? 'var(--red)' : '#16A34A'};font-size:13px">${INR(pend)}</span>
+                  <span style="color:${pend > 0 ? 'var(--red)' : '#34A853'}">${pend > 0 ? 'Remaining to Pay' : 'Fully Settled'}</span>
+                  <span style="color:${pend > 0 ? 'var(--red)' : '#34A853'};font-size:13px">${INR(pend)}</span>
                 </div>
                 <div style="margin-top:6px;padding-top:5px;border-top:1px dashed #E2E8F0">
                   <div style="font-size:9px;font-weight:700;color:#94A3B8;letter-spacing:.5px;margin-bottom:4px">PAYMENT REFERENCE</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
-                    <div style="background:#ECFDF5;border-radius:5px;padding:5px 6px;text-align:center">
-                      <div style="font-size:9px;color:#059669;font-weight:700">1.5% disc</div>
-                      <div style="font-size:12px;font-weight:800;color:#059669">${INR(exp15)}</div>
+                    <div style="background:#E6F4EA;border-radius:5px;padding:5px 6px;text-align:center">
+                      <div style="font-size:9px;color:#1E8E3E;font-weight:700">1.5% disc</div>
+                      <div style="font-size:12px;font-weight:800;color:#1E8E3E">${INR(exp15)}</div>
                     </div>
-                    <div style="background:#FFFBEB;border-radius:5px;padding:5px 6px;text-align:center">
-                      <div style="font-size:9px;color:#D97706;font-weight:700">1% disc</div>
-                      <div style="font-size:12px;font-weight:800;color:#D97706">${INR(exp1)}</div>
+                    <div style="background:#FEF7E0;border-radius:5px;padding:5px 6px;text-align:center">
+                      <div style="font-size:9px;color:#F9AB00;font-weight:700">1% disc</div>
+                      <div style="font-size:12px;font-weight:800;color:#F9AB00">${INR(exp1)}</div>
                     </div>
                     <div style="background:#F9FAFB;border-radius:5px;padding:5px 6px;text-align:center;border:1px solid #E2E8F0">
                       <div style="font-size:9px;color:#6B7280;font-weight:700">Nil</div>
@@ -2208,7 +2208,7 @@ function shortPage(d) {
           const tdsAmt  = tdsEl  ? (parseFloat(tdsEl.value)  || 0) : 0;
           if (discAmt > 0 || tdsAmt > 0) {
             const net = total - discAmt - tdsAmt;
-            refHtml += ' &nbsp;→&nbsp; <span style="color:#059669;font-weight:600">After disc/TDS: ' + INR(net) + '</span>';
+            refHtml += ' &nbsp;→&nbsp; <span style="color:#1E8E3E;font-weight:600">After disc/TDS: ' + INR(net) + '</span>';
           }
           if (refRow) refRow.innerHTML = refHtml;
         } else {
@@ -2715,7 +2715,7 @@ function shortPage(d) {
               'Net Value': colAmt
             };
             document.getElementById('csv-map-grid').innerHTML = Object.entries(allCols).map(([k, v]) =>
-              `<div style="background:${v === -1 ? '#FEF2F2' : '#F0FDF4'};border:1px solid ${v === -1 ? '#FECACA' : '#BBF7D0'};border-radius:7px;padding:8px 10px">
+              `<div style="background:${v === -1 ? '#FCE8E6' : '#E6F4EA'};border:1px solid ${v === -1 ? '#F6AEA9' : '#A8DAB5'};border-radius:7px;padding:8px 10px">
           <div style="font-size:10px;font-weight:700;color:var(--muted)">${k}</div>
           <div style="font-size:11px;font-weight:600;color:${v === -1 ? 'var(--red)' : 'var(--green)'}">
             ${v === -1 ? 'NOT FOUND' : 'Col ' + (v + 1) + ': ' + headers[v]}
@@ -2846,7 +2846,7 @@ function shortPage(d) {
         </tr></thead>
         <tbody>
         ${preview.slice(0, 10).map((r, i) => `
-          <tr style="background:${r.status === 'skip' ? '#FEF2F2' : r.status === 'warn' ? '#FFFBEB' : ''}">
+          <tr style="background:${r.status === 'skip' ? '#FCE8E6' : r.status === 'warn' ? '#FEF7E0' : ''}">
             <td style="color:var(--sub)">${i + 1}</td>
             <td style="font-family:monospace;font-weight:600">${r.billNo || '--'}</td>
             <td style="font-size:11px">${r.billDateStr}</td>
@@ -2945,7 +2945,7 @@ function shortPage(d) {
           .getAnalytics(filters);
       }
 
-      const C = { red: '#C0152A', dark: '#1C1C1C', grey: '#8A8A8A', green: '#16A34A', amber: '#D97706', blue: '#1D4ED8' };
+      const C = { red: '#EA4335', dark: '#1C1C1C', grey: '#8A8A8A', green: '#34A853', amber: '#F9AB00', blue: '#1967D2' };
 
       function mkChart(id, config) {
         if (_charts[id]) { _charts[id].destroy(); }
@@ -3036,7 +3036,7 @@ function shortPage(d) {
             labels: bucketLabels,
             datasets: [{
               data: bucketVals,
-              backgroundColor: ['#FEF9C3', '#FED7AA', '#FCA5A5', '#F87171', C.red],
+              backgroundColor: ['#FEEFC3', '#FED7AA', '#FCA5A5', '#EE675C', C.red],
               borderRadius: 5, borderSkipped: false
             }]
           }, options: {
@@ -3145,8 +3145,8 @@ function shortPage(d) {
             <td><span style="color:${pkColor};font-size:11px;font-weight:600">${f.promiseKept||'Pending'}</span></td>
             <td style="white-space:nowrap">
               ${f.promiseKept === 'Pending' ? `
-                <button class="act-btn" style="background:#F0FDF4;color:var(--green);border-color:#86EFAC" onclick="updatePromise('${escQ(f.followUpID)}','Yes')" title="Mark Kept"><i class="fas fa-check"></i></button>
-                <button class="act-btn" style="background:#FEF2F2;color:var(--red);border-color:#FECACA" onclick="updatePromise('${escQ(f.followUpID)}','No')" title="Mark Broken"><i class="fas fa-times"></i></button>
+                <button class="act-btn" style="background:#E6F4EA;color:var(--green);border-color:#81C995" onclick="updatePromise('${escQ(f.followUpID)}','Yes')" title="Mark Kept"><i class="fas fa-check"></i></button>
+                <button class="act-btn" style="background:#FCE8E6;color:var(--red);border-color:#F6AEA9" onclick="updatePromise('${escQ(f.followUpID)}','No')" title="Mark Broken"><i class="fas fa-times"></i></button>
               ` : ''}
             </td>
           </tr>`;
@@ -3201,7 +3201,7 @@ function shortPage(d) {
           const pd = f.promiseDate ? parseIST(f.promiseDate) : null;
           const isOverdue = pd && pd < today && f.promiseKept === 'Pending';
           const pkColor = f.promiseKept === 'Yes' ? 'var(--green)' : f.promiseKept === 'No' ? 'var(--red)' : isOverdue ? 'var(--red)' : 'var(--amber)';
-          return `<tr style="${isOverdue ? 'background:#FEF2F2' : ''}">
+          return `<tr style="${isOverdue ? 'background:#FCE8E6' : ''}">
             <td style="font-size:12px;font-weight:600;cursor:pointer" onclick="openPartyModal('${escQ(f.partyID)}')">${f.partyName}</td>
             <td style="font-size:11px">${(f.datetime||'').split(' ')[0]}</td>
             <td><span style="font-size:10px">${f.mode||'-'}</span></td>
@@ -3211,8 +3211,8 @@ function shortPage(d) {
             <td style="font-size:11px">${f.nextAction||'-'}</td>
             <td style="white-space:nowrap">
               ${f.promiseKept === 'Pending' ? `
-                <button class="act-btn" style="background:#F0FDF4;color:var(--green);border-color:#86EFAC" onclick="updatePromise('${escQ(f.followUpID)}','Yes')" title="Kept"><i class="fas fa-check"></i></button>
-                <button class="act-btn" style="background:#FEF2F2;color:var(--red);border-color:#FECACA" onclick="updatePromise('${escQ(f.followUpID)}','No')" title="Broken"><i class="fas fa-times"></i></button>
+                <button class="act-btn" style="background:#E6F4EA;color:var(--green);border-color:#81C995" onclick="updatePromise('${escQ(f.followUpID)}','Yes')" title="Kept"><i class="fas fa-check"></i></button>
+                <button class="act-btn" style="background:#FCE8E6;color:var(--red);border-color:#F6AEA9" onclick="updatePromise('${escQ(f.followUpID)}','No')" title="Broken"><i class="fas fa-times"></i></button>
               ` : ''}
             </td>
           </tr>`;
@@ -3271,7 +3271,7 @@ function shortPage(d) {
               <td style="font-family:monospace;font-size:11px;font-weight:600">${p.paymentID}</td>
               <td style="font-size:12px;font-weight:600;cursor:pointer" onclick="openPartyModal('${escQ(p.partyID)}')">${p.partyName}</td>
               <td style="font-size:11px">${p.paymentDate}</td>
-              <td><span class="badge badge-pending" style="background:#EFF6FF;font-size:10px">${p.mode}</span></td>
+              <td><span class="badge badge-pending" style="background:#E8F0FE;font-size:10px">${p.mode}</span></td>
               <td class="num" style="font-weight:700;color:var(--green)">${INR(p.amount)}</td>
               <td style="font-size:10px;color:var(--muted);max-width:120px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${p.appliedTo||'--'}</td>
               <td class="num" style="font-weight:800;color:#7C3AED;font-size:13px">${INR(dtbg)}</td>
@@ -3334,14 +3334,14 @@ function shortPage(d) {
             const od = daysOD(inv);
             const remarksMatch = (inv.remarks||'').match(/WRITE-OFF: [\d.]+ - ([^|]+)/);
             const reason = remarksMatch ? remarksMatch[1].trim() : (inv.status === 'Written-Off' ? 'Written-Off' : '--');
-            return `<tr style="background:#FFFBEB">
+            return `<tr style="background:#FEF7E0">
               <td style="font-family:monospace;font-size:11px;font-weight:600">${inv.invoiceNo}</td>
               <td style="font-size:12px;font-weight:600;cursor:pointer" onclick="openPartyModal('${escQ(inv.partyID)}')">${inv.partyName}</td>
               <td style="font-size:11px">${inv.invoiceDate}</td>
               <td style="font-size:11px${od > 0 ? ';color:var(--red)' : ''}">${inv.dueDate}</td>
               <td class="num">${INR(inv.billValue)}</td>
               <td class="num" style="color:var(--green)">${INR(paid)}</td>
-              <td class="num" style="font-weight:800;color:#D97706;font-size:13px">${INR(wo)}</td>
+              <td class="num" style="font-weight:800;color:#F9AB00;font-size:13px">${INR(wo)}</td>
               <td style="font-size:10px;color:var(--muted);max-width:150px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="${escQ(reason)}">${reason}</td>
               <td><button class="act-btn ab-view" onclick="openPartyModal('${escQ(inv.partyID)}')" title="View Party"><i class="fas fa-eye"></i></button></td>
             </tr>`;
@@ -3455,7 +3455,7 @@ function shortPage(d) {
             </div>
             <div class="edit-field">
               <label>Net Amount (₹)</label>
-              <input id="ei-net" type="number" value="${inv.netAmount}" style="color:#059669;font-weight:600">
+              <input id="ei-net" type="number" value="${inv.netAmount}" style="color:#1E8E3E;font-weight:600">
               <span class="edit-hint">Auto-calc or override</span>
             </div>
           </div>
@@ -3871,9 +3871,9 @@ function shortPage(d) {
             <td style="font-family:monospace;padding:4px 8px">${inv.invoiceNo}</td>
             <td style="padding:4px 8px;color:var(--muted)">${inv.invoiceDate}</td>
             <td style="padding:4px 8px;color:var(--red)">${inv.oldDueDate}</td>
-            <td style="padding:4px 8px;color:#059669;font-weight:600">${inv.newDueDate}</td>
+            <td style="padding:4px 8px;color:#1E8E3E;font-weight:600">${inv.newDueDate}</td>
             <td style="padding:4px 8px;color:var(--muted)">${inv.oldSlab === '0' ? 'Nil' : inv.oldSlab + '%'}</td>
-            <td style="padding:4px 8px;color:#059669;font-weight:600">${inv.newSlab === '0' ? 'Nil' : inv.newSlab + '%'}</td>
+            <td style="padding:4px 8px;color:#1E8E3E;font-weight:600">${inv.newSlab === '0' ? 'Nil' : inv.newSlab + '%'}</td>
           </tr>`
         ).join('');
 
@@ -3910,7 +3910,7 @@ function shortPage(d) {
           showCancelButton: true,
           confirmButtonText: '<i class="fas fa-sync-alt"></i> Yes, Update ' + preview.count + ' Invoice(s)',
           cancelButtonText: 'No, Keep As-Is',
-          confirmButtonColor: '#059669',
+          confirmButtonColor: '#1E8E3E',
           cancelButtonColor: '#64748B',
           width: 700
         }).then(result => {
