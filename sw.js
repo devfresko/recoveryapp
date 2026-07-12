@@ -1,5 +1,5 @@
 var CACHE = 'fresko-payments-v1';
-var SHELL = ['./', './index.html', './gas-api.js', './manifest.json', './icon-192.png', './icon-512.png'];
+var SHELL = ['./', './index.html', './app.js', './gas-api.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }));
