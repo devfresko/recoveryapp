@@ -1,76 +1,151 @@
 // ============================================================
-// Fresko Payment Follow-up — PWA Shell app.js
-// This wraps the existing Google Apps Script web app (which already runs
-// google.script.run internally and is served with X-Frame-Options: ALLOWALL)
-// inside a fullscreen <iframe> so it installs as a proper standalone PWA.
+// gas-api.js — JSONP bridge to the Fresko Apps Script backend
+// ============================================================
+// This file polyfills `google.script.run` so that every existing
+// `google.script.run.withSuccessHandler(...).withFailureHandler(...).xxx(args)`
+// call already written in Index.html keeps working unchanged — even though
+// this page is now hosted on GitHub Pages (a different origin) instead of
+// inside Apps Script's own sandboxed iframe.
 //
-// NOTE: The GAS backend (Code.gs) uses HtmlService + google.script.run, not
-// a doGet-JSONP API — so this shell does NOT make direct JSONP calls the way
-// a from-scratch GAS-PWA-ERP app.js normally would. All API calls happen
-// inside the iframe, against the real app itself. This file only owns the
-// PWA shell's own concerns: loading state, retry/offline handling, and
-// service-worker registration.
+// How it works: instead of the real google.script.run RPC channel (which only
+// exists when a page is served BY Apps Script), every call is translated into
+// a CORS-free JSONP request: a <script src="...&callback=cbXXX"> tag pointed
+// at the Apps Script doGet API (see Code.gs → API_FUNCTIONS / doGet).
+//
+// IMPORTANT: update GAS_API_URL below to match your deployed Apps Script
+// Web App URL (Sheet menu → "Payment Follow-up" → "Show API URL (for app.js)").
 // ============================================================
 
-var APP_URL = 'https://script.google.com/macros/s/AKfycbwMRT3frAafqZrH1Myas1Bom7DHchzypzTk6y4G3nZrKUdj3k9_-dYVCSIr2lCiuuos/exec';
+var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyCEaQizMbIS7z8VbvY3EUnafPuBFqcZx0Jbi0kKUM7LXJZ4eYw3Us3S-HvRFUGhRKy/exec';
 
-var frame   = document.getElementById('frame');
-var splash  = document.getElementById('splash');
-var spinner = document.getElementById('spinner');
-var splashSub = document.getElementById('splashSub');
-var retryBox  = document.getElementById('retryBox');
-var retryBtn  = document.getElementById('retryBtn');
-var openInBrowserLink = document.getElementById('openInBrowserLink');
-var banner  = document.getElementById('offlineBanner');
+(function () {
+  var _cbIdx = 0;
+  var JSONP_TIMEOUT_MS = 25000;
+  // Keep each JSONP request's query string comfortably under safe URL-length
+  // limits. Only matters for calls with big array payloads (bulk upload).
+  var MAX_ARGS_JSON_LEN = 6000;
 
-var slowTimer, loaded = false;
+  function _rawJsonpCall(fnName, args, onSuccess, onFailure) {
+    var cbName = '_gascb' + (++_cbIdx);
+    var timeoutId;
 
-openInBrowserLink.href = APP_URL;
-
-function hideSplash() {
-  loaded = true;
-  clearTimeout(slowTimer);
-  splash.style.opacity = '0';
-  setTimeout(function () { splash.style.display = 'none'; }, 350);
-}
-
-function retryLoad() {
-  loaded = false;
-  spinner.style.display = 'block';
-  splashSub.style.display = 'block';
-  retryBox.style.display = 'none';
-  splash.style.opacity = '1';
-  splash.style.display = 'flex';
-  frame.src = APP_URL + (APP_URL.indexOf('?') > -1 ? '&' : '?') + '_r=' + Date.now();
-  startSlowTimer();
-}
-
-function startSlowTimer() {
-  clearTimeout(slowTimer);
-  slowTimer = setTimeout(function () {
-    if (!loaded) {
-      spinner.style.display = 'none';
-      splashSub.style.display = 'none';
-      retryBox.style.display = 'flex';
+    function cleanup() {
+      clearTimeout(timeoutId);
+      try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+      var tag = document.getElementById('_s_' + cbName);
+      if (tag) tag.parentNode.removeChild(tag);
     }
-  }, 15000);
-}
 
-frame.addEventListener('load', hideSplash);
-retryBtn.addEventListener('click', retryLoad);
+    window[cbName] = function (result) {
+      cleanup();
+      if (onSuccess) onSuccess(result);
+    };
 
-frame.src = APP_URL;
-startSlowTimer();
+    timeoutId = setTimeout(function () {
+      cleanup();
+      if (onFailure) onFailure({ message: 'Request timed out. Please check your connection and try again.' });
+    }, JSONP_TIMEOUT_MS);
 
-// Offline / online banner
-function updateOnlineState() { banner.style.display = navigator.onLine ? 'none' : 'block'; }
-window.addEventListener('online', updateOnlineState);
-window.addEventListener('offline', updateOnlineState);
-updateOnlineState();
+    var url = GAS_API_URL +
+      '?callback=' + encodeURIComponent(cbName) +
+      '&fn=' + encodeURIComponent(fnName) +
+      '&args=' + encodeURIComponent(JSON.stringify(args || []));
 
-// Register service worker (caches this shell only, never the app itself)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
-  });
-}
+    var s = document.createElement('script');
+    s.id = '_s_' + cbName;
+    s.src = url;
+    s.onerror = function () {
+      cleanup();
+      if (onFailure) onFailure({ message: 'Network error while reaching the server.' });
+    };
+    document.head.appendChild(s);
+  }
+
+  // bulkUploadInvoices(rows, batchLabel, userName) can carry a large `rows`
+  // array (CSV/XLSX import). A single JSONP GET has a practical URL-length
+  // ceiling, so this splits large uploads into sequential chunked calls and
+  // merges the results back into the single result shape the app expects:
+  // { success, rowsAdded, skipped, batch, msg, errors }.
+  function _chunkedBulkUpload(args, onSuccess, onFailure) {
+    var rows = args[0] || [];
+    var batchLabel = args[1];
+    var userName = args[2];
+
+    var chunks = [];
+    var current = [];
+    var currentLen = 0;
+    rows.forEach(function (row) {
+      var rowLen = JSON.stringify(row).length;
+      if (current.length && currentLen + rowLen > MAX_ARGS_JSON_LEN) {
+        chunks.push(current);
+        current = [];
+        currentLen = 0;
+      }
+      current.push(row);
+      currentLen += rowLen;
+    });
+    if (current.length) chunks.push(current);
+    if (!chunks.length) chunks.push([]);
+
+    var merged = { success: true, rowsAdded: 0, skipped: 0, batch: batchLabel, msg: '', errors: [] };
+    var i = 0;
+
+    function next() {
+      if (i >= chunks.length) {
+        merged.msg = merged.rowsAdded + ' invoices added' + (merged.skipped > 0 ? ', ' + merged.skipped + ' skipped.' : '.');
+        onSuccess(merged);
+        return;
+      }
+      _rawJsonpCall('bulkUploadInvoices', [chunks[i], batchLabel, userName], function (res) {
+        if (!res || res.success === false) {
+          onFailure(res || { message: 'Upload failed on batch ' + (i + 1) + ' of ' + chunks.length });
+          return;
+        }
+        merged.rowsAdded += res.rowsAdded || 0;
+        merged.skipped += res.skipped || 0;
+        if (res.errors && res.errors.length) merged.errors = merged.errors.concat(res.errors).slice(0, 10);
+        i++;
+        next();
+      }, onFailure);
+    }
+    next();
+  }
+
+  function _jsonpCall(fnName, args, onSuccess, onFailure) {
+    if (fnName === 'bulkUploadInvoices' && args && args[0] && args[0].length > 25) {
+      _chunkedBulkUpload(args, onSuccess, onFailure);
+    } else {
+      _rawJsonpCall(fnName, args, onSuccess, onFailure);
+    }
+  }
+
+  function createRunProxy(successHandler, failureHandler) {
+    return new Proxy({}, {
+      get: function (target, prop) {
+        if (prop === 'withSuccessHandler') {
+          return function (cb) { return createRunProxy(cb, failureHandler); };
+        }
+        if (prop === 'withFailureHandler') {
+          return function (cb) { return createRunProxy(successHandler, cb); };
+        }
+        if (prop === 'withUserObject') {
+          // No-op: not needed for JSONP calls, kept only for API-shape compatibility.
+          return function () { return createRunProxy(successHandler, failureHandler); };
+        }
+        // Any other property access is treated as the remote function name.
+        return function () {
+          var args = Array.prototype.slice.call(arguments);
+          _jsonpCall(prop, args, function (result) {
+            if (successHandler) successHandler(result);
+          }, function (err) {
+            if (failureHandler) failureHandler(err);
+          });
+        };
+      }
+    });
+  }
+
+  window.google = window.google || {};
+  window.google.script = window.google.script || {};
+  window.google.script.run = createRunProxy(null, null);
+})();
