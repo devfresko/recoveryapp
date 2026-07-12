@@ -16,7 +16,7 @@
 // Web App URL (Sheet menu → "Payment Follow-up" → "Show API URL (for app.js)").
 // ============================================================
 
-var GAS_API_URL = 'https://script.google.com/a/macros/ishasteels.com/s/AKfycbzunLGk_9P3njua1DvPmMt3BIaJuza_LUyrpnfi-mr1iqhm-FbNaAFZOfOSk_fy9vpaAg/exec';
+var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyCEaQizMbIS7z8VbvY3EUnafPuBFqcZx0Jbi0kKUM7LXJZ4eYw3Us3S-HvRFUGhRKy/exec';
 
 (function () {
   var _cbIdx = 0;
