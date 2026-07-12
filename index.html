@@ -3,14 +3,29 @@
 <head>
   <base target="_top">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>Fresko Payment Follow-up</title>
+  <meta name="theme-color" content="#005F73">
+  <meta name="description" content="Fresko — Payment Follow-up & Collections System">
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./favicon-32.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fresko Portal">
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- JSONP bridge to the Apps Script backend — polyfills google.script.run so
+       every existing google.script.run.xxx() call below works unchanged even
+       though this page is hosted on GitHub Pages, not inside Apps Script. -->
+  <script src="./gas-api.js"></script>
   <style>
     *,
     *::before,
@@ -8546,6 +8561,14 @@ function shortPage(d) {
         </div>
       </div>
     </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
+      });
+    }
+  </script>
 
 </body>
 
