@@ -16,6 +16,27 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
 
+  <!-- Tailwind (utility classes available for any new/updated UI pieces;
+       the app's existing hand-built CSS system below remains the primary
+       styling layer to avoid regressions on a live financial app) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'g-blue':   { DEFAULT: '#4285F4', dark: '#1967D2', light: '#E8F0FE' },
+            'g-red':    { DEFAULT: '#EA4335', dark: '#C5221F', light: '#FCE8E6' },
+            'g-yellow': { DEFAULT: '#FBBC05', dark: '#F29900', light: '#FEF7E0' },
+            'g-green':  { DEFAULT: '#34A853', dark: '#188038', light: '#E6F4EA' },
+            'fresko-teal': { DEFAULT: '#0E7C86', dark: '#075E66', light: '#E6F5F5' },
+            'fresko-leaf': '#8BC53F'
+          }
+        }
+      }
+    };
+  </script>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -36,12 +57,29 @@
     }
 
     :root {
-      --red: #C0152A;
-      --red-d: #9B1020;
-      --red-l: #FEE2E6;
-      --primary: #4F46E5;
-      --primary-d: #3730A3;
-      --primary-l: #EEF2FF;
+      /* Google brand palette — mapped onto the app's existing semantic roles:
+         primary/action = Google Blue, success/paid = Google Green,
+         danger/overdue = Google Red, warning/pending = Google Yellow.
+         Fresko's own teal/leaf stays reserved for logo + login branding only. */
+      --g-blue: #4285F4;
+      --g-blue-d: #1967D2;
+      --g-blue-l: #E8F0FE;
+      --g-red: #EA4335;
+      --g-red-d: #C5221F;
+      --g-red-l: #FCE8E6;
+      --g-yellow: #FBBC05;
+      --g-yellow-d: #F29900;
+      --g-yellow-l: #FEF7E0;
+      --g-green: #34A853;
+      --g-green-d: #188038;
+      --g-green-l: #E6F4EA;
+
+      --red: #EA4335;
+      --red-d: #C5221F;
+      --red-l: #FCE8E6;
+      --primary: #4285F4;
+      --primary-d: #1967D2;
+      --primary-l: #E8F0FE;
       --dark: #0F172A;
       --dark2: #1E293B;
       --slate: #334155;
@@ -51,9 +89,9 @@
       --text: #1E293B;
       --muted: #64748B;
       --sub: #94A3B8;
-      --green: #10B981;
-      --amber: #F59E0B;
-      --blue: #3B82F6;
+      --green: #34A853;
+      --amber: #FBBC05;
+      --blue: #4285F4;
       /* Fresko brand identity (used only for logo/login/brand touchpoints —
          all status colors above stay as-is so Paid/Overdue/etc. keep meaning) */
       --teal: #0E7C86;
@@ -290,7 +328,7 @@
 
     .sb-nav-item.active {
       background: linear-gradient(90deg, rgba(192, 21, 42, .15) 0%, transparent 100%);
-      color: #F87171 !important;
+      color: #EE675C !important;
       font-weight: 600;
     }
 
@@ -394,7 +432,7 @@
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #B91C1C, var(--red));
+      background: linear-gradient(135deg, #C5221F, var(--red));
       color: #fff;
       font-size: 11px;
       font-weight: 800;
@@ -456,7 +494,7 @@
     }
 
     .sb-logout-btn:hover {
-      color: #F87171;
+      color: #EE675C;
       background: rgba(239, 68, 68, .09);
       border-color: rgba(239, 68, 68, .2)
     }
@@ -833,18 +871,18 @@
       letter-spacing: 0.02em;
     }
 
-    .badge-paid { background: #DCFCE7; color: #166534; border: 1px solid #BBF7D0; }
+    .badge-paid { background: #DCFCE7; color: #137333; border: 1px solid #A8DAB5; }
     .badge-pending { background: #DBEAFE; color: #1E40AF; border: 1px solid #BFDBFE; }
-    .badge-partpaid { background: #FEF9C3; color: #854D0E; border: 1px solid #FEF08A; }
-    .badge-overdue { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
-    .badge-active { background: #DCFCE7; color: #166534; border: 1px solid #BBF7D0; }
+    .badge-partpaid { background: #FEEFC3; color: #854D0E; border: 1px solid #FDE293; }
+    .badge-overdue { background: #FAD2CF; color: #991B1B; border: 1px solid #F6AEA9; }
+    .badge-active { background: #DCFCE7; color: #137333; border: 1px solid #A8DAB5; }
     .badge-inactive { background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB; }
-    .badge-high { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
-    .badge-medium { background: #FEF9C3; color: #854D0E; border: 1px solid #FEF08A; }
-    .badge-low { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+    .badge-high { background: #FAD2CF; color: #991B1B; border: 1px solid #F6AEA9; }
+    .badge-medium { background: #FEEFC3; color: #854D0E; border: 1px solid #FDE293; }
+    .badge-low { background: #E6F4EA; color: #137333; border: 1px solid #A8DAB5; }
 
-    .slab-15 { background: #ECFDF5; color: #059669; border: 1px solid #D1FAE5; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 2px 8px; }
-    .slab-1 { background: #FFFBEB; color: #D97706; border: 1px solid #FEF3C7; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 2px 8px; }
+    .slab-15 { background: #E6F4EA; color: #1E8E3E; border: 1px solid #D1FAE5; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 2px 8px; }
+    .slab-1 { background: #FEF7E0; color: #F9AB00; border: 1px solid #FEF3C7; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 2px 8px; }
     .slab-0 { background: #F9FAFB; color: #6B7280; border: 1px solid #F3F4F6; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 2px 8px; }
 
     .btn {
@@ -878,13 +916,13 @@
     .btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
     .btn-secondary:hover { background: #F8FAFC; border-color: #CBD5E1; }
     
-    .btn-green { background: #10B981; color: #fff; }
-    .btn-green:hover { background: #059669; }
+    .btn-green { background: #34A853; color: #fff; }
+    .btn-green:hover { background: #1E8E3E; }
 
-    .btn-amber { background: #F59E0B; color: #fff; }
-    .btn-amber:hover { background: #D97706; }
+    .btn-amber { background: #FBBC05; color: #fff; }
+    .btn-amber:hover { background: #F9AB00; }
 
-    .btn-blue { background: #3B82F6; color: #fff; }
+    .btn-blue { background: #4285F4; color: #fff; }
     .btn-blue:hover { background: #2563EB; }
 
     .btn-ghost { background: transparent; color: var(--muted); }
@@ -1031,7 +1069,7 @@
     }
 
     .ac-item:hover {
-      background: #FEF2F2
+      background: #FCE8E6
     }
 
     .ac-item .ac-name {
@@ -1165,7 +1203,7 @@
 
     .ss-opt:hover,
     .ss-opt.focused {
-      background: #FEF2F2
+      background: #FCE8E6
     }
 
     .ss-opt .ss-name {
@@ -1319,27 +1357,27 @@
     }
 
     .info-box.blue {
-      background: #EFF6FF;
+      background: #E8F0FE;
       border: 1px solid #BFDBFE;
-      color: #1D4ED8
+      color: #1967D2
     }
 
     .info-box.amber {
-      background: #FFFBEB;
-      border: 1px solid #FDE68A;
-      color: #92400E
+      background: #FEF7E0;
+      border: 1px solid #FDD663;
+      color: #EA8600
     }
 
     .info-box.red {
       background: var(--red-l);
-      border: 1px solid #FECACA;
+      border: 1px solid #F6AEA9;
       color: #991B1B
     }
 
     .info-box.green {
-      background: #F0FDF4;
-      border: 1px solid #BBF7D0;
-      color: #166534
+      background: #E6F4EA;
+      border: 1px solid #A8DAB5;
+      color: #137333
     }
 
     .info-box i {
@@ -1374,7 +1412,7 @@
 
     .dz-active {
       border-color: var(--red) !important;
-      background: #FEF2F2 !important
+      background: #FCE8E6 !important
     }
 
     .ss-wrap,
@@ -1518,7 +1556,7 @@
     .ss-opt:hover,
     .sd-option:hover,
     .sd-option.focused {
-      background: #FEF2F2;
+      background: #FCE8E6;
       color: var(--red)
     }
 
@@ -1608,11 +1646,11 @@
     }
 
     .icon-fu {
-      color: #1D4ED8
+      color: #1967D2
     }
 
     .icon-pay {
-      color: #16A34A
+      color: #34A853
     }
 
     .icon-view {
@@ -1620,7 +1658,7 @@
     }
 
     .icon-edit {
-      color: #D97706
+      color: #F9AB00
     }
 
     .icon-delete {
@@ -1628,7 +1666,7 @@
     }
 
     .icon-call {
-      color: #1D4ED8
+      color: #1967D2
     }
 
     .icon-wa {
@@ -1655,11 +1693,11 @@
       transform: scale(1.08);
     }
 
-    .act-btn.ab-fu:hover  { border-color: #3B82F6; background: #EFF6FF; color: #3B82F6; }
-    .act-btn.ab-pay:hover { border-color: #10B981; background: #ECFDF5; color: #10B981; }
+    .act-btn.ab-fu:hover  { border-color: #4285F4; background: #E8F0FE; color: #4285F4; }
+    .act-btn.ab-pay:hover { border-color: #34A853; background: #E6F4EA; color: #34A853; }
     .act-btn.ab-view:hover { border-color: #64748B; background: #F8FAFC; }
-    .act-btn.ab-call:hover { border-color: #3B82F6; background: #EFF6FF; }
-    .act-btn.ab-wa:hover   { border-color: #25D366; background: #F0FDF4; }
+    .act-btn.ab-call:hover { border-color: #4285F4; background: #E8F0FE; }
+    .act-btn.ab-wa:hover   { border-color: #25D366; background: #E6F4EA; }
     .act-btn.ab-edit { color: #7C3AED; }
     .act-btn.ab-edit:hover { border-color: #7C3AED; background: #F5F3FF; color: #7C3AED; }
 
@@ -1683,7 +1721,7 @@
     .edit-drawer-title { font-size:15px;font-weight:700;color:#0F172A;flex:1; }
     .edit-drawer-sub   { font-size:11px;color:var(--muted);margin-top:1px; }
     .edit-drawer-close { width:32px;height:32px;border-radius:8px;border:1px solid #E2E8F0;background:#F8FAFC;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#64748B;flex-shrink:0; }
-    .edit-drawer-close:hover { background:#FEE2E2;border-color:#FECACA;color:var(--red); }
+    .edit-drawer-close:hover { background:#FAD2CF;border-color:#F6AEA9;color:var(--red); }
     .edit-drawer-body { flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px; }
     .edit-drawer-footer { padding:14px 20px;border-top:1px solid #E2E8F0;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#FAFAFA; }
     .edit-section-title { font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.8px;text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid #F1F5F9; }
@@ -1707,11 +1745,11 @@
       border-radius: 99px;
     }
 
-    .age-1 { background: #FEF9C3; color: #92400E; border: 1px solid #FEF08A; }
+    .age-1 { background: #FEEFC3; color: #EA8600; border: 1px solid #FDE293; }
     .age-2 { background: #FED7AA; color: #C2410C; border: 1px solid #FDBA74; }
-    .age-3 { background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; }
-    .age-4 { background: #FECACA; color: #B91C1C; border: 1px solid #FCA5A5; }
-    .age-5 { background: #C0152A; color: #fff; }
+    .age-3 { background: #FAD2CF; color: #DC2626; border: 1px solid #F6AEA9; }
+    .age-4 { background: #F6AEA9; color: #C5221F; border: 1px solid #FCA5A5; }
+    .age-5 { background: #EA4335; color: #fff; }
 
 
     /* -- LOGIN PAGE STYLES ------------------------------------ */
@@ -1919,8 +1957,8 @@
       display: none;
       align-items: center;
       gap: 8px;
-      background: #FEF2F2;
-      border: 1.5px solid #FECACA;
+      background: #FCE8E6;
+      border: 1.5px solid #F6AEA9;
       border-radius: 8px;
       padding: 9px 12px;
       margin-bottom: 13px;
@@ -1938,7 +1976,7 @@
     }
 
     .eb span {
-      color: #B91C1C;
+      color: #C5221F;
       font-size: 12.5px;
       line-height: 1.4
     }
@@ -2434,7 +2472,7 @@
           <div class="sb-nav-item" id="nav-invoices" data-tip="All Invoices" onclick="nav('invoices')"><i
               class="fas fa-file-invoice"></i><span class="sb-lbl">All Invoices</span></div>
           <div class="sb-nav-item" id="nav-pending" data-tip="Pending Invoices" onclick="nav('pending')"><i
-              class="fas fa-file-invoice-dollar" style="color:#D97706"></i><span class="sb-lbl">Pending Invoices</span></div>
+              class="fas fa-file-invoice-dollar" style="color:#F9AB00"></i><span class="sb-lbl">Pending Invoices</span></div>
           <div class="sb-nav-item" id="nav-addInvoice" data-tip="New Invoice" onclick="nav('addInvoice')"><i
               class="fas fa-file-invoice-dollar"></i><span class="sb-lbl">New Invoice</span></div>
           <div class="sb-nav-item" id="nav-upload" data-tip="CSV Upload" onclick="nav('upload')"><i
@@ -2443,21 +2481,21 @@
           <div class="sb-nav-divider"></div>
           <div class="sb-section-label">Collections</div>
           <div class="sb-nav-item" id="nav-slab15due" data-tip="1.5% Slab Due" onclick="nav('slab15due')"><i
-              class="fas fa-percentage" style="color:#16A34A"></i><span class="sb-lbl">1.5% Due</span><span
-              class="sb-badge" id="badge-s15" style="background:#16A34A">0</span></div>
+              class="fas fa-percentage" style="color:#34A853"></i><span class="sb-lbl">1.5% Due</span><span
+              class="sb-badge" id="badge-s15" style="background:#34A853">0</span></div>
           <div class="sb-nav-item" id="nav-slab1due" data-tip="1% Slab Due" onclick="nav('slab1due')"><i
-              class="fas fa-percentage" style="color:#D97706"></i><span class="sb-lbl">1% Due</span><span
-              class="sb-badge" id="badge-s1" style="background:#D97706">0</span></div>
+              class="fas fa-percentage" style="color:#F9AB00"></i><span class="sb-lbl">1% Due</span><span
+              class="sb-badge" id="badge-s1" style="background:#F9AB00">0</span></div>
           <div class="sb-nav-item" id="nav-slabNildue" data-tip="Nil Slab Due" onclick="nav('slabNildue')"><i
               class="fas fa-percentage" style="color:#64748B"></i><span class="sb-lbl">Nil Due</span><span
               class="sb-badge" id="badge-sNil" style="background:#475569">0</span></div>
           <div class="sb-nav-item" id="nav-shortpay" data-tip="Short Payments" onclick="nav('shortpay')"><i
-              class="fas fa-compress-alt" style="color:#C0152A"></i><span class="sb-lbl">Short Payments</span><span
-              class="sb-badge" id="badge-sp" style="background:#C0152A">0</span></div>
+              class="fas fa-compress-alt" style="color:#EA4335"></i><span class="sb-lbl">Short Payments</span><span
+              class="sb-badge" id="badge-sp" style="background:#EA4335">0</span></div>
           <div class="sb-nav-item" id="nav-payments" data-tip="Payments" onclick="nav('payments')"><i
               class="fas fa-hand-holding-usd"></i><span class="sb-lbl">Payments</span></div>
           <div class="sb-nav-item" id="nav-latepay" data-tip="Late Payments" onclick="nav('latepay')"><i
-              class="fas fa-clock" style="color:#D97706"></i><span class="sb-lbl">Late Payments</span></div>
+              class="fas fa-clock" style="color:#F9AB00"></i><span class="sb-lbl">Late Payments</span></div>
           <div class="sb-nav-item" id="nav-recPayment" data-tip="Record Payment" onclick="openRPModal()"><i
               class="fas fa-indian-rupee-sign" style="color:#4ADE80"></i><span class="sb-lbl">Record Payment</span></div>
 
@@ -2479,7 +2517,7 @@
           <div class="sb-nav-item nav-admin-only" id="nav-discountTBG" data-tip="Discount to be Given" onclick="nav('discountTBG')" style="display:none"><i
               class="fas fa-tag" style="color:#7C3AED"></i><span class="sb-lbl">Discount TBG</span></div>
           <div class="sb-nav-item nav-admin-only" id="nav-writeoffs" data-tip="Write-Offs" onclick="nav('writeoffs')" style="display:none"><i
-              class="fas fa-times-circle" style="color:#D97706"></i><span class="sb-lbl">Write-Offs</span></div>
+              class="fas fa-times-circle" style="color:#F9AB00"></i><span class="sb-lbl">Write-Offs</span></div>
 
         </nav>
 
@@ -2576,13 +2614,13 @@
 
 
             <div class="g3" style="margin-bottom:16px">
-              <div class="stat-card" style="border-left:3px solid #16A34A">
-                <div class="stat-label" style="color:#16A34A">1.5% Slab</div>
+              <div class="stat-card" style="border-left:3px solid #34A853">
+                <div class="stat-label" style="color:#34A853">1.5% Slab</div>
                 <div class="stat-val sc-slate" id="slab-15-amt" style="font-size:18px">₹0</div>
                 <div class="stat-sub" id="slab-15-cnt">0 invoices</div>
               </div>
-              <div class="stat-card" style="border-left:3px solid #D97706">
-                <div class="stat-label" style="color:#D97706">1% Slab</div>
+              <div class="stat-card" style="border-left:3px solid #F9AB00">
+                <div class="stat-label" style="color:#F9AB00">1% Slab</div>
                 <div class="stat-val sc-slate" id="slab-1-amt" style="font-size:18px">₹0</div>
                 <div class="stat-sub" id="slab-1-cnt">0 invoices</div>
               </div>
@@ -2656,8 +2694,8 @@
 
             <div class="card" style="margin-bottom:14px">
               <div
-                style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:#FFFBEB;border-radius:12px 12px 0 0">
-                <span style="font-size:12px;font-weight:700;color:#92400E"><i class="fas fa-calendar-day"
+                style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:#FEF7E0;border-radius:12px 12px 0 0">
+                <span style="font-size:12px;font-weight:700;color:#EA8600"><i class="fas fa-calendar-day"
                     style="margin-right:6px"></i>Bills Due Today</span>
                 <span class="badge badge-partpaid" id="td-badge">0</span>
               </div>
@@ -2666,8 +2704,8 @@
 
             <div class="card">
               <div
-                style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:#F0FDF4;border-radius:12px 12px 0 0">
-                <span style="font-size:12px;font-weight:700;color:#166534"><i class="fas fa-phone"
+                style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:#E6F4EA;border-radius:12px 12px 0 0">
+                <span style="font-size:12px;font-weight:700;color:#137333"><i class="fas fa-phone"
                     style="margin-right:6px"></i>Today's Follow-up Activity</span>
                 <button class="btn btn-sm btn-amber" onclick="openFUModal()"><i class="fas fa-phone-alt"></i>
                   Log</button>
@@ -2690,7 +2728,7 @@
               <div class="stat-card text-center" style="text-align:center;padding:12px">
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--sub);margin-bottom:4px">
                   1-7 Days</div>
-                <div style="font-size:16px;font-weight:800;color:#D97706" id="od-b1">₹0</div>
+                <div style="font-size:16px;font-weight:800;color:#F9AB00" id="od-b1">₹0</div>
               </div>
               <div class="stat-card" style="text-align:center;padding:12px">
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--sub);margin-bottom:4px">
@@ -2705,7 +2743,7 @@
               <div class="stat-card" style="text-align:center;padding:12px">
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--sub);margin-bottom:4px">
                   31-60 Days</div>
-                <div style="font-size:16px;font-weight:800;color:#B91C1C" id="od-b4">₹0</div>
+                <div style="font-size:16px;font-weight:800;color:#C5221F" id="od-b4">₹0</div>
               </div>
               <div class="stat-card" style="text-align:center;padding:12px">
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--sub);margin-bottom:4px">
@@ -2860,14 +2898,14 @@
                 <div class="form-section-title">Discount Slab Configuration</div>
                 <div class="form-row-3">
                   <div class="form-group">
-                    <label class="form-label" style="color:#16A34A">1.5% -- Days to pay</label>
+                    <label class="form-label" style="color:#34A853">1.5% -- Days to pay</label>
                     <input class="form-input" id="ap-d15" type="number" placeholder="e.g. 6" min="0"
-                      style="border-color:#86EFAC">
+                      style="border-color:#81C995">
                   </div>
                   <div class="form-group">
-                    <label class="form-label" style="color:#D97706">1% -- Days to pay</label>
+                    <label class="form-label" style="color:#F9AB00">1% -- Days to pay</label>
                     <input class="form-input" id="ap-d1" type="number" placeholder="e.g. 15" min="0"
-                      style="border-color:#FCD34D">
+                      style="border-color:#FDD663">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Nil -- Days to pay</label>
@@ -3111,7 +3149,7 @@
               <div class="card card-p" style="margin-bottom:12px;border-left:3px solid var(--green)">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
                   <div
-                    style="width:26px;height:26px;border-radius:50%;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    style="width:26px;height:26px;border-radius:50%;background:#E6F4EA;display:flex;align-items:center;justify-content:center;flex-shrink:0">
                     <span style="font-size:11px;font-weight:800;color:var(--green)">2</span>
                   </div>
                   <div>
@@ -3134,8 +3172,8 @@
                 <input type="file" id="csv-inp" accept=".csv,.xlsx,.xls" style="display:none"
                   onchange="handleFile(this)">
                 <div id="csv-file-info"
-                  style="display:none;margin-top:10px;align-items:center;gap:10px;background:#F0FDF4;border-radius:8px;padding:10px 14px;border:1px solid #BBF7D0">
-                  <i class="fas fa-file-alt" style="font-size:18px;color:#16A34A;flex-shrink:0"></i>
+                  style="display:none;margin-top:10px;align-items:center;gap:10px;background:#E6F4EA;border-radius:8px;padding:10px 14px;border:1px solid #A8DAB5">
+                  <i class="fas fa-file-alt" style="font-size:18px;color:#34A853;flex-shrink:0"></i>
                   <div style="flex:1;min-width:0">
                     <div style="font-weight:700;font-size:12px" id="csv-fname">file.csv</div>
                     <div style="font-size:11px;color:var(--muted)" id="csv-fmeta">0 KB</div>
@@ -3165,7 +3203,7 @@
                   style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)">
                   <span style="font-size:12px;font-weight:700">Preview & Validation</span>
                   <div style="display:flex;gap:10px;font-size:11px">
-                    <span style="color:#16A34A;font-weight:700" id="csv-valid-cnt"></span>
+                    <span style="color:#34A853;font-weight:700" id="csv-valid-cnt"></span>
                     <span style="color:var(--red);font-weight:700" id="csv-skip-cnt"></span>
                     <span style="color:var(--muted)" id="csv-total-cnt"></span>
                   </div>
@@ -3195,7 +3233,7 @@
                 <div class="page-sub" id="s15-sub">Parties eligible for 1.5% cash discount -- pending invoices</div>
               </div>
               <span id="s15-total-badge" class="badge"
-                style="font-size:13px;padding:6px 14px;background:#F0FDF4;color:#16A34A;border:1px solid #86EFAC">₹0</span>
+                style="font-size:13px;padding:6px 14px;background:#E6F4EA;color:#34A853;border:1px solid #81C995">₹0</span>
             </div>
 
             <div class="info-box green" style="margin-bottom:14px">
@@ -3222,8 +3260,8 @@
                       <th>Due Date</th>
                       <th class="num">Bill Value (₹)</th>
                       <th class="num">TDS (₹)</th>
-                      <th class="num" style="color:#16A34A">1.5% Disc (₹)</th>
-                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Expected<br><span style="font-size:10px;color:#16A34A">1.5%</span> <span style="font-size:10px;color:#D97706">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
+                      <th class="num" style="color:#34A853">1.5% Disc (₹)</th>
+                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Expected<br><span style="font-size:10px;color:#34A853">1.5%</span> <span style="font-size:10px;color:#F9AB00">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -3252,7 +3290,7 @@
                 <div class="page-sub" id="s1-sub">Parties eligible for 1% cash discount -- pending invoices</div>
               </div>
               <span id="s1-total-badge" class="badge"
-                style="font-size:13px;padding:6px 14px;background:#FFFBEB;color:#D97706;border:1px solid #FCD34D">₹0</span>
+                style="font-size:13px;padding:6px 14px;background:#FEF7E0;color:#F9AB00;border:1px solid #FDD663">₹0</span>
             </div>
 
             <div class="info-box amber" style="margin-bottom:14px">
@@ -3279,8 +3317,8 @@
                       <th>Due Date</th>
                       <th class="num">Bill Value (₹)</th>
                       <th class="num">TDS (₹)</th>
-                      <th class="num" style="color:#D97706">1% Disc (₹)</th>
-                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Expected<br><span style="font-size:10px;color:#16A34A">1.5%</span> <span style="font-size:10px;color:#D97706">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
+                      <th class="num" style="color:#F9AB00">1% Disc (₹)</th>
+                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Expected<br><span style="font-size:10px;color:#34A853">1.5%</span> <span style="font-size:10px;color:#F9AB00">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -3332,7 +3370,7 @@
                       <th>Due Date</th>
                       <th class="num">Bill Value (₹)</th>
                       <th class="num">TDS (₹)</th>
-                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Party Pays<br><span style="font-size:10px;color:#059669">1.5%</span> <span style="font-size:10px;color:#D97706">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
+                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Party Pays<br><span style="font-size:10px;color:#1E8E3E">1.5%</span> <span style="font-size:10px;color:#F9AB00">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -3362,7 +3400,7 @@
                   needed</div>
               </div>
               <span id="sp-total-badge" class="badge"
-                style="font-size:13px;padding:6px 14px;background:#FEF2F2;color:#C0152A;border:1px solid #FECACA">₹0
+                style="font-size:13px;padding:6px 14px;background:#FCE8E6;color:#EA4335;border:1px solid #F6AEA9">₹0
                 short</span>
             </div>
             <div class="info-box red" style="margin-bottom:14px">
@@ -3424,7 +3462,7 @@
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <button class="btn btn-ghost btn-sm" onclick="collapseAllLP()" title="Collapse all parties"><i class="fas fa-compress-alt"></i> Collapse All</button>
                 <button class="btn btn-ghost btn-sm" onclick="expandAllLP()" title="Expand all parties"><i class="fas fa-expand-alt"></i> Expand All</button>
-                <span id="lp-total-badge" class="badge" style="font-size:13px;padding:6px 14px;background:#FFFBEB;color:#D97706;border:1px solid #FCD34D">0 late</span>
+                <span id="lp-total-badge" class="badge" style="font-size:13px;padding:6px 14px;background:#FEF7E0;color:#F9AB00;border:1px solid #FDD663">0 late</span>
               </div>
             </div>
             <div class="info-box amber" style="margin-bottom:14px">
@@ -3567,22 +3605,22 @@
                   style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
 
                 <div id="rp-expected-box"
-                  style="margin-top:10px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:10px 14px;display:none">
+                  style="margin-top:10px;background:#E6F4EA;border:1px solid #81C995;border-radius:8px;padding:10px 14px;display:none">
                   <div style="display:flex;justify-content:space-between;align-items:center">
                     <div>
                       <div
-                        style="font-size:11px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.04em">
+                        style="font-size:11px;color:#137333;font-weight:700;text-transform:uppercase;letter-spacing:.04em">
                         Expected Total Payment</div>
                       <div style="font-size:10px;color:#4ADE80;margin-top:2px">Net Value - TDS - Cash Discount</div>
                     </div>
-                    <div style="font-size:18px;font-weight:800;color:#16A34A" id="rp-expected-total">₹0</div>
+                    <div style="font-size:18px;font-weight:800;color:#34A853" id="rp-expected-total">₹0</div>
                   </div>
                 </div>
               </div>
 
 
               <div style="text-align:center;padding:40px 20px;color:var(--muted)">
-                <i class="fas fa-indian-rupee-sign" style="font-size:32px;margin-bottom:12px;display:block;color:#16A34A"></i>
+                <i class="fas fa-indian-rupee-sign" style="font-size:32px;margin-bottom:12px;display:block;color:#34A853"></i>
                 <div style="font-weight:600;margin-bottom:8px">Use the Record Payment button</div>
                 <div style="font-size:12px">Click ₹ button on any party, invoice, or use sidebar</div>
                 <button class="btn btn-green" style="margin-top:16px" onclick="openRPModal()">
@@ -3840,10 +3878,10 @@
           <div id="view-writeoffs" class="view">
             <div class="page-hd">
               <div>
-                <div class="page-title" style="color:#D97706"><i class="fas fa-times-circle" style="margin-right:8px"></i>Write-Offs</div>
+                <div class="page-title" style="color:#F9AB00"><i class="fas fa-times-circle" style="margin-right:8px"></i>Write-Offs</div>
                 <div class="page-sub" id="wo-sub">Invoices where pending amount has been written off</div>
               </div>
-              <span id="wo-total-badge" class="badge" style="font-size:13px;padding:6px 14px;background:#FFFBEB;color:#D97706;border:1px solid #FDE68A">₹0 written off</span>
+              <span id="wo-total-badge" class="badge" style="font-size:13px;padding:6px 14px;background:#FEF7E0;color:#F9AB00;border:1px solid #FDD663">₹0 written off</span>
             </div>
             <div class="info-box amber" style="margin-bottom:14px">
               <i class="fas fa-exclamation-triangle"></i>
@@ -3859,9 +3897,9 @@
               <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('wo')" title="Clear"><i class="fas fa-times"></i></button>
             </div>
             <div class="g4" style="margin-bottom:14px">
-              <div class="stat-card" style="padding:12px;border-left:3px solid #D97706">
-                <div class="stat-label" style="color:#D97706">Total Written Off</div>
-                <div class="stat-val" id="wo-stat-total" style="font-size:18px;color:#D97706">₹0</div>
+              <div class="stat-card" style="padding:12px;border-left:3px solid #F9AB00">
+                <div class="stat-label" style="color:#F9AB00">Total Written Off</div>
+                <div class="stat-val" id="wo-stat-total" style="font-size:18px;color:#F9AB00">₹0</div>
               </div>
               <div class="stat-card" style="padding:12px">
                 <div class="stat-label">Bills Written Off</div>
@@ -3887,7 +3925,7 @@
                       <th>Due Date</th>
                       <th class="num">Bill Amount (₹)</th>
                       <th class="num">Paid (₹)</th>
-                      <th class="num" style="color:#D97706">Written Off (₹)</th>
+                      <th class="num" style="color:#F9AB00">Written Off (₹)</th>
                       <th>Reason</th>
                       <th>Actions</th>
                     </tr>
@@ -4225,7 +4263,7 @@
             <div id="pm-dtbg" class="scroll" style="max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:12px"></div>
           </div>
           <div id="pm-wo-section" style="display:none">
-            <div class="form-section-title" style="margin-bottom:6px;color:#D97706"><i class="fas fa-times-circle" style="margin-right:4px"></i>Write-Offs / Discounts Given</div>
+            <div class="form-section-title" style="margin-bottom:6px;color:#F9AB00"><i class="fas fa-times-circle" style="margin-right:4px"></i>Write-Offs / Discounts Given</div>
             <div id="pm-wo" class="scroll" style="max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:12px"></div>
           </div>
           <div class="form-section-title" style="margin-bottom:8px">Follow-up History</div>
@@ -4268,7 +4306,7 @@
     <div class="edit-drawer-overlay" id="edit-pay-overlay" onclick="if(event.target===this)closeEditDrawer('pay')">
       <div class="edit-drawer">
         <div class="edit-drawer-head">
-          <div class="edit-drawer-icon" style="background:#ECFDF5;color:#059669"><i class="fas fa-indian-rupee-sign"></i></div>
+          <div class="edit-drawer-icon" style="background:#E6F4EA;color:#1E8E3E"><i class="fas fa-indian-rupee-sign"></i></div>
           <div style="flex:1">
             <div class="edit-drawer-title" id="edit-pay-title">Edit Payment</div>
             <div class="edit-drawer-sub" id="edit-pay-sub">Update payment details</div>
@@ -4278,7 +4316,7 @@
         <div class="edit-drawer-body" id="edit-pay-body"></div>
         <div class="edit-drawer-footer">
           <button class="btn btn-ghost" onclick="closeEditDrawer('pay')">Cancel</button>
-          <button class="btn btn-primary" style="background:#059669;border-color:#059669" onclick="saveEditPayment()"><i class="fas fa-save"></i> Save Changes</button>
+          <button class="btn btn-primary" style="background:#1E8E3E;border-color:#1E8E3E" onclick="saveEditPayment()"><i class="fas fa-save"></i> Save Changes</button>
         </div>
       </div>
     </div>
@@ -4287,7 +4325,7 @@
     <div class="edit-drawer-overlay" id="edit-party-overlay" onclick="if(event.target===this)closeEditDrawer('party')">
       <div class="edit-drawer">
         <div class="edit-drawer-head">
-          <div class="edit-drawer-icon" style="background:#EFF6FF;color:#3B82F6"><i class="fas fa-building"></i></div>
+          <div class="edit-drawer-icon" style="background:#E8F0FE;color:#4285F4"><i class="fas fa-building"></i></div>
           <div style="flex:1">
             <div class="edit-drawer-title" id="edit-party-title">Edit Party</div>
             <div class="edit-drawer-sub" id="edit-party-sub">Update party details</div>
@@ -4306,7 +4344,7 @@
     <div class="edit-drawer-overlay" id="edit-fu-overlay" onclick="if(event.target===this)closeEditDrawer('fu')">
       <div class="edit-drawer">
         <div class="edit-drawer-head">
-          <div class="edit-drawer-icon" style="background:#ECFDF5;color:#059669"><i class="fas fa-phone-alt"></i></div>
+          <div class="edit-drawer-icon" style="background:#E6F4EA;color:#1E8E3E"><i class="fas fa-phone-alt"></i></div>
           <div style="flex:1">
             <div class="edit-drawer-title" id="edit-fu-title">Edit Follow-up</div>
             <div class="edit-drawer-sub" id="edit-fu-sub">Update follow-up details</div>
@@ -4316,7 +4354,7 @@
         <div class="edit-drawer-body" id="edit-fu-body"></div>
         <div class="edit-drawer-footer">
           <button class="btn btn-ghost" onclick="closeEditDrawer('fu')">Cancel</button>
-          <button class="btn btn-primary" style="background:#059669;border-color:#059669" onclick="saveEditFollowUp()"><i class="fas fa-save"></i> Save Changes</button>
+          <button class="btn btn-primary" style="background:#1E8E3E;border-color:#1E8E3E" onclick="saveEditFollowUp()"><i class="fas fa-save"></i> Save Changes</button>
         </div>
       </div>
     </div>
