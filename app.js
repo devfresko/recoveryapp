@@ -2665,27 +2665,25 @@ function shortPage(d) {
 
           for (let p = 1; p <= totalPages; p++) {
             if (progBar) progBar.style.width = Math.round((p/totalPages)*100)+'%';
-            if (progTxt) progTxt.textContent = `Reading page ${p} of ${totalPages}...`;
+            if (progTxt) progTxt.textContent = 'Reading page '+p+' of '+totalPages+'...';
 
             const page = await pdf.getPage(p);
-            const tc = await page.getTextContent();
+            const tc   = await page.getTextContent();
 
-            // Collect all non-empty strings in stream order (verified from browser debug)
+            // Collect non-empty strings in stream order (verified via browser debug)
             const strs = tc.items.map(it => it.str).filter(s => s.trim() !== '');
 
-            // Skip pages without INVOICE TOTAL (continuation pages)
+            // Skip continuation pages (no INVOICE TOTAL yet)
             if (!strs.some(s => s.includes('INVOICE TOTAL'))) continue;
 
-            // ── Invoice No ───────────────────────────────────────────
-            // "2026-27/760" appears as a standalone item
+            // Invoice No: standalone item matching YYYY-YY/NNN
             let invNo = null;
             for (const s of strs) {
               const m = s.match(/^(\d{4}-\d{2}\/\d+)$/);
               if (m) { invNo = m[1]; break; }
             }
 
-            // ── Invoice Date ─────────────────────────────────────────
-            // "01-May-2026,{Friday}" appears as standalone item
+            // Invoice Date: standalone "DD-Mon-YYYY" item
             let invDate = null;
             for (const s of strs) {
               const m = s.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})/);
@@ -2696,13 +2694,10 @@ function shortPage(d) {
               }
             }
 
-            // ── Party Name ───────────────────────────────────────────
-            // "Party Name" label is a SEPARATE item (not combined with party name)
-            // Party name is the item just BEFORE "Party Name" in the strs array
+            // Party Name: item immediately before "Party Name" label item
             let partyName = null;
             for (let i = 0; i < strs.length; i++) {
               if (strs[i] === 'Party Name' || strs[i].startsWith('Party Name')) {
-                // Look back for party name
                 for (let b = i-1; b >= Math.max(0,i-5); b--) {
                   const cand = strs[b].trim();
                   if (cand.length > 2 &&
@@ -2717,28 +2712,23 @@ function shortPage(d) {
               }
             }
 
-            // ── Amounts ──────────────────────────────────────────────
-            // After "INVOICE TOTAL..." item: next item = bill value, item after = market chg
-            // "Net Amt :" item is followed by net amount item
-            let billValue = null, marketChg = null, netAmt = null;
+            // Amounts: items right after "INVOICE TOTAL..." item
+            let billValue=null, marketChg=null, netAmt=null;
             for (let i = 0; i < strs.length; i++) {
               if (strs[i].includes('INVOICE TOTAL')) {
-                // Next numeric items = bill value, market chg
                 const nums = [];
-                for (let j = i+1; j < Math.min(i+5, strs.length); j++) {
+                for (let j=i+1; j<Math.min(i+5,strs.length); j++) {
                   const m = strs[j].match(/^([\d,]+\.\d{2})$/);
                   if (m) nums.push(parseFloat(m[1].replace(/,/g,'')));
-                  if (nums.length === 2) break;
+                  if (nums.length===2) break;
                 }
-                if (nums.length >= 1) billValue = nums[0];
-                if (nums.length >= 2) marketChg = nums[1];
+                if (nums.length>=1) billValue  = nums[0];
+                if (nums.length>=2) marketChg  = nums[1];
               }
-              // "Net Amt :" then next item is the value
               if (strs[i].includes('Net Amt')) {
                 const m = strs[i].match(/Net\s*Amt\s*:?\s*([\d,]+\.\d{2})/i);
-                if (m) {
-                  netAmt = parseFloat(m[1].replace(/,/g,''));
-                } else if (i+1 < strs.length) {
+                if (m) { netAmt = parseFloat(m[1].replace(/,/g,'')); }
+                else if (i+1 < strs.length) {
                   const m2 = strs[i+1].match(/^([\d,]+\.\d{2})$/);
                   if (m2) netAmt = parseFloat(m2[1].replace(/,/g,''));
                 }
@@ -2746,20 +2736,10 @@ function shortPage(d) {
             }
             if (!netAmt && billValue) netAmt = billValue;
 
-            if (!invNo || !invDate || !partyName || !netAmt) {
-              badPages.push(p);
-              continue;
-            }
+            if (!invNo || !invDate || !partyName || !netAmt) { badPages.push(p); continue; }
 
-            extracted.push({
-              invoiceNo:   invNo,
-              invoiceDate: invDate,
-              partyName:   partyName.slice(0,120),
-              billValue:   billValue || netAmt,
-              marketChg:   marketChg || 0,
-              netAmt:      netAmt,
-              page:        p
-            });
+            extracted.push({ invoiceNo:invNo, invoiceDate:invDate, partyName:partyName.slice(0,120),
+              billValue:billValue||netAmt, marketChg:marketChg||0, netAmt:netAmt, page:p });
           }
 
           if (dz) { dz.style.opacity=''; dz.style.pointerEvents=''; }
@@ -2767,7 +2747,7 @@ function shortPage(d) {
 
           if (!extracted.length) {
             showCSVStatus('error', badPages.length
-              ? `No invoices could be read (${badPages.length} page(s) had an unrecognized layout).`
+              ? 'No invoices could be read ('+badPages.length+' page(s) had an unrecognized layout).'
               : 'No invoices found in this PDF.');
             return;
           }
@@ -3198,20 +3178,79 @@ function shortPage(d) {
 
       function uploadCSV() {
         if (!_csvParsed.length) { showCSVStatus('warn', 'No valid rows to upload.'); return; }
-        const btn = document.getElementById('csv-upload-btn');
+
+        var total  = _csvParsed.length;
+        var chunks = Math.ceil(total / 10);
+        var btn    = document.getElementById('csv-upload-btn');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading ' + _csvParsed.length + ' rows...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+        // Show live progress panel
+        var statusEl = document.getElementById('csv-status');
+        statusEl.className = 'info-box blue';
+        statusEl.style.display = 'flex';
+        statusEl.innerHTML =
+          '<div style="width:100%">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+              '<span style="font-weight:700;font-size:13px"><i class="fas fa-cloud-upload-alt" style="margin-right:6px"></i>Uploading Invoices</span>' +
+              '<span id="up-counter" style="font-size:13px;font-weight:800;color:#1967D2">0 / ' + total + '</span>' +
+            '</div>' +
+            '<div style="background:#BFDBFE;border-radius:6px;height:10px;overflow:hidden;margin-bottom:6px">' +
+              '<div id="up-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#4285F4,#1967D2);border-radius:6px;transition:width .4s ease"></div>' +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:11px;color:#1967D2">' +
+              '<span id="up-status">Starting batch 1 of ' + chunks + '...</span>' +
+              '<span id="up-pct">0%</span>' +
+            '</div>' +
+          '</div>';
+
+        // Progress callback — called by gas-api.js after each chunk completes
+        window.__uploadProgress = function(done, total, chunkDone, totalChunks) {
+          var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+          var bar = document.getElementById('up-bar');
+          var counter = document.getElementById('up-counter');
+          var status  = document.getElementById('up-status');
+          var pctEl   = document.getElementById('up-pct');
+          if (bar)     bar.style.width = pct + '%';
+          if (counter) counter.textContent = done + ' / ' + total;
+          if (status)  status.textContent  = 'Batch ' + (chunkDone + 1) + ' of ' + totalChunks + ' uploaded...';
+          if (pctEl)   pctEl.textContent   = pct + '%';
+        };
+
         google.script.run
-          .withSuccessHandler(r => {
+          .withSuccessHandler(function(r) {
+            window.__uploadProgress = null;
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload to SalesInvoices';
             if (r.success) {
-              showCSVStatus('success', '[OK] ' + r.rowsAdded + ' invoices added' + (r.skipped > 0 ? ', ' + r.skipped + ' duplicates skipped.' : '.'));
+              // Show 100% briefly then success
+              var bar = document.getElementById('up-bar');
+              var counter = document.getElementById('up-counter');
+              if (bar)     bar.style.width = '100%';
+              if (counter) counter.textContent = r.rowsAdded + ' / ' + total;
+              setTimeout(function() {
+                showCSVStatus('success',
+                  '<i class="fas fa-check-circle" style="margin-right:6px"></i>' +
+                  '<span><b>' + r.rowsAdded + ' invoices uploaded successfully</b>' +
+                  (r.skipped > 0 ? ' &nbsp;(' + r.skipped + ' duplicates skipped)' : '') +
+                  '.</span>'
+                );
+              }, 400);
               clearCSV();
               _silentDataRefresh();
-            } else showCSVStatus('error', 'Upload failed: ' + (r.error || 'Unknown error'));
+            } else {
+              showCSVStatus('error', 'Upload failed: ' + (r.error || r.msg || 'Unknown error'));
+            }
           })
-          .withFailureHandler(e => { btn.disabled = false; btn.innerHTML = 'Upload'; showCSVStatus('error', 'Connection error: ' + e.message); })
+          .withFailureHandler(function(e) {
+            window.__uploadProgress = null;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload to SalesInvoices';
+            showCSVStatus('error',
+              '<i class="fas fa-exclamation-circle" style="margin-right:6px"></i>' +
+              (e.message || 'Network error. Please try again.')
+            );
+          })
           .bulkUploadInvoices(_csvParsed, '', URL_NAME);
       }
 
