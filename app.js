@@ -2602,14 +2602,220 @@ function shortPage(d) {
       function handleDrop(e) {
         e.preventDefault();
         document.getElementById('drop-zone').style.borderColor = '';
-        if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files[0]) routeFile(e.dataTransfer.files[0]);
       }
-      function handleFile(inp) { if (inp.files[0]) processFile(inp.files[0]); }
+      function handleFile(inp) { if (inp.files[0]) routeFile(inp.files[0]); }
+
+      function routeFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'pdf') { processPDFFile(file); return; }
+        processFile(file);
+      }
+
+      // ============================================================
+      // PDF INVOICE IMPORT — parses the Fresko multi-invoice Tally PDF
+      // (one invoice per page, or per group of pages for long item lists)
+      // entirely client-side via pdf.js. Produces the same _csvParsed
+      // shape the CSV/Excel path produces, so uploadCSV() works unchanged.
+      // ============================================================
+      async function processPDFFile(file) {
+        document.getElementById('csv-status').style.display = 'none';
+
+        if (typeof pdfjsLib === 'undefined') {
+          showCSVStatus('error', 'PDF parser is still loading. Please wait a moment and try again.');
+          return;
+        }
+
+        const dz = document.getElementById('drop-zone');
+        if (dz) { dz.style.opacity = '.5'; dz.style.pointerEvents = 'none'; }
+        const prog = document.getElementById('pdf-progress');
+        const progBar = document.getElementById('pdf-progress-bar');
+        const progTxt = document.getElementById('pdf-progress-txt');
+        if (prog) prog.style.display = 'block';
+
+        try {
+          const buf = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+          const totalPages = pdf.numPages;
+          const extracted = [];
+          const badPages = [];
+
+          const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+
+          for (let p = 1; p <= totalPages; p++) {
+            if (progBar) progBar.style.width = Math.round((p / totalPages) * 100) + '%';
+            if (progTxt) progTxt.textContent = `Reading page ${p} of ${totalPages}...`;
+
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            const flat = content.items.map(it => it.str).join(' ').replace(/\s+/g, ' ');
+
+            // Continuation pages (long invoices spanning multiple pages) don't
+            // carry the totals block yet -- only the final page of an invoice does.
+            if (!/INVOICE\s*TOTAL/i.test(flat)) continue;
+
+            const invNoM = flat.match(/INVOICE\s+NO\s*:\s*(\S+)/i);
+            const dateM = flat.match(/INVOICE\s+DATE\s*:\s*(\d{1,2}-[A-Za-z]+-\d{2,4})/i);
+            const partyM = flat.match(/Party\s+Name\s*:\s*(.+?)\s*(?=Delivery to|Billing to|Billing Address|GSTIN|Cont No|Cont Person|Delivery Address|Po No)/i);
+            const amtM = flat.match(/Market\s*Chg\s*:\s*Net\s*Amt\s*:\s*([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})/i);
+
+            if (!invNoM || !dateM || !partyM || !amtM) { badPages.push(p); continue; }
+
+            const dparts = dateM[1].split('-');
+            const mm = MONTHS[dparts[1].slice(0, 3).toLowerCase()];
+            const dateFmt = mm ? (dparts[0].padStart(2, '0') + '/' + String(mm).padStart(2, '0') + '/' + dparts[2]) : '';
+            if (!dateFmt) { badPages.push(p); continue; }
+
+            extracted.push({
+              invoiceNo: invNoM[1].trim(),
+              invoiceDate: dateFmt,
+              partyName: partyM[1].trim().replace(/\s{2,}/g, ' ').slice(0, 120),
+              billValue: parseFloat(amtM[1].replace(/,/g, '')),
+              marketChg: parseFloat(amtM[2].replace(/,/g, '')),
+              netAmt: parseFloat(amtM[3].replace(/,/g, '')),
+              page: p
+            });
+          }
+
+          if (dz) { dz.style.opacity = ''; dz.style.pointerEvents = ''; }
+          if (prog) prog.style.display = 'none';
+
+          if (!extracted.length) {
+            showCSVStatus('error', badPages.length
+              ? `No invoices could be read (${badPages.length} page(s) had an unrecognized layout). Please check the PDF format.`
+              : 'No invoices found in this PDF.');
+            return;
+          }
+
+          _buildPreviewFromPDFInvoices(extracted, file, totalPages, badPages);
+
+        } catch (err) {
+          if (dz) { dz.style.opacity = ''; dz.style.pointerEvents = ''; }
+          if (prog) prog.style.display = 'none';
+          showCSVStatus('error', 'Error reading PDF: ' + err.message);
+        }
+      }
+
+      function _buildPreviewFromPDFInvoices(rows, file, totalPages, badPages) {
+        _csvParsed = [];
+        const preview = [];
+        let validCnt = 0, skipCnt = 0;
+
+        const existingNos = new Set((DB.invoices || []).map(i => (i.invoiceNo || '').toLowerCase()));
+        const partyByName = {};
+        (DB.parties || []).forEach(p => { if (p.name) partyByName[p.name.toLowerCase()] = p; });
+
+        rows.forEach(r => {
+          const nameRaw = r.partyName || '';
+          let party = partyByName[nameRaw.toLowerCase()] || null;
+          if (!party && nameRaw.length >= 4) {
+            const slug = nameRaw.toLowerCase().slice(0, 8);
+            const key = Object.keys(partyByName).find(k => k.startsWith(slug));
+            if (key) party = partyByName[key];
+          }
+
+          const parts = r.invoiceDate.split('/'); // DD/MM/YYYY
+          let bd = null;
+          if (parts.length === 3) bd = new Date(+parts[2], +parts[1] - 1, +parts[0]);
+          if (!bd || isNaN(bd)) return;
+
+          const pad = n => String(n).padStart(2, '0');
+          const billDateStr = pad(bd.getDate()) + '/' + pad(bd.getMonth() + 1) + '/' + bd.getFullYear();
+
+          let dueDays = 30, slabPct = '0';
+          if (party) {
+            if (party.days15) { dueDays = party.days15; slabPct = '1.5'; }
+            else if (party.days1) { dueDays = party.days1; slabPct = '1'; }
+            else if (party.days0) { dueDays = party.days0; slabPct = '0'; }
+          }
+          const dueD = new Date(bd); dueD.setDate(dueD.getDate() + dueDays);
+          const dueDateStr = pad(dueD.getDate()) + '/' + pad(dueD.getMonth() + 1) + '/' + dueD.getFullYear();
+
+          const isDup = r.invoiceNo && existingNos.has(r.invoiceNo.toLowerCase());
+          let status = 'ok';
+          if (!party) status = 'warn';
+          if (isDup || !r.invoiceNo || !r.netAmt) status = 'skip';
+          status === 'skip' ? skipCnt++ : validCnt++;
+
+          const displayName = party ? party.name : (nameRaw || '?');
+          preview.push({ billNo: r.invoiceNo, dateRaw: billDateStr, billDateStr, dueDateStr, amount: r.netAmt, party, displayName, slabPct, dueDays, status });
+
+          if (status !== 'skip') {
+            _csvParsed.push({
+              partyID: party ? party.partyID : '',
+              partyCode: party ? party.partyCode : '',
+              partyName: party ? party.name : nameRaw,
+              invoiceNo: r.invoiceNo,
+              invoiceDate: billDateStr,
+              dueDate: dueDateStr,
+              dueDays,
+              slabPct,
+              billValue: r.billValue || r.netAmt,
+              cgst: 0,
+              sgst: 0,
+              igst: 0,
+              tcs: 0,
+              otherDed: r.marketChg || 0,
+              netAmount: r.netAmt,
+              vehicleNo: '',
+              head: party ? (party.head || '') : '',
+              remarks: 'Imported from PDF (page ' + r.page + ')'
+            });
+          }
+        });
+
+        document.getElementById('csv-fname').textContent = file.name;
+        document.getElementById('csv-fmeta').textContent =
+          `${(file.size / 1024 / 1024).toFixed(2)} MB  ${totalPages} pages  ${rows.length} invoices found` +
+          (badPages.length ? `  ${badPages.length} page(s) unreadable` : '');
+        document.getElementById('csv-file-info').style.display = 'flex';
+        txt('csv-valid-cnt', '[OK] ' + validCnt + ' ready');
+        txt('csv-skip-cnt', skipCnt > 0 ? '[X] ' + skipCnt + ' skip' : '');
+        txt('csv-total-cnt', rows.length + ' total invoices');
+
+        document.getElementById('csv-preview-tbl').innerHTML =
+          `<thead><tr>
+          <th>#</th><th>Invoice No</th><th>Date</th><th>Party</th>
+          <th class="num">Net Amt</th><th>Slab</th><th>Due Date</th><th>Status</th>
+        </tr></thead>
+        <tbody>
+        ${preview.slice(0, 10).map((r, i) => `
+          <tr style="background:${r.status === 'skip' ? '#FCE8E6' : r.status === 'warn' ? '#FEF7E0' : ''}">
+            <td style="color:var(--sub)">${i + 1}</td>
+            <td style="font-family:monospace;font-weight:600">${r.billNo || '--'}</td>
+            <td style="font-size:11px">${r.billDateStr}</td>
+            <td style="max-width:120px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px"
+                title="${r.displayName}">${r.displayName}</td>
+            <td class="num">${INR(r.amount)}</td>
+            <td>${slabBadge(r.slabPct)}</td>
+            <td style="font-size:10px">${r.dueDateStr}</td>
+            <td>${r.status === 'ok'
+                  ? '<span class="badge badge-paid">[OK] OK</span>'
+                  : r.status === 'warn'
+                    ? '<span class="badge badge-partpaid">[!] No Party</span>'
+                    : '<span class="badge badge-overdue">[X] Skip</span>'}</td>
+          </tr>`).join('')}
+        ${preview.length > 10
+            ? `<tr><td colspan="8" class="center" style="color:var(--sub);font-size:11px;padding:8px">
+              + ${preview.length - 10} more rows...
+             </td></tr>` : ''}
+        </tbody>`;
+        document.getElementById('csv-preview-box').style.display = 'block';
+
+        const btn = document.getElementById('csv-upload-btn');
+        btn.disabled = validCnt === 0;
+        btn.style.opacity = validCnt > 0 ? '1' : '0.5';
+        btn.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> Upload ${validCnt} invoices to SalesInvoices`;
+
+        if (badPages.length) {
+          showCSVStatus('warn', badPages.length + ' page(s) could not be read and were skipped (unrecognized layout): page ' + badPages.slice(0, 15).join(', ') + (badPages.length > 15 ? '...' : ''));
+        }
+      }
 
       function processFile(file) {
         const ext = file.name.split('.').pop().toLowerCase();
         if (!['csv', 'xlsx', 'xls'].includes(ext)) {
-          showCSVStatus('error', 'Please select a .csv or .xlsx file only.'); return;
+          showCSVStatus('error', 'Please select a .csv, .xlsx or .pdf file only.'); return;
         }
         document.getElementById('csv-status').style.display = 'none';
 
@@ -2893,6 +3099,8 @@ function shortPage(d) {
         document.getElementById('csv-preview-box').style.display = 'none';
         document.getElementById('csv-map-box').style.display = 'none';
         document.getElementById('csv-status').style.display = 'none';
+        const pdfProg = document.getElementById('pdf-progress');
+        if (pdfProg) pdfProg.style.display = 'none';
         const btn = document.getElementById('csv-upload-btn');
         btn.disabled = true; btn.style.opacity = '0.5';
         btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload to SalesInvoices';
