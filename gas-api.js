@@ -1,3 +1,4 @@
+
 // ============================================================
 // gas-api.js — JSONP bridge to the Fresko Apps Script backend
 // ============================================================
@@ -20,10 +21,10 @@ var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyCEaQizMbIS7z8VbvY3E
 
 (function () {
   var _cbIdx = 0;
-  var JSONP_TIMEOUT_MS = 25000;
+  var JSONP_TIMEOUT_MS = 60000;  // 60s - bulk uploads need more time
   // Keep each JSONP request's query string comfortably under safe URL-length
   // limits. Only matters for calls with big array payloads (bulk upload).
-  var MAX_ARGS_JSON_LEN = 6000;
+  var MAX_ARGS_JSON_LEN = 1500;  // ~5-6 invoice rows per JSONP GET (safe URL length)
 
   function _rawJsonpCall(fnName, args, onSuccess, onFailure) {
     var cbName = '_gascb' + (++_cbIdx);
@@ -112,7 +113,8 @@ var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyCEaQizMbIS7z8VbvY3E
   }
 
   function _jsonpCall(fnName, args, onSuccess, onFailure) {
-    if (fnName === 'bulkUploadInvoices' && args && args[0] && args[0].length > 25) {
+    // Always chunk bulkUploadInvoices - even small payloads can exceed URL limits
+    if (fnName === 'bulkUploadInvoices') {
       _chunkedBulkUpload(args, onSuccess, onFailure);
     } else {
       _rawJsonpCall(fnName, args, onSuccess, onFailure);
