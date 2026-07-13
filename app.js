@@ -70,8 +70,7 @@
         URL_DEPT = _user.dept || '';
         URL_ROLE = _user.role || '';
         window.__ISE_USER = _user;
-        // Persist session so page refresh does not log out
-        try { localStorage.setItem('fresko_session', JSON.stringify(_user)); } catch(e) {}
+        try { localStorage.setItem('fresko_user', JSON.stringify(_user)); } catch(e) {}
         document.getElementById('login-wrapper').style.display = 'none';
         document.getElementById('app-wrapper').style.display = 'flex';
         _setUserUI();
@@ -82,25 +81,17 @@
           .getAllData(URL_NAME);
       }
 
-      // Restore session from localStorage on page load (survives refresh)
-      (function _restoreSession() {
+
+      // Restore session from localStorage so page refresh does not log out
+      (function() {
         try {
-          var saved = localStorage.getItem('fresko_session');
+          var saved = localStorage.getItem('fresko_user');
           if (!saved) return;
           var u = JSON.parse(saved);
           if (!u || !u.name) return;
           _user = u;
-          USER = u;
-          URL_NAME = u.name || '';
-          URL_DEPT = u.dept || '';
-          URL_ROLE = u.role || '';
-          window.__ISE_USER = u;
-          // Show app directly, skip login screen
-          document.getElementById('login-wrapper').style.display = 'none';
-          document.getElementById('app-wrapper').style.display = 'flex';
         } catch(e) {}
       })();
-
 
       let DB = { parties: [], invoices: [], payments: [], followups: [], config: {}, stats: {}, userInfo: {} };
       let USER = {};          // logged-in user
@@ -124,6 +115,19 @@
       let URL_ROLE = (window.__ISE_USER && window.__ISE_USER.role) || decodeURIComponent(_urlParams.get('Role') || '');
 
       (function applyUser() {
+        // If _user was restored from localStorage, set everything and skip login screen
+        if (_user && _user.name) {
+          USER = _user;
+          URL_NAME = _user.name || '';
+          URL_DEPT = _user.dept || '';
+          URL_ROLE = _user.role || '';
+          window.__ISE_USER = _user;
+          var lw = document.getElementById('login-wrapper');
+          var aw = document.getElementById('app-wrapper');
+          if (lw) lw.style.display = 'none';
+          if (aw) aw.style.display = 'flex';
+          return;
+        }
         if (!URL_NAME) return;
         USER = { name: URL_NAME, dept: URL_DEPT, role: URL_ROLE };
         _setUserUI();
@@ -147,14 +151,18 @@
             closePartyModal();
           }
         });
-        // If session was restored from localStorage, load data now
-        if (URL_NAME) {
+        // If session was restored from localStorage, load data now (skips login)
+        if (_user && _user.name) {
           _setUserUI();
           _applyPermissions();
           google.script.run
             .withSuccessHandler(_onDataLoaded)
-            .withFailureHandler(_onFail)
-            .getAllData(URL_NAME);
+            .withFailureHandler(function() {
+              // Session expired or server error - clear and show login
+              try { localStorage.removeItem('fresko_user'); } catch(e) {}
+              location.reload();
+            })
+            .getAllData(_user.name);
         }
       };
 
@@ -2648,12 +2656,10 @@ function shortPage(d) {
       // ============================================================
       async function processPDFFile(file) {
         document.getElementById('csv-status').style.display = 'none';
-
         if (typeof pdfjsLib === 'undefined') {
           showCSVStatus('error', 'PDF parser is still loading. Please wait a moment and try again.');
           return;
         }
-
         const dz = document.getElementById('drop-zone');
         if (dz) { dz.style.opacity = '.5'; dz.style.pointerEvents = 'none'; }
         const prog = document.getElementById('pdf-progress');
@@ -2667,41 +2673,32 @@ function shortPage(d) {
           const totalPages = pdf.numPages;
           const extracted = [];
           const badPages = [];
+          const MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 
-          const MONTHS = { jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 };
-
-          // Build lines by grouping pdf.js text items at the same Y coordinate.
-          // pdf.js item.transform[5] = screen Y (top-to-bottom). Items sharing the
-          // same rounded Y are on the same visual line. This is the exact grouping
-          // the browser produces — verified against the production Fresko PDF.
-          // Resulting combined lines look like:
-          //   "INVOICE NO          : 2026-27/760"
-          //   "01-May-2026,{Friday}"  (or merged with "INVOICE DATE :")
-          //   "ANNAPURNA FOODS Party Name          :"
-          //   "INVOICE TOTAL..."
-          //   "22.20"         ← market charge (line after INVOICE TOTAL)
-          //   "2799.50"       ← net/bill value (line after market chg)
-          //   "Market Chg : 0.00"
-          //   "Net Amt : 2799.50"
-          function buildLines(content) {
-            const byY = {};
-            content.items.forEach(it => {
-              const y = Math.round(it.transform[5]);
-              const t = (it.str || '').trim();
-              if (!t) return;
-              if (!byY[y]) byY[y] = [];
-              byY[y].push(t);
+          // Convert pdf.js page content to lines in reading order.
+          // pdf.js getTextContent() returns items in the PDF stream order, which for
+          // this Fresko PDF is top-to-bottom reading order. We collect item.str
+          // values split by newlines, trim, and drop empties — same as pdftotext output.
+          function getLines(items) {
+            const lines = [];
+            let buf = '';
+            items.forEach(it => {
+              if (it.hasEOL) {
+                const t = (buf + it.str).trim();
+                if (t) lines.push(t);
+                buf = '';
+              } else {
+                buf += it.str;
+              }
             });
-            // Sort descending Y = top of page first (pdf.js screen coords: Y increases downward)
-            // Actually in pdf.js transform[5] larger = further DOWN the screen
-            return Object.keys(byY)
-              .sort((a, b) => Number(b) - Number(a))
-              .map(y => byY[y].join(' '));
+            const t = buf.trim();
+            if (t) lines.push(t);
+            return lines;
           }
 
-          function parseFreskoPage(lines) {
-            const hasTotal = lines.some(l => l.includes('INVOICE TOTAL'));
-            if (!hasTotal) return null;   // continuation page — skip
+          function parsePage(lines) {
+            const joined = lines.join('\n');
+            if (joined.indexOf('INVOICE TOTAL') < 0) return null;
 
             let invNo = null, invDate = null, partyName = null,
                 billValue = null, marketChg = null, netAmt = null;
@@ -2709,95 +2706,99 @@ function shortPage(d) {
             for (let i = 0; i < lines.length; i++) {
               const l = lines[i];
 
-              // "INVOICE NO          : 2026-27/760"
-              if (!invNo) {
-                const m = l.match(/INVOICE\s+NO\s*:\s*(\d{4}-\d{2}\/\d+)/i);
-                if (m) invNo = m[1].trim();
+              // Invoice No: label "INVOICE NO          :" then value "2026-27/760" later
+              if (!invNo && l.indexOf('INVOICE NO') >= 0) {
+                const inline = l.match(/INVOICE\s+NO\s*:\s*(\d{4}-\d{2}\/\d+)/i);
+                if (inline) {
+                  invNo = inline[1];
+                } else {
+                  for (let j = i+1; j < Math.min(i+20, lines.length); j++) {
+                    const m = lines[j].match(/^(\d{4}-\d{2}\/\d+)$/);
+                    if (m) { invNo = m[1]; break; }
+                  }
+                }
               }
 
-              // "01-May-2026,{Friday}" or "01-May-2026,{Friday} INVOICE DATE :"
+              // Invoice Date: "01-May-2026,{Friday}"
               if (!invDate) {
-                const m = l.match(/(\d{1,2})-([A-Za-z]+)-(\d{4})/);
+                const m = l.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})/);
                 if (m) {
                   const mm = MONTHS[m[2].slice(0,3).toLowerCase()];
                   if (mm) invDate = m[1].padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+m[3];
                 }
               }
 
-              // "ANNAPURNA FOODS Party Name          :" — party name is before "Party Name"
-              if (!partyName) {
-                const m = l.match(/^(.+?)\s+Party\s+Name\s*:/i);
-                if (m) partyName = m[1].trim().replace(/\s{2,}/g,' ');
-              }
-
-              // After "INVOICE TOTAL..." the next two numeric lines are:
-              //   line i+1 → market charge value (e.g. "22.20")
-              //   line i+2 → bill/net value (e.g. "2799.50")
-              if (l.includes('INVOICE TOTAL') && !billValue) {
-                for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
-                  const m = lines[j].match(/^([\d,]+\.\d{2})$/);
-                  if (m) {
-                    const v = parseFloat(m[1].replace(/,/g,''));
-                    if (!marketChg) { marketChg = v; }
-                    else { billValue = v; break; }
-                  }
+              // Party Name: look backwards from "Party Name :" label
+              // Line order: "ANNAPURNA FOODS" → "01-May-2026,..." → "Party Name :"
+              if (!partyName && l.indexOf('Party Name') >= 0 && l.indexOf(':') >= 0) {
+                for (let back = i-1; back >= Math.max(0, i-5); back--) {
+                  const cand = lines[back];
+                  if (/^\d{1,2}-[A-Za-z]+-\d{4}/.test(cand)) continue;  // skip date line
+                  if (/^[0-9]{2}[A-Z]{5}[0-9]{4}/.test(cand)) continue; // skip GSTIN
+                  if (!cand || /^(AGRONICO|INVOICE|Page \d|MAIL|MSME)/.test(cand)) continue;
+                  partyName = cand.replace(/\s{2,}/g,' ').trim();
+                  break;
                 }
               }
 
-              // "Net Amt : 2799.50"  (explicit label — most reliable)
-              if (!netAmt) {
-                const m = l.match(/Net\s+Amt\s*:\s*([\d,]+\.\d{2})/i);
-                if (m) netAmt = parseFloat(m[1].replace(/,/g,''));
+              // INVOICE TOTAL: next numeric lines = bill total, then market chg
+              if (l.indexOf('INVOICE TOTAL') >= 0 && !billValue) {
+                const nums = [];
+                for (let j = i+1; j < Math.min(i+6, lines.length); j++) {
+                  const m = lines[j].match(/^([\d,]+\.\d{2})$/);
+                  if (m) { nums.push(parseFloat(m[1].replace(/,/g,''))); if (nums.length===2) break; }
+                }
+                if (nums.length >= 2) { billValue = nums[0]; marketChg = nums[1]; }
+                else if (nums.length === 1) { billValue = nums[0]; }
+              }
+
+              // Net Amt: "Net Amt :" then value inline or next line
+              if (!netAmt && l.indexOf('Net Amt') >= 0) {
+                const inline = l.match(/Net\s+Amt\s*:\s*([\d,]+\.\d{2})/i);
+                if (inline) {
+                  netAmt = parseFloat(inline[1].replace(/,/g,''));
+                } else {
+                  for (let j = i+1; j < Math.min(i+3, lines.length); j++) {
+                    const m = lines[j].match(/^([\d,]+\.\d{2})$/);
+                    if (m) { netAmt = parseFloat(m[1].replace(/,/g,'')); break; }
+                  }
+                }
               }
             }
 
             if (!invNo || !invDate || !partyName || !netAmt) return null;
-            return {
-              invoiceNo:   invNo,
-              invoiceDate: invDate,
-              partyName:   partyName.slice(0,120),
-              billValue:   billValue || netAmt,
-              marketChg:   marketChg || 0,
-              netAmt:      netAmt
-            };
+            return { invoiceNo:invNo, invoiceDate:invDate, partyName:partyName.slice(0,120),
+                     billValue:billValue||netAmt, marketChg:marketChg||0, netAmt:netAmt };
           }
 
           for (let p = 1; p <= totalPages; p++) {
-            if (progBar) progBar.style.width = Math.round((p / totalPages) * 100) + '%';
-            if (progTxt) progTxt.textContent = `Reading page ${p} of ${totalPages}...`;
-
+            if (progBar) progBar.style.width = Math.round((p/totalPages)*100)+'%';
+            if (progTxt) progTxt.textContent = 'Reading page '+p+' of '+totalPages+'...';
             const page = await pdf.getPage(p);
             const content = await page.getTextContent();
-            const lines = buildLines(content);
-            const result = parseFreskoPage(lines);
-
-            if (result) {
-              result.page = p;
-              extracted.push(result);
-            } else if (lines.some(l => l.includes('INVOICE TOTAL'))) {
-              badPages.push(p);
-            }
+            const lines = getLines(content.items);
+            const result = parsePage(lines);
+            if (result) { result.page = p; extracted.push(result); }
+            else if (lines.some(l => l.indexOf('INVOICE TOTAL') >= 0)) { badPages.push(p); }
           }
 
-          if (dz) { dz.style.opacity = ''; dz.style.pointerEvents = ''; }
+          if (dz) { dz.style.opacity=''; dz.style.pointerEvents=''; }
           if (prog) prog.style.display = 'none';
 
           if (!extracted.length) {
             showCSVStatus('error', badPages.length
-              ? `No invoices could be read (${badPages.length} page(s) had an unrecognized layout). Please check the PDF format.`
+              ? 'No invoices could be read ('+badPages.length+' page(s) had an unrecognized layout).'
               : 'No invoices found in this PDF.');
             return;
           }
-
           _buildPreviewFromPDFInvoices(extracted, file, totalPages, badPages);
 
-        } catch (err) {
-          if (dz) { dz.style.opacity = ''; dz.style.pointerEvents = ''; }
+        } catch(err) {
+          if (dz) { dz.style.opacity=''; dz.style.pointerEvents=''; }
           if (prog) prog.style.display = 'none';
-          showCSVStatus('error', 'Error reading PDF: ' + err.message);
+          showCSVStatus('error', 'Error reading PDF: '+err.message);
         }
       }
-
       function _buildPreviewFromPDFInvoices(rows, file, totalPages, badPages) {
         _csvParsed = [];
         const preview = [];
@@ -4521,10 +4522,8 @@ function shortPage(d) {
           background: '#0F172A', color: '#E2E8F0'
         }).then(r => {
           if (!r.isConfirmed) return;
-          // Clear saved session so login screen appears after logout
-          try { localStorage.removeItem('fresko_session'); } catch(e) {}
-          _user = null; USER = {}; URL_NAME = ''; URL_DEPT = ''; URL_ROLE = '';
-          window.__ISE_USER = null;
+          try { localStorage.removeItem('fresko_user'); } catch(e) {}
+          _user = null;
           window.location.reload();
         });
       }
