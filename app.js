@@ -82,17 +82,8 @@
       }
 
 
-      // Restore session on page refresh - read from localStorage
-      (function _restoreSession() {
-        try {
-          var s = localStorage.getItem('fresko_user');
-          if (!s) return;
-          var u = JSON.parse(s);
-          if (!u || !u.name) return;
-          _user = u;
-        } catch(e) {}
-      })();
-
+      // Restore session on page refresh
+      (function(){try{var s=localStorage.getItem('fresko_user');if(s){var u=JSON.parse(s);if(u&&u.name)_user=u;}}catch(e){}})();
 
       let DB = { parties: [], invoices: [], payments: [], followups: [], config: {}, stats: {}, userInfo: {} };
       let USER = {};          // logged-in user
@@ -159,8 +150,7 @@
             .withSuccessHandler(_onDataLoaded)
             .withFailureHandler(function() {
               try { localStorage.removeItem('fresko_user'); } catch(e) {}
-              _user = null;
-              location.reload();
+              _user = null; location.reload();
             })
             .getAllData(_user.name);
         }
@@ -2660,155 +2650,131 @@ function shortPage(d) {
           showCSVStatus('error', 'PDF parser is still loading. Please wait a moment and try again.');
           return;
         }
-        const dz = document.getElementById('drop-zone');
+        var dz = document.getElementById('drop-zone');
         if (dz) { dz.style.opacity = '.5'; dz.style.pointerEvents = 'none'; }
-        const prog = document.getElementById('pdf-progress');
-        const progBar = document.getElementById('pdf-progress-bar');
-        const progTxt = document.getElementById('pdf-progress-txt');
+        var prog = document.getElementById('pdf-progress');
+        var progBar = document.getElementById('pdf-progress-bar');
+        var progTxt = document.getElementById('pdf-progress-txt');
         if (prog) prog.style.display = 'block';
 
         try {
-          const buf = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-          const totalPages = pdf.numPages;
-          const extracted = [];
-          const badPages = [];
-          const MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-
-          /*
-           * EXACT pdf.js simulation:
-           * getTextContent() returns items in PDF stream order (NOT reading order).
-           * Each item has transform[5] = y0 (top of glyph in screen coordinates).
-           * Group items by Math.round(transform[5]), sort ascending = top-to-bottom.
-           * Items at the SAME y0 belong to the same visual line (joined by space).
-           *
-           * Verified against Fresko PDF - key facts:
-           *   y=87:  "INVOICE NO          :  2026-27/760"  (label+value same line)
-           *   y=99:  "01-May-2026,{Friday}"
-           *   y=113: "ANNAPURNA FOODS Party Name          :"  (party+label same line)
-           *   y=341: "2799.50"  (bill total)
-           *   y=341: "22.20"    (market chg) -- same y, separate items
-           *   y=342: "INVOICE TOTAL..."
-           *   y=375: "Net Amt :" and "2799.50" (same y)
-           */
-          function buildLineMap(content) {
-            var byY = {};
-            content.items.forEach(function(item) {
-              var y = Math.round(item.transform[5]);
-              var t = (item.str || '').trim();
-              if (!t) return;
-              if (!byY[y]) byY[y] = [];
-              byY[y].push(t);
-            });
-            // Return sorted ascending (top of page = small y in screen coords)
-            return Object.keys(byY)
-              .map(Number)
-              .sort(function(a,b){ return a - b; })
-              .map(function(y){ return { y: y, text: byY[y].join(' ') }; });
-          }
-
-          function parseFreskoPage(lineMap) {
-            var allText = lineMap.map(function(l){ return l.text; }).join('\n');
-            if (allText.indexOf('INVOICE TOTAL') < 0) return null;  // continuation page
-
-            var invNo = null, invDate = null, partyName = null,
-                billValue = null, marketChg = null, netAmt = null,
-                invTotalY = null;
-
-            lineMap.forEach(function(line) {
-              var t = line.text, y = line.y;
-
-              // Invoice No: "INVOICE NO          :  2026-27/760" (label+value joined at same y)
-              if (!invNo) {
-                var m = t.match(/(\d{4}-\d{2}\/\d+)/);
-                if (m) invNo = m[1];
-              }
-
-              // Invoice Date: "01-May-2026,{Friday}"
-              if (!invDate) {
-                var m2 = t.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})/);
-                if (m2) {
-                  var mm = MONTHS[m2[2].slice(0,3).toLowerCase()];
-                  if (mm) invDate = m2[1].padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+m2[3];
-                }
-              }
-
-              // Party Name: "ANNAPURNA FOODS Party Name          :" → extract before "Party Name"
-              if (!partyName) {
-                var m3 = t.match(/^(.+?)\s+Party\s+Name\s*:/i);
-                if (m3) partyName = m3[1].trim().replace(/\s{2,}/g,' ');
-              }
-
-              // Track INVOICE TOTAL y position
-              if (t.indexOf('INVOICE TOTAL') >= 0) invTotalY = y;
-
-              // Net Amt: "Net Amt :2799.50" or "Net Amt :" + "2799.50" joined at same y
-              if (!netAmt && t.indexOf('Net Amt') >= 0) {
-                var m4 = t.match(/Net\s+Amt\s*:?\s*([\d,]+\.\d{2})/i);
-                if (m4) netAmt = parseFloat(m4[1].replace(/,/g,''));
-              }
-            });
-
-            // Amounts: find numeric-only lines at y close to INVOICE TOTAL line
-            // They appear at y slightly LESS than invTotalY (just above in reading order)
-            // but because pdf.js stream order puts them nearby, they're within y±15
-            if (invTotalY !== null) {
-              var amtLines = lineMap.filter(function(line) {
-                return Math.abs(line.y - invTotalY) <= 15 &&
-                       line.y !== invTotalY &&
-                       /^[\d,]+\.\d{2}$/.test(line.text.trim());
-              });
-              // Sort by y ascending — smaller y = higher on page = came first
-              amtLines.sort(function(a,b){ return a.y - b.y; });
-              if (amtLines.length >= 2) {
-                billValue  = parseFloat(amtLines[0].text.replace(/,/g,''));
-                marketChg  = parseFloat(amtLines[1].text.replace(/,/g,''));
-              } else if (amtLines.length === 1) {
-                billValue = parseFloat(amtLines[0].text.replace(/,/g,''));
-              }
-            }
-
-            if (!invNo || !invDate || !partyName || !netAmt) return null;
-            return {
-              invoiceNo:   invNo,
-              invoiceDate: invDate,
-              partyName:   partyName.slice(0,120),
-              billValue:   billValue || netAmt,
-              marketChg:   marketChg || 0,
-              netAmt:      netAmt
-            };
-          }
+          var buf = await file.arrayBuffer();
+          var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+          var totalPages = pdf.numPages;
+          var extracted = [];
+          var badPages = [];
+          var MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 
           for (var p = 1; p <= totalPages; p++) {
-            if (progBar) progBar.style.width = Math.round((p/totalPages)*100)+'%';
-            if (progTxt) progTxt.textContent = 'Reading page '+p+' of '+totalPages+'...';
+            if (progBar) progBar.style.width = Math.round((p / totalPages) * 100) + '%';
+            if (progTxt) progTxt.textContent = 'Reading page ' + p + ' of ' + totalPages + '...';
+
             var page = await pdf.getPage(p);
-            var content = await page.getTextContent();
-            var lineMap = buildLineMap(content);
-            var result = parseFreskoPage(lineMap);
-            if (result) {
-              result.page = p;
-              extracted.push(result);
-            } else if (lineMap.some(function(l){ return l.text.indexOf('INVOICE TOTAL') >= 0; })) {
-              badPages.push(p);
+            var tc = await page.getTextContent();
+
+            // Collect all non-empty strings from this page
+            var strs = [];
+            tc.items.forEach(function(it) {
+              var s = (it.str || '').trim();
+              if (s) strs.push(s);
+            });
+            var pageText = strs.join('\n');
+
+            // Skip pages without totals (continuation pages of multi-page invoices)
+            if (pageText.indexOf('INVOICE TOTAL') < 0) continue;
+
+            // ── Extract each field independently ──────────────────────────
+            // Invoice No: find "2026-27/NNN" pattern anywhere on page
+            var invNoMatch = pageText.match(/(\d{4}-\d{2}\/\d+)/);
+            var invNo = invNoMatch ? invNoMatch[1] : null;
+
+            // Invoice Date: find "DD-Mon-YYYY" pattern
+            var invDateMatch = pageText.match(/(\d{1,2})-([A-Za-z]+)-(\d{4})/);
+            var invDate = null;
+            if (invDateMatch) {
+              var mm = MONTHS[invDateMatch[2].slice(0,3).toLowerCase()];
+              if (mm) invDate = invDateMatch[1].padStart(2,'0') + '/' + String(mm).padStart(2,'0') + '/' + invDateMatch[3];
             }
+
+            // Party Name: the string that appears just before "Party Name"
+            // In the stream, party name string comes before the "Party Name :" label string
+            var partyName = null;
+            for (var si = 0; si < strs.length; si++) {
+              if (strs[si].indexOf('Party Name') >= 0) {
+                // Check if party name is embedded in same string: "PARTYNAME Party Name :"
+                var emb = strs[si].match(/^(.+?)\s+Party\s+Name/i);
+                if (emb && emb[1].trim().length > 1) {
+                  partyName = emb[1].trim();
+                } else if (si > 0) {
+                  // Party name is the previous non-trivial string
+                  for (var bk = si - 1; bk >= Math.max(0, si - 5); bk--) {
+                    var cand = strs[bk].trim();
+                    if (cand.length > 2 &&
+                        !/^(INVOICE|AGRONICO|Page |MAIL|MSME|\d{2}[A-Z]{5})/.test(cand) &&
+                        !/^\d{1,2}-[A-Za-z]+-\d{4}/.test(cand)) {
+                      partyName = cand.replace(/\s{2,}/g, ' ');
+                      break;
+                    }
+                  }
+                }
+                break;
+              }
+            }
+
+            // Amounts: find INVOICE TOTAL, then get the numbers near it
+            var billValue = null, marketChg = null, netAmt = null;
+            var totIdx = pageText.indexOf('INVOICE TOTAL');
+            if (totIdx >= 0) {
+              // Get text around INVOICE TOTAL (200 chars before and after)
+              var around = pageText.substring(Math.max(0, totIdx - 50), totIdx + 200);
+              var nums = [];
+              var numRe = /\b(\d[\d,]*\.\d{2})\b/g;
+              var nm;
+              while ((nm = numRe.exec(around)) !== null) {
+                var v = parseFloat(nm[1].replace(/,/g, ''));
+                if (v > 10) nums.push(v); // ignore tiny decimals
+              }
+              if (nums.length >= 2) { billValue = nums[0]; marketChg = nums[1]; }
+              else if (nums.length === 1) { billValue = nums[0]; }
+            }
+
+            // Net Amt: explicit "Net Amt" label
+            var netMatch = pageText.match(/Net\s+Amt\s*:?\s*\n?\s*([\d,]+\.\d{2})/i);
+            if (netMatch) netAmt = parseFloat(netMatch[1].replace(/,/g, ''));
+            // Fallback: last large number on page is usually net amt
+            if (!netAmt && billValue) netAmt = billValue;
+
+            if (!invNo || !invDate || !partyName || !netAmt) {
+              badPages.push(p);
+              continue;
+            }
+
+            extracted.push({
+              invoiceNo:   invNo,
+              invoiceDate: invDate,
+              partyName:   partyName.slice(0, 120),
+              billValue:   billValue || netAmt,
+              marketChg:   marketChg || 0,
+              netAmt:      netAmt,
+              page:        p
+            });
           }
 
-          if (dz) { dz.style.opacity=''; dz.style.pointerEvents=''; }
+          if (dz) { dz.style.opacity = ''; dz.style.pointerEvents = ''; }
           if (prog) prog.style.display = 'none';
 
           if (!extracted.length) {
             showCSVStatus('error', badPages.length
-              ? 'No invoices could be read ('+badPages.length+' page(s) had an unrecognized layout).'
+              ? 'No invoices could be read (' + badPages.length + ' page(s) had an unrecognized layout).'
               : 'No invoices found in this PDF.');
             return;
           }
           _buildPreviewFromPDFInvoices(extracted, file, totalPages, badPages);
 
         } catch(err) {
-          if (dz) { dz.style.opacity=''; dz.style.pointerEvents=''; }
+          if (dz) { dz.style.opacity = ''; dz.style.pointerEvents = ''; }
           if (prog) prog.style.display = 'none';
-          showCSVStatus('error', 'Error reading PDF: '+err.message);
+          showCSVStatus('error', 'Error reading PDF: ' + err.message);
         }
       }
       function _buildPreviewFromPDFInvoices(rows, file, totalPages, badPages) {
@@ -3223,10 +3189,8 @@ function shortPage(d) {
 
       function showCSVStatus(type, msg) {
         const el = document.getElementById('csv-status');
-        const clr = {success:'green',warn:'amber',info:'blue',error:'red'};
-        const ico = {success:'check-circle',warn:'exclamation-triangle',info:'info-circle',error:'exclamation-circle'};
-        el.className = 'info-box ' + (clr[type]||'red');
-        el.innerHTML = '<i class="fas fa-'+(ico[type]||'exclamation-circle')+'"></i><span>'+msg+'</span>';
+        el.className = 'info-box ' + (type === 'success' ? 'green' : type === 'warn' ? 'amber' : 'red');
+        el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warn' ? 'exclamation-triangle' : 'exclamation-circle'}"></i><span>${msg}</span>`;
         el.style.display = 'flex';
       }
 
@@ -3245,11 +3209,7 @@ function shortPage(d) {
               _silentDataRefresh();
             } else showCSVStatus('error', 'Upload failed: ' + (r.error || 'Unknown error'));
           })
-          .withFailureHandler(e => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload to SalesInvoices';
-            showCSVStatus('error', 'Upload error: ' + (e.message || 'Network error. Please try again.'));
-          })
+          .withFailureHandler(e => { btn.disabled = false; btn.innerHTML = 'Upload'; showCSVStatus('error', 'Connection error: ' + e.message); })
           .bulkUploadInvoices(_csvParsed, '', URL_NAME);
       }
 
@@ -4540,6 +4500,7 @@ function shortPage(d) {
           background: '#0F172A', color: '#E2E8F0'
         }).then(r => {
           if (!r.isConfirmed) return;
+          Swal.fire({ title: 'Signing out...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#0F172A', color: '#E2E8F0' });
           try { localStorage.removeItem('fresko_user'); } catch(e) {}
           _user = null;
           window.location.reload();
