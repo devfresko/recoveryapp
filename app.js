@@ -84,6 +84,8 @@
 
       (function(){try{var s=localStorage.getItem('fresko_user');if(s){var u=JSON.parse(s);if(u&&u.name)_user=u;}}catch(e){}})();
 
+      (function(){try{var s=localStorage.getItem('fresko_user');if(s){var u=JSON.parse(s);if(u&&u.name)_user=u;}}catch(e){}})();
+
       let DB = { parties: [], invoices: [], payments: [], followups: [], config: {}, stats: {}, userInfo: {} };
       let USER = {};          // logged-in user
       let _loadedOnce = false;
@@ -356,7 +358,11 @@
       };
 
       function nav(v) {
-        if (window.innerWidth <= 768) document.getElementById('sb').classList.remove('mobile-show');
+        if (window.innerWidth <= 768) {
+          document.getElementById('sb').classList.remove('mobile-show');
+          var bd = document.getElementById('sb-backdrop');
+          if (bd) bd.classList.remove('show');
+        }
 
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
         const el = document.getElementById('view-' + v);
@@ -394,8 +400,11 @@
 
       function toggleSB() {
         const sb = document.getElementById('sb');
+        const backdrop = document.getElementById('sb-backdrop');
         if (window.innerWidth <= 768) {
+          const isOpen = sb.classList.contains('mobile-show');
           sb.classList.toggle('mobile-show');
+          if (backdrop) backdrop.classList.toggle('show', !isOpen);
           return;
         }
         _sbCollapsed = !_sbCollapsed;
@@ -405,9 +414,7 @@
         const chev = document.getElementById('sb-chev');
         if (full) full.style.display = _sbCollapsed ? 'none' : 'flex';
         if (mini) mini.style.display = _sbCollapsed ? 'flex' : 'none';
-        if (chev) {
-          chev.className = _sbCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
-        }
+        if (chev) chev.className = _sbCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
       }
 
       (function initLogo() {
@@ -2654,109 +2661,55 @@ function shortPage(d) {
         const progBar = document.getElementById('pdf-progress-bar');
         const progTxt = document.getElementById('pdf-progress-txt');
         if (prog) prog.style.display = 'block';
-
         try {
           const buf = await file.arrayBuffer();
           const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
           const totalPages = pdf.numPages;
-          const extracted = [];
-          const badPages = [];
+          const extracted = [], badPages = [];
           const MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-
           for (let p = 1; p <= totalPages; p++) {
             if (progBar) progBar.style.width = Math.round((p/totalPages)*100)+'%';
             if (progTxt) progTxt.textContent = 'Reading page '+p+' of '+totalPages+'...';
-
             const page = await pdf.getPage(p);
-            const tc   = await page.getTextContent();
-
-            // Collect non-empty strings in stream order (verified via browser debug)
+            const tc = await page.getTextContent();
             const strs = tc.items.map(it => it.str).filter(s => s.trim() !== '');
-
-            // Skip continuation pages (no INVOICE TOTAL yet)
             if (!strs.some(s => s.includes('INVOICE TOTAL'))) continue;
-
-            // Invoice No: standalone item matching YYYY-YY/NNN
-            let invNo = null;
-            for (const s of strs) {
-              const m = s.match(/^(\d{4}-\d{2}\/\d+)$/);
-              if (m) { invNo = m[1]; break; }
-            }
-
-            // Invoice Date: standalone "DD-Mon-YYYY" item
-            let invDate = null;
-            for (const s of strs) {
-              const m = s.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})/);
-              if (m) {
-                const mm = MONTHS[m[2].slice(0,3).toLowerCase()];
-                if (mm) invDate = m[1].padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+m[3];
-                break;
-              }
-            }
-
-            // Party Name: item immediately before "Party Name" label item
-            let partyName = null;
-            for (let i = 0; i < strs.length; i++) {
-              if (strs[i] === 'Party Name' || strs[i].startsWith('Party Name')) {
-                for (let b = i-1; b >= Math.max(0,i-5); b--) {
-                  const cand = strs[b].trim();
-                  if (cand.length > 2 &&
-                      !/^(INVOICE|AGRONICO|Page |MAIL|MSME|:)/.test(cand) &&
-                      !/^\d{1,2}-[A-Za-z]+-\d{4}/.test(cand) &&
-                      !/^[0-9]{2}[A-Z]/.test(cand)) {
-                    partyName = cand.replace(/\s{2,}/g,' ');
-                    break;
-                  }
+            let invNo=null, invDate=null, partyName=null, billValue=null, marketChg=null, netAmt=null;
+            for (const s of strs) { const m=s.match(/^(\d{4}-\d{2}\/\d+)$/); if(m){invNo=m[1];break;} }
+            for (const s of strs) { const m=s.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})/); if(m){const mm=MONTHS[m[2].slice(0,3).toLowerCase()];if(mm)invDate=m[1].padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+m[3];break;} }
+            for (let i=0;i<strs.length;i++) {
+              if (strs[i]==='Party Name'||strs[i].startsWith('Party Name')) {
+                for (let b=i-1;b>=Math.max(0,i-5);b--) {
+                  const cand=strs[b].trim();
+                  if(cand.length>2&&!/^(INVOICE|AGRONICO|Page |MAIL|MSME|:)/.test(cand)&&!/^\d{1,2}-[A-Za-z]+-\d{4}/.test(cand)&&!/^[0-9]{2}[A-Z]/.test(cand)){partyName=cand.replace(/\s{2,}/g,' ');break;}
                 }
                 break;
               }
             }
-
-            // Amounts: items right after "INVOICE TOTAL..." item
-            let billValue=null, marketChg=null, netAmt=null;
-            for (let i = 0; i < strs.length; i++) {
+            for (let i=0;i<strs.length;i++) {
               if (strs[i].includes('INVOICE TOTAL')) {
-                const nums = [];
-                for (let j=i+1; j<Math.min(i+5,strs.length); j++) {
-                  const m = strs[j].match(/^([\d,]+\.\d{2})$/);
-                  if (m) nums.push(parseFloat(m[1].replace(/,/g,'')));
-                  if (nums.length===2) break;
-                }
-                if (nums.length>=1) billValue  = nums[0];
-                if (nums.length>=2) marketChg  = nums[1];
+                const nums=[];
+                for(let j=i+1;j<Math.min(i+5,strs.length);j++){const m=strs[j].match(/^([\d,]+\.\d{2})$/);if(m)nums.push(parseFloat(m[1].replace(/,/g,'')));if(nums.length===2)break;}
+                if(nums.length>=1)billValue=nums[0];if(nums.length>=2)marketChg=nums[1];
               }
               if (strs[i].includes('Net Amt')) {
-                const m = strs[i].match(/Net\s*Amt\s*:?\s*([\d,]+\.\d{2})/i);
-                if (m) { netAmt = parseFloat(m[1].replace(/,/g,'')); }
-                else if (i+1 < strs.length) {
-                  const m2 = strs[i+1].match(/^([\d,]+\.\d{2})$/);
-                  if (m2) netAmt = parseFloat(m2[1].replace(/,/g,''));
-                }
+                const m=strs[i].match(/Net\s*Amt\s*:?\s*([\d,]+\.\d{2})/i);
+                if(m){netAmt=parseFloat(m[1].replace(/,/g,''));}
+                else if(i+1<strs.length){const m2=strs[i+1].match(/^([\d,]+\.\d{2})$/);if(m2)netAmt=parseFloat(m2[1].replace(/,/g,''));}
               }
             }
-            if (!netAmt && billValue) netAmt = billValue;
-
-            if (!invNo || !invDate || !partyName || !netAmt) { badPages.push(p); continue; }
-
-            extracted.push({ invoiceNo:invNo, invoiceDate:invDate, partyName:partyName.slice(0,120),
-              billValue:billValue||netAmt, marketChg:marketChg||0, netAmt:netAmt, page:p });
+            if(!netAmt&&billValue)netAmt=billValue;
+            if(!invNo||!invDate||!partyName||!netAmt){badPages.push(p);continue;}
+            extracted.push({invoiceNo:invNo,invoiceDate:invDate,partyName:partyName.slice(0,120),billValue:billValue||netAmt,marketChg:marketChg||0,netAmt:netAmt,page:p});
           }
-
-          if (dz) { dz.style.opacity=''; dz.style.pointerEvents=''; }
-          if (prog) prog.style.display = 'none';
-
-          if (!extracted.length) {
-            showCSVStatus('error', badPages.length
-              ? 'No invoices could be read ('+badPages.length+' page(s) had an unrecognized layout).'
-              : 'No invoices found in this PDF.');
-            return;
-          }
-          _buildPreviewFromPDFInvoices(extracted, file, totalPages, badPages);
-
+          if(dz){dz.style.opacity='';dz.style.pointerEvents='';}
+          if(prog)prog.style.display='none';
+          if(!extracted.length){showCSVStatus('error',badPages.length?'No invoices could be read ('+badPages.length+' page(s) had an unrecognized layout).':'No invoices found in this PDF.');return;}
+          _buildPreviewFromPDFInvoices(extracted,file,totalPages,badPages);
         } catch(err) {
-          if (dz) { dz.style.opacity=''; dz.style.pointerEvents=''; }
-          if (prog) prog.style.display = 'none';
-          showCSVStatus('error', 'Error reading PDF: '+err.message);
+          if(dz){dz.style.opacity='';dz.style.pointerEvents='';}
+          if(prog)prog.style.display='none';
+          showCSVStatus('error','Error reading PDF: '+err.message);
         }
       }
       function _buildPreviewFromPDFInvoices(rows, file, totalPages, badPages) {
