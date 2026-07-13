@@ -2642,126 +2642,108 @@ function shortPage(d) {
 
           const MONTHS = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
 
-          // ── Parse a single page's line array into an invoice record ──
-          // Fresko PDF layout (per page, including continuation pages):
-          //   Line 0-3 : company header
-          //   Line 4   : "INVOICE"
-          //   Line 5   : "Page X of Y"
-          //   Line 6   : GSTIN (optional, 15-char alphanumeric) OR party name
-          //   Line 7   : party name  (if GSTIN was on line 6)  OR invoice date
-          //   Line 8   : invoice date "DD-Mon-YYYY,{Day}"
-          //   ...header labels...
-          //   Line ~22 : "2026-27/NNN"   ← Invoice No (standalone line)
-          //   ...items...
+          // Build lines grouped by Y coordinate — pdf.js places multiple text spans
+          // on the same visual line at the same Y value. Grouping them reproduces
+          // the actual rendered line (e.g. "INVOICE NO : 2026-27/760" as one string,
+          // "ANNAPURNA FOODS Party Name :" as one string, "2799.50 22.20" as one string).
+          function buildLines(content) {
+            var byY = {};
+            content.items.forEach(function(it) {
+              var y = Math.round(it.transform[5]);
+              var t = (it.str || '').trim();
+              if (!t) return;
+              if (!byY[y]) byY[y] = [];
+              byY[y].push(t);
+            });
+            return Object.keys(byY)
+              .sort(function(a, b) { return b - a; }) // descending Y = top-to-bottom
+              .map(function(y) { return byY[y].join(' '); });
+          }
+
+          // Parse a single page's line array into an invoice record.
+          // Each "line" is all text at the same Y coordinate joined by space.
+          // Fresko PDF actual combined-line format (verified from production PDF):
+          //   "INVOICE NO          : 2026-27/760"
+          //   "01-May-2026,{Friday}"
+          //   "ANNAPURNA FOODS Party Name          :"
+          //   "2799.50 22.20"          ← total + market chg, just BEFORE "INVOICE TOTAL..."
           //   "INVOICE TOTAL..."
-          //   "{total}"          ← invoice total (first number after label)
-          //   "{market_chg}"     ← market charge value
-          //   "Market Chg :"
-          //   "{0.00}"           ← always 0
-          //   "Net Amt :"
-          //   "{net_amt}"        ← NET payable (= billValue for Fresko)
-          function _parseFreskoPage(lines) {
-            // Only process pages with totals (last page of each invoice)
-            if (!lines.some(l => l.includes('INVOICE TOTAL'))) return null;
+          //   "Market Chg : 0.00"
+          //   "Net Amt : 2799.50"
+          function parseFreskoPage(lines) {
+            // Skip continuation pages (no INVOICE TOTAL = not the last page of invoice)
+            if (!lines.some(function(l) { return l.indexOf('INVOICE TOTAL') >= 0; })) return null;
 
-            // Invoice No: standalone line matching YYYY-YY/NNN
-            let invNo = null;
-            for (const l of lines) {
-              const m = l.match(/^(\d{4}-\d{2}\/\d+)$/);
-              if (m) { invNo = m[1]; break; }
-            }
+            var invNo = null, invDateFmt = null, partyName = null,
+                billValue = null, marketChg = null, netAmt = null;
 
-            // Invoice Date: "DD-Mon-YYYY,{Day}"
-            let invDateFmt = null;
-            for (const l of lines) {
-              const m = l.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})/);
-              if (m) {
-                const mm = MONTHS[m[2].slice(0,3).toLowerCase()];
-                if (mm) invDateFmt = m[1].padStart(2,'0') + '/' + String(mm).padStart(2,'0') + '/' + m[3];
-                break;
+            for (var i = 0; i < lines.length; i++) {
+              var l = lines[i];
+
+              // Invoice No: "INVOICE NO          : 2026-27/760"
+              if (!invNo) {
+                var m = l.match(/INVOICE\s+NO\s*:\s*(\d{4}-\d{2}\/\d+)/i);
+                if (m) invNo = m[1].trim();
               }
-            }
 
-            // Party Name: 2nd or 3rd line after "INVOICE" line
-            // Structure: INVOICE → Page X of Y → [GSTIN?] → PartyName → Date
-            let partyName = null;
-            for (let i = 0; i < lines.length; i++) {
-              if (lines[i] === 'INVOICE' && i + 2 < lines.length) {
-                const pageLabel = lines[i + 1]; // "Page X of Y"
-                if (/^Page \d+ of \d+$/.test(pageLabel)) {
-                  for (let j = i + 2; j < Math.min(i + 7, lines.length); j++) {
-                    const cand = lines[j];
-                    // Skip GSTIN (15-char alphanumeric like 07AAECA9353PIZ3)
-                    if (/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]{3}$/.test(cand)) continue;
-                    // Stop at date line
-                    if (/^\d{1,2}-[A-Za-z]+-\d{4}/.test(cand)) break;
-                    if (cand) { partyName = cand.replace(/\s{2,}/g,' ').trim(); break; }
-                  }
+              // Invoice Date: "01-May-2026,{Friday}"
+              if (!invDateFmt) {
+                var m2 = l.match(/(\d{1,2})-([A-Za-z]+)-(\d{4})/);
+                if (m2 && !l.match(/INVOICE\s+DATE/i)) {
+                  var mm = MONTHS[m2[2].slice(0,3).toLowerCase()];
+                  if (mm) invDateFmt = m2[1].padStart(2,'0') + '/' + String(mm).padStart(2,'0') + '/' + m2[3];
                 }
-                break;
               }
-            }
 
-            // Amounts from INVOICE TOTAL block
-            // Structure: "INVOICE TOTAL...\n{total}\n{mktChgValue}\nMarket Chg :\n0.00\nNet Amt :\n{netAmt}"
-            let billValue = null, marketChg = null, netAmt = null;
-            for (let i = 0; i < lines.length; i++) {
-              if (lines[i].includes('INVOICE TOTAL')) {
-                // Next numeric line = bill value / total
-                if (i + 1 < lines.length) {
-                  const m = lines[i+1].match(/^([\d,]+\.\d{2})$/);
-                  if (m) billValue = parseFloat(m[1].replace(/,/g,''));
+              // Party Name: "ANNAPURNA FOODS Party Name          :"
+              // Party name is everything BEFORE "Party Name"
+              if (!partyName) {
+                var m3 = l.match(/^(.+?)\s+Party\s+Name\s*:/i);
+                if (m3) partyName = m3[1].trim().replace(/\s{2,}/g,' ');
+              }
+
+              // Amounts line: "2799.50 22.20" (two numbers = total + market chg)
+              // This appears just before the INVOICE TOTAL line
+              if (!billValue) {
+                var m4 = l.match(/^([\d,]+\.\d{2})\s+([\d,]+\.\d{2})$/);
+                if (m4) {
+                  billValue  = parseFloat(m4[1].replace(/,/g,''));
+                  marketChg  = parseFloat(m4[2].replace(/,/g,''));
                 }
-                // Line i+2 = market charge value (before the label)
-                if (i + 2 < lines.length) {
-                  const m = lines[i+2].match(/^([\d,]+\.\d{2})$/);
-                  if (m) marketChg = parseFloat(m[1].replace(/,/g,''));
-                }
-                // Net Amt: find explicit "Net Amt :" label then next numeric line
-                for (let j = i; j < Math.min(i + 12, lines.length); j++) {
-                  if (lines[j].includes('Net Amt')) {
-                    for (let k = j + 1; k < Math.min(j + 5, lines.length); k++) {
-                      const m = lines[k].match(/^([\d,]+\.\d{2})$/);
-                      if (m) { netAmt = parseFloat(m[1].replace(/,/g,'')); break; }
-                    }
-                    break;
-                  }
-                }
-                break;
+              }
+
+              // Net Amt: "Net Amt : 2799.50"
+              if (!netAmt) {
+                var m5 = l.match(/Net\s+Amt\s*:\s*([\d,]+\.\d{2})/i);
+                if (m5) netAmt = parseFloat(m5[1].replace(/,/g,''));
               }
             }
 
             if (!invNo || !invDateFmt || !partyName || !netAmt) return null;
-            return { invoiceNo: invNo, invoiceDate: invDateFmt, partyName, billValue: billValue || netAmt, marketChg: marketChg || 0, netAmt, page: -1 };
+            return {
+              invoiceNo:   invNo,
+              invoiceDate: invDateFmt,
+              partyName:   partyName.slice(0, 120),
+              billValue:   billValue || netAmt,
+              marketChg:   marketChg || 0,
+              netAmt:      netAmt
+            };
           }
 
-          for (let p = 1; p <= totalPages; p++) {
+          for (var p = 1; p <= totalPages; p++) {
             if (progBar) progBar.style.width = Math.round((p / totalPages) * 100) + '%';
-            if (progTxt) progTxt.textContent = `Reading page ${p} of ${totalPages}...`;
+            if (progTxt) progTxt.textContent = 'Reading page ' + p + ' of ' + totalPages + '...';
 
-            const page = await pdf.getPage(p);
-            const content = await page.getTextContent();
-            // Use newline-based join to preserve line structure (critical for this PDF format)
-            const rawLines = content.items.map(it => it.str.trim()).filter(s => s !== '');
-            // pdf.js returns items in visual order; rebuild logical lines by grouping by Y position
-            const byY = {};
-            content.items.forEach(it => {
-              const y = Math.round(it.transform[5]);
-              if (!byY[y]) byY[y] = [];
-              byY[y].push(it.str.trim());
-            });
-            const lines = Object.keys(byY)
-              .sort((a, b) => b - a) // descending Y = top to bottom
-              .map(y => byY[y].join(' ').trim())
-              .filter(l => l !== '');
+            var page = await pdf.getPage(p);
+            var content = await page.getTextContent();
+            var lines = buildLines(content);
 
-            const result = _parseFreskoPage(lines);
+            var result = parseFreskoPage(lines);
             if (result) {
               result.page = p;
               extracted.push(result);
-            } else {
-              // Only count as bad if page has INVOICE TOTAL (i.e. it's a final page we couldn't parse)
-              if (lines.some(l => l.includes('INVOICE TOTAL'))) badPages.push(p);
+            } else if (lines.some(function(l) { return l.indexOf('INVOICE TOTAL') >= 0; })) {
+              badPages.push(p);
             }
           }
 
@@ -2770,7 +2752,7 @@ function shortPage(d) {
 
           if (!extracted.length) {
             showCSVStatus('error', badPages.length
-              ? `No invoices could be read (${badPages.length} page(s) had an unrecognized layout). Please check the PDF format.`
+              ? 'No invoices could be read (' + badPages.length + ' page(s) had an unrecognized layout). Please check the PDF format.'
               : 'No invoices found in this PDF.');
             return;
           }
