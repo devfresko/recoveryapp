@@ -66,11 +66,12 @@
       function enterApp() {
         if (!_user) return;
         USER = _user;
-        // Update URL_NAME so all backend calls use correct name
         URL_NAME = _user.name || '';
         URL_DEPT = _user.dept || '';
         URL_ROLE = _user.role || '';
         window.__ISE_USER = _user;
+        // Persist session so page refresh does not log out
+        try { localStorage.setItem('fresko_session', JSON.stringify(_user)); } catch(e) {}
         document.getElementById('login-wrapper').style.display = 'none';
         document.getElementById('app-wrapper').style.display = 'flex';
         _setUserUI();
@@ -80,6 +81,25 @@
           .withFailureHandler(_onFail)
           .getAllData(URL_NAME);
       }
+
+      // Restore session from localStorage on page load (survives refresh)
+      (function _restoreSession() {
+        try {
+          var saved = localStorage.getItem('fresko_session');
+          if (!saved) return;
+          var u = JSON.parse(saved);
+          if (!u || !u.name) return;
+          _user = u;
+          USER = u;
+          URL_NAME = u.name || '';
+          URL_DEPT = u.dept || '';
+          URL_ROLE = u.role || '';
+          window.__ISE_USER = u;
+          // Show app directly, skip login screen
+          document.getElementById('login-wrapper').style.display = 'none';
+          document.getElementById('app-wrapper').style.display = 'flex';
+        } catch(e) {}
+      })();
 
 
       let DB = { parties: [], invoices: [], payments: [], followups: [], config: {}, stats: {}, userInfo: {} };
@@ -127,7 +147,15 @@
             closePartyModal();
           }
         });
-        // NOTE: getAllData is called only after login in enterApp(), not here.
+        // If session was restored from localStorage, load data now
+        if (URL_NAME) {
+          _setUserUI();
+          _applyPermissions();
+          google.script.run
+            .withSuccessHandler(_onDataLoaded)
+            .withFailureHandler(_onFail)
+            .getAllData(URL_NAME);
+        }
       };
 
       function _onDataLoaded(data) {
@@ -2640,109 +2668,113 @@ function shortPage(d) {
           const extracted = [];
           const badPages = [];
 
-          const MONTHS = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+          const MONTHS = { jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 };
 
-          // Build lines grouped by Y coordinate — pdf.js places multiple text spans
-          // on the same visual line at the same Y value. Grouping them reproduces
-          // the actual rendered line (e.g. "INVOICE NO : 2026-27/760" as one string,
-          // "ANNAPURNA FOODS Party Name :" as one string, "2799.50 22.20" as one string).
+          // Build lines by grouping pdf.js text items at the same Y coordinate.
+          // pdf.js item.transform[5] = screen Y (top-to-bottom). Items sharing the
+          // same rounded Y are on the same visual line. This is the exact grouping
+          // the browser produces — verified against the production Fresko PDF.
+          // Resulting combined lines look like:
+          //   "INVOICE NO          : 2026-27/760"
+          //   "01-May-2026,{Friday}"  (or merged with "INVOICE DATE :")
+          //   "ANNAPURNA FOODS Party Name          :"
+          //   "INVOICE TOTAL..."
+          //   "22.20"         ← market charge (line after INVOICE TOTAL)
+          //   "2799.50"       ← net/bill value (line after market chg)
+          //   "Market Chg : 0.00"
+          //   "Net Amt : 2799.50"
           function buildLines(content) {
-            var byY = {};
-            content.items.forEach(function(it) {
-              var y = Math.round(it.transform[5]);
-              var t = (it.str || '').trim();
+            const byY = {};
+            content.items.forEach(it => {
+              const y = Math.round(it.transform[5]);
+              const t = (it.str || '').trim();
               if (!t) return;
               if (!byY[y]) byY[y] = [];
               byY[y].push(t);
             });
+            // Sort descending Y = top of page first (pdf.js screen coords: Y increases downward)
+            // Actually in pdf.js transform[5] larger = further DOWN the screen
             return Object.keys(byY)
-              .sort(function(a, b) { return b - a; }) // descending Y = top-to-bottom
-              .map(function(y) { return byY[y].join(' '); });
+              .sort((a, b) => Number(b) - Number(a))
+              .map(y => byY[y].join(' '));
           }
 
-          // Parse a single page's line array into an invoice record.
-          // Each "line" is all text at the same Y coordinate joined by space.
-          // Fresko PDF actual combined-line format (verified from production PDF):
-          //   "INVOICE NO          : 2026-27/760"
-          //   "01-May-2026,{Friday}"
-          //   "ANNAPURNA FOODS Party Name          :"
-          //   "2799.50 22.20"          ← total + market chg, just BEFORE "INVOICE TOTAL..."
-          //   "INVOICE TOTAL..."
-          //   "Market Chg : 0.00"
-          //   "Net Amt : 2799.50"
           function parseFreskoPage(lines) {
-            // Skip continuation pages (no INVOICE TOTAL = not the last page of invoice)
-            if (!lines.some(function(l) { return l.indexOf('INVOICE TOTAL') >= 0; })) return null;
+            const hasTotal = lines.some(l => l.includes('INVOICE TOTAL'));
+            if (!hasTotal) return null;   // continuation page — skip
 
-            var invNo = null, invDateFmt = null, partyName = null,
+            let invNo = null, invDate = null, partyName = null,
                 billValue = null, marketChg = null, netAmt = null;
 
-            for (var i = 0; i < lines.length; i++) {
-              var l = lines[i];
+            for (let i = 0; i < lines.length; i++) {
+              const l = lines[i];
 
-              // Invoice No: "INVOICE NO          : 2026-27/760"
+              // "INVOICE NO          : 2026-27/760"
               if (!invNo) {
-                var m = l.match(/INVOICE\s+NO\s*:\s*(\d{4}-\d{2}\/\d+)/i);
+                const m = l.match(/INVOICE\s+NO\s*:\s*(\d{4}-\d{2}\/\d+)/i);
                 if (m) invNo = m[1].trim();
               }
 
-              // Invoice Date: "01-May-2026,{Friday}"
-              if (!invDateFmt) {
-                var m2 = l.match(/(\d{1,2})-([A-Za-z]+)-(\d{4})/);
-                if (m2 && !l.match(/INVOICE\s+DATE/i)) {
-                  var mm = MONTHS[m2[2].slice(0,3).toLowerCase()];
-                  if (mm) invDateFmt = m2[1].padStart(2,'0') + '/' + String(mm).padStart(2,'0') + '/' + m2[3];
+              // "01-May-2026,{Friday}" or "01-May-2026,{Friday} INVOICE DATE :"
+              if (!invDate) {
+                const m = l.match(/(\d{1,2})-([A-Za-z]+)-(\d{4})/);
+                if (m) {
+                  const mm = MONTHS[m[2].slice(0,3).toLowerCase()];
+                  if (mm) invDate = m[1].padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+m[3];
                 }
               }
 
-              // Party Name: "ANNAPURNA FOODS Party Name          :"
-              // Party name is everything BEFORE "Party Name"
+              // "ANNAPURNA FOODS Party Name          :" — party name is before "Party Name"
               if (!partyName) {
-                var m3 = l.match(/^(.+?)\s+Party\s+Name\s*:/i);
-                if (m3) partyName = m3[1].trim().replace(/\s{2,}/g,' ');
+                const m = l.match(/^(.+?)\s+Party\s+Name\s*:/i);
+                if (m) partyName = m[1].trim().replace(/\s{2,}/g,' ');
               }
 
-              // Amounts line: "2799.50 22.20" (two numbers = total + market chg)
-              // This appears just before the INVOICE TOTAL line
-              if (!billValue) {
-                var m4 = l.match(/^([\d,]+\.\d{2})\s+([\d,]+\.\d{2})$/);
-                if (m4) {
-                  billValue  = parseFloat(m4[1].replace(/,/g,''));
-                  marketChg  = parseFloat(m4[2].replace(/,/g,''));
+              // After "INVOICE TOTAL..." the next two numeric lines are:
+              //   line i+1 → market charge value (e.g. "22.20")
+              //   line i+2 → bill/net value (e.g. "2799.50")
+              if (l.includes('INVOICE TOTAL') && !billValue) {
+                for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
+                  const m = lines[j].match(/^([\d,]+\.\d{2})$/);
+                  if (m) {
+                    const v = parseFloat(m[1].replace(/,/g,''));
+                    if (!marketChg) { marketChg = v; }
+                    else { billValue = v; break; }
+                  }
                 }
               }
 
-              // Net Amt: "Net Amt : 2799.50"
+              // "Net Amt : 2799.50"  (explicit label — most reliable)
               if (!netAmt) {
-                var m5 = l.match(/Net\s+Amt\s*:\s*([\d,]+\.\d{2})/i);
-                if (m5) netAmt = parseFloat(m5[1].replace(/,/g,''));
+                const m = l.match(/Net\s+Amt\s*:\s*([\d,]+\.\d{2})/i);
+                if (m) netAmt = parseFloat(m[1].replace(/,/g,''));
               }
             }
 
-            if (!invNo || !invDateFmt || !partyName || !netAmt) return null;
+            if (!invNo || !invDate || !partyName || !netAmt) return null;
             return {
               invoiceNo:   invNo,
-              invoiceDate: invDateFmt,
-              partyName:   partyName.slice(0, 120),
+              invoiceDate: invDate,
+              partyName:   partyName.slice(0,120),
               billValue:   billValue || netAmt,
               marketChg:   marketChg || 0,
               netAmt:      netAmt
             };
           }
 
-          for (var p = 1; p <= totalPages; p++) {
+          for (let p = 1; p <= totalPages; p++) {
             if (progBar) progBar.style.width = Math.round((p / totalPages) * 100) + '%';
-            if (progTxt) progTxt.textContent = 'Reading page ' + p + ' of ' + totalPages + '...';
+            if (progTxt) progTxt.textContent = `Reading page ${p} of ${totalPages}...`;
 
-            var page = await pdf.getPage(p);
-            var content = await page.getTextContent();
-            var lines = buildLines(content);
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            const lines = buildLines(content);
+            const result = parseFreskoPage(lines);
 
-            var result = parseFreskoPage(lines);
             if (result) {
               result.page = p;
               extracted.push(result);
-            } else if (lines.some(function(l) { return l.indexOf('INVOICE TOTAL') >= 0; })) {
+            } else if (lines.some(l => l.includes('INVOICE TOTAL'))) {
               badPages.push(p);
             }
           }
@@ -2752,7 +2784,7 @@ function shortPage(d) {
 
           if (!extracted.length) {
             showCSVStatus('error', badPages.length
-              ? 'No invoices could be read (' + badPages.length + ' page(s) had an unrecognized layout). Please check the PDF format.'
+              ? `No invoices could be read (${badPages.length} page(s) had an unrecognized layout). Please check the PDF format.`
               : 'No invoices found in this PDF.');
             return;
           }
@@ -4489,11 +4521,11 @@ function shortPage(d) {
           background: '#0F172A', color: '#E2E8F0'
         }).then(r => {
           if (!r.isConfirmed) return;
-          Swal.fire({ title: 'Signing out...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#0F172A', color: '#E2E8F0' });
-          google.script.run
-            .withSuccessHandler(url => { try { window.top.location.href = url; } catch (e) { window.location.href = url; } })
-            .withFailureHandler(() => { window.location.href = window.location.href.split('?')[0]; })
-            .getAppUrl();
+          // Clear saved session so login screen appears after logout
+          try { localStorage.removeItem('fresko_session'); } catch(e) {}
+          _user = null; USER = {}; URL_NAME = ''; URL_DEPT = ''; URL_ROLE = '';
+          window.__ISE_USER = null;
+          window.location.reload();
         });
       }
 
