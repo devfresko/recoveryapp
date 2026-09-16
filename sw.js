@@ -1,5 +1,5 @@
-var CACHE = 'fresko-payments-v1';
-var SHELL = ['./', './index.html', './app.js', './gas-api.js', './manifest.json', './icon-192.png', './icon-512.png'];
+var CACHE = 'fresko-payments-v2';
+var SHELL = ['./', './index.html', './app.js', './gas-api.js', './manifest.json'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }));
@@ -17,15 +17,22 @@ self.addEventListener('activate', function (e) {
 
 self.addEventListener('fetch', function (e) {
   var url = e.request.url;
-  // Never cache: the Apps Script API itself, or any cross-origin CDN request
-  // (SweetAlert2, Chart.js, XLSX, Google Fonts, Font Awesome) -- those must
-  // always hit the network so data stays live and libraries stay current.
+  // Never cache: Apps Script API + external CDNs
+  if (url.indexOf('script.google.com') !== -1) return;
   if (url.indexOf(self.location.origin) !== 0) return;
 
-  // Only cache-first this app shell's own files (HTML/JS/manifest/icons).
+  // App shell: stale-while-revalidate (instant load + fresh in background)
   e.respondWith(
-    caches.match(e.request).then(function (cached) {
-      return cached || fetch(e.request).catch(function () { return caches.match('./index.html'); });
+    caches.open(CACHE).then(function(cache) {
+      return cache.match(e.request).then(function(cached) {
+        var networkFetch = fetch(e.request).then(function(res) {
+          if (res && res.status === 200) cache.put(e.request, res.clone());
+          return res;
+        }).catch(function() {
+          return cached || caches.match('./index.html');
+        });
+        return cached || networkFetch;
+      });
     })
   );
 });
