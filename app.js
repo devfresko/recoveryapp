@@ -4967,38 +4967,49 @@ function retailPage(d) {
 }
 
 // ============================================================
-// FIFO LOGIC — Auto-allocate payment to oldest invoices first
+// FIFO LOGIC — Payment applied to OLDEST invoices first
+// (Additive: hooks into existing rp-amount/rp-tds inputs)
 // ============================================================
 
 function onFIFOToggle() {
-  var checked = document.getElementById('rp-fifo-toggle').checked;
+  var tgl = document.getElementById('rp-fifo-toggle');
+  if (!tgl) return;
+  var isOn = tgl.checked;
   var hint = document.getElementById('rp-fifo-hint');
-  if (hint) hint.style.display = checked ? 'block' : 'none';
+  if (hint) hint.style.display = isOn ? 'block' : 'none';
 
-  if (checked) {
-    // Auto-select all pending invoices in sorted order
-    var checks = document.querySelectorAll('.rp-inv-check');
-    checks.forEach(function(c) { c.checked = true; });
+  if (isOn) {
+    // Step 1: Sab pending invoices auto-select karo
+    document.querySelectorAll('.rp-inv-check').forEach(function(c) { c.checked = true; });
+    // Step 2: FIFO allocation karo
     _applyFIFOAllocation();
   } else {
-    // Uncheck all
-    var checks = document.querySelectorAll('.rp-inv-check');
-    checks.forEach(function(c) { c.checked = false; });
-    updateRPSummary();
+    // FIFO OFF: sab deselect + breakdown clear
+    document.querySelectorAll('.rp-inv-check').forEach(function(c) { c.checked = false; });
+    _clearFIFOBreakdown();
+    if (typeof updateRPSummary === 'function') updateRPSummary();
   }
 }
 
 function _applyFIFOAllocation() {
-  var amountEl = document.getElementById('rp-amount');
-  var amount = parseFloat(amountEl.value) || 0;
-  if (amount <= 0) { updateRPSummary(); return; }
+  var amtEl = document.getElementById('rp-amount');
+  if (!amtEl) return;
+  var amount = parseFloat(amtEl.value) || 0;
 
-  // Get all checked invoices, sorted by invoice date (oldest first)
+  // TDS aur Discount bhi consider karo
+  var tdsEl  = document.getElementById('rp-tds');
+  var discEl = document.getElementById('rp-disc');
+  var tds  = tdsEl  ? (parseFloat(tdsEl.value)  || 0) : 0;
+  var disc = discEl ? (parseFloat(discEl.value) || 0) : 0;
+
+  // Total settlement = cash + TDS + discount
+  var totalAvail = amount + tds + disc;
+
+  // Get DOM-order checks — onRPParty() already sorts invoices oldest-first
   var checks = Array.from(document.querySelectorAll('.rp-inv-check'));
-  // Sort by invoice number? Better: sort by data attribute if we add sale date
-  // Since list is already sorted oldest-first by onRPParty(), just use DOM order
-  // But we want to prioritize FIFO allocation
-  var remaining = amount;
+  if (!checks.length) { _clearFIFOBreakdown(); return; }
+
+  var remaining = totalAvail;
   checks.forEach(function(c) {
     var expected = parseFloat(c.dataset.expected || 0);
     if (remaining <= 0) { c.checked = false; return; }
@@ -5006,88 +5017,459 @@ function _applyFIFOAllocation() {
     remaining -= expected;
   });
 
-  // Show FIFO allocation summary
-  _showFIFOSummary(amount);
-  updateRPSummary();
+  _showFIFOSummary(totalAvail);
+  if (typeof updateRPSummary === 'function') updateRPSummary();
 }
 
-function _showFIFOSummary(totalAmount) {
-  var checks = Array.from(document.querySelectorAll('.rp-inv-check:checked'));
+function _showFIFOSummary(totalAvail) {
   var summary = document.getElementById('rp-selection-summary');
   if (!summary) return;
 
-  var remaining = totalAmount;
+  var checks = Array.from(document.querySelectorAll('.rp-inv-check:checked'));
+  var remaining = totalAvail;
   var lines = [];
+  var idx = 1;
+
   checks.forEach(function(c) {
     if (remaining <= 0) return;
     var expected = parseFloat(c.dataset.expected || 0);
     var alloc = Math.min(remaining, expected);
     remaining -= alloc;
-    lines.push('<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px dashed #E2E8F0">' +
-      '<span style="color:var(--muted);font-family:monospace">' + c.value + '</span>' +
-      '<span style="font-weight:700;color:var(--green)">₹' + Math.round(alloc).toLocaleString('en-IN') + '</span>' +
-      '</div>');
+    var status = alloc >= expected ? 'FULL' : 'PARTIAL';
+    var statusColor = alloc >= expected ? 'var(--green)' : '#F9AB00';
+    lines.push(
+      '<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px dashed #E2E8F0">' +
+        '<span style="color:var(--muted);font-family:monospace">' + (idx++) + '. ' + c.value +
+        ' <span style="color:' + statusColor + ';font-size:9px;font-weight:700">[' + status + ']</span></span>' +
+        '<span style="font-weight:700;color:var(--green)">₹' + Math.round(alloc).toLocaleString('en-IN') + '</span>' +
+      '</div>'
+    );
   });
 
-  if (remaining > 0) {
-    lines.push('<div style="display:flex;justify-content:space-between;font-size:11px;padding:6px 0;margin-top:4px;background:#FEF7E0;border-radius:4px;padding-left:6px;padding-right:6px">' +
-      '<span style="color:#8a4200;font-weight:700"><i class="fas fa-exclamation-triangle"></i> Unallocated</span>' +
-      '<span style="font-weight:800;color:#8a4200">₹' + Math.round(remaining).toLocaleString('en-IN') + '</span>' +
-      '</div>');
+  if (remaining > 0.5) {
+    lines.push(
+      '<div style="display:flex;justify-content:space-between;font-size:11px;padding:6px 8px;margin-top:6px;background:#FEF7E0;border-radius:5px">' +
+        '<span style="color:#8a4200;font-weight:700"><i class="fas fa-exclamation-triangle"></i> Unallocated</span>' +
+        '<span style="font-weight:800;color:#8a4200">₹' + Math.round(remaining).toLocaleString('en-IN') + '</span>' +
+      '</div>'
+    );
   }
 
   var fifoBox = document.getElementById('rp-fifo-breakdown');
   if (!fifoBox) {
     fifoBox = document.createElement('div');
     fifoBox.id = 'rp-fifo-breakdown';
-    fifoBox.style.cssText = 'margin-top:8px;padding:8px 10px;background:#E8F0FE;border-radius:6px;border:1px solid #BFDBFE;max-height:180px;overflow-y:auto';
+    fifoBox.style.cssText = 'margin-top:10px;padding:10px;background:#E8F0FE;border-radius:7px;border:1px solid #BFDBFE;max-height:200px;overflow-y:auto';
     summary.appendChild(fifoBox);
   }
-  fifoBox.innerHTML = '<div style="font-size:10.5px;font-weight:700;color:#1967D2;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' +
-    '<i class="fas fa-layer-group" style="margin-right:4px"></i>FIFO Allocation (oldest first)</div>' + lines.join('');
+  fifoBox.innerHTML =
+    '<div style="font-size:10.5px;font-weight:700;color:#1967D2;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' +
+      '<i class="fas fa-layer-group" style="margin-right:4px"></i>FIFO Allocation (oldest → newest)' +
+    '</div>' + lines.join('');
 }
 
-// Hook FIFO into existing rp-amount input
-(function _hookFIFOToAmount() {
-  var _setup = function() {
-    var amtEl = document.getElementById('rp-amount');
-    if (amtEl && !amtEl._fifoHooked) {
-      amtEl._fifoHooked = true;
-      amtEl.addEventListener('input', function() {
-        var tgl = document.getElementById('rp-fifo-toggle');
-        if (tgl && tgl.checked) _applyFIFOAllocation();
-      });
-    }
-    var dtbgEl = document.getElementById('rp-dtbg');
-    if (dtbgEl && !dtbgEl._fifoHooked) {
-      dtbgEl._fifoHooked = true;
-      dtbgEl.addEventListener('input', function() {
-        var tgl = document.getElementById('rp-fifo-toggle');
-        if (tgl && tgl.checked) _applyFIFOAllocation();
-      });
-    }
-  };
-  // Poll every 500ms for the modal element (safe, lightweight)
+function _clearFIFOBreakdown() {
+  var bd = document.getElementById('rp-fifo-breakdown');
+  if (bd) bd.remove();
+}
+
+// Hook into amount / TDS / Discount inputs — auto-recalc FIFO when values change
+(function _hookFIFOInputs() {
   setInterval(function() {
-    if (document.getElementById('rp-modal') && document.getElementById('rp-modal').classList.contains('show')) {
-      _setup();
-      var tgl = document.getElementById('rp-fifo-toggle');
-      var box = document.getElementById('rp-fifo-box');
-      if (tgl && box && !tgl._wasReset) {
-        // Only show FIFO box if a party has invoices
-        var checks = document.querySelectorAll('.rp-inv-check');
-        box.style.display = checks.length > 0 ? 'block' : 'none';
-      }
-    } else {
-      // Reset on modal close
-      var tgl = document.getElementById('rp-fifo-toggle');
-      if (tgl) { tgl.checked = false; }
-      var hint = document.getElementById('rp-fifo-hint');
-      if (hint) hint.style.display = 'none';
-      var bd = document.getElementById('rp-fifo-breakdown');
-      if (bd) bd.remove();
+    var modal = document.getElementById('rp-modal');
+    if (!modal || !modal.classList.contains('show')) return;
+
+    ['rp-amount', 'rp-tds', 'rp-disc'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el || el._fifoHooked) return;
+      el._fifoHooked = true;
+      el.addEventListener('input', function() {
+        var tgl = document.getElementById('rp-fifo-toggle');
+        if (tgl && tgl.checked) _applyFIFOAllocation();
+      });
+    });
+
+    // Show/hide FIFO box based on whether party has pending invoices
+    var fifoBox = document.getElementById('rp-fifo-box');
+    var checks = document.querySelectorAll('.rp-inv-check');
+    if (fifoBox) {
+      fifoBox.style.display = checks.length > 0 ? 'block' : 'none';
     }
-  }, 600);
+  }, 500);
 })();
 
+
+// ============================================================
+// RETAIL DATA ACTIONS — Customer-wise view + actions
+// ============================================================
+
+var _retailExpanded = {}; // For customer-wise expand/collapse
+var _retailGrouped = true; // Default: grouped view
+
+// Override the existing renderRetailSales with grouped version
+var _origRenderRetailSales = renderRetailSales;
+renderRetailSales = function() {
+  var tbody = document.getElementById('rs-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = emptyRow(8, 'Loading...');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) { tbody.innerHTML = emptyRow(8, 'Failed to load'); return; }
+      _retailData.allRows = r.rows || [];
+      _retailData.allLog = r.log || [];
+      _renderRetailSalesTable();
+      _renderRetailLog();
+      _renderRetailStats();
+    })
+    .withFailureHandler(function(e) {
+      tbody.innerHTML = emptyRow(8, 'Error: ' + (e && e.message));
+    })
+    .getRetailData();
+};
+
+function _renderRetailSalesTable() {
+  var q = ((document.getElementById('rs-search') || {}).value || '').toLowerCase();
+  var from = (document.getElementById('rs-from') || {}).value || '';
+  var to = (document.getElementById('rs-to') || {}).value || '';
+
+  var list = (_retailData.allRows || []).filter(function(r) {
+    if (q && !(r.customer || '').toLowerCase().includes(q) && !(r.item || '').toLowerCase().includes(q)) return false;
+    if (from || to) {
+      var d = parseIST(r.saleDate);
+      if (from && d && d < new Date(from)) return false;
+      if (to && d && d > new Date(to + 'T23:59:59')) return false;
+    }
+    return true;
+  });
+
+  var total = list.length;
+  txt('rs-sub', total + ' entries');
+  txt('rs-info', total + ' entries · ' + _retailGrouped ? 'Grouped by customer' : 'Flat view');
+
+  // Toggle button render
+  var toggleBtn = document.getElementById('rs-view-toggle');
+  if (!toggleBtn) {
+    // Inject toggle button into page-hd area
+    var hd = document.querySelector('#view-retailSales .page-hd > div:last-child');
+    if (hd) {
+      var btn = document.createElement('button');
+      btn.id = 'rs-view-toggle';
+      btn.className = 'btn btn-secondary';
+      btn.innerHTML = '<i class="fas fa-layer-group"></i> Group by Customer';
+      btn.onclick = function() {
+        _retailGrouped = !_retailGrouped;
+        btn.innerHTML = _retailGrouped
+          ? '<i class="fas fa-layer-group"></i> Group by Customer'
+          : '<i class="fas fa-list"></i> Flat View';
+        _retailExpanded = {};
+        _renderRetailSalesTable();
+      };
+      hd.insertBefore(btn, hd.firstChild);
+    }
+  }
+
+  var tbody = document.getElementById('rs-tbody');
+  if (!total) { tbody.innerHTML = emptyRow(8, 'No entries found.'); return; }
+
+  if (_retailGrouped) {
+    _renderRetailGrouped(tbody, list);
+  } else {
+    _renderRetailFlat(tbody, list);
+  }
+}
+
+function _renderRetailGrouped(tbody, list) {
+  // Group by customer
+  var groups = {};
+  list.forEach(function(r) {
+    var c = r.customer || 'Unknown';
+    if (!groups[c]) groups[c] = { name: c, items: [], totalQty: 0, totalAmt: 0, lastDate: null };
+    groups[c].items.push(r);
+    groups[c].totalQty += r.qty || 0;
+    groups[c].totalAmt += r.amount || 0;
+    var d = parseIST(r.saleDate);
+    if (!groups[c].lastDate || (d && d > groups[c].lastDate)) groups[c].lastDate = d;
+  });
+
+  var keys = Object.keys(groups).sort(function(a, b) {
+    return groups[b].totalAmt - groups[a].totalAmt; // Highest amount first
+  });
+
+  var html = '';
+  keys.forEach(function(cname, gIdx) {
+    var g = groups[cname];
+    var isOpen = _retailExpanded[gIdx] === true; // default closed
+    var lastDateStr = g.lastDate
+      ? String(g.lastDate.getDate()).padStart(2,'0') + '/' + String(g.lastDate.getMonth()+1).padStart(2,'0') + '/' + g.lastDate.getFullYear()
+      : '--';
+
+    // Customer header row
+    html += '<tr style="background:#F8FAFC;cursor:pointer;border-top:2px solid #E2E8F0" onclick="_toggleRetailGroup(' + gIdx + ')">' +
+      '<td colspan="4" style="font-weight:700;padding:10px 12px">' +
+        '<i class="fas fa-chevron-' + (isOpen?'down':'right') + '" style="font-size:10px;color:var(--muted);margin-right:8px"></i>' +
+        '<i class="fas fa-user" style="color:var(--primary);margin-right:6px"></i>' +
+        escHTML(g.name) +
+        ' <span style="font-weight:400;color:var(--muted);font-size:11px">(' + g.items.length + ' items · Last: ' + lastDateStr + ')</span>' +
+      '</td>' +
+      '<td class="num" style="font-weight:700;color:var(--green)">' + _ruFmt(g.totalQty) + '</td>' +
+      '<td></td>' +
+      '<td class="num" style="font-weight:800;color:var(--primary);font-size:13px">₹' + _ruFmt(g.totalAmt) + '</td>' +
+      '<td style="white-space:nowrap" onclick="event.stopPropagation()">' +
+        '<button class="act-btn ab-wa" onclick="_retailWhatsApp(\'' + escQ(g.name) + '\')" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>' +
+        '<button class="act-btn ab-fu" onclick="_retailMakeInvoice(\'' + escQ(g.name) + '\')" title="Make Invoice"><i class="fas fa-file-invoice"></i></button>' +
+        '<button class="act-btn ab-view" onclick="_retailCustomerSummary(\'' + escQ(g.name) + '\')" title="View Summary"><i class="fas fa-eye"></i></button>' +
+      '</td>' +
+    '</tr>';
+
+    // Detail rows (only when expanded)
+    if (isOpen) {
+      g.items.forEach(function(r) {
+        html += '<tr style="background:#FAFAFA;opacity:.92">' +
+          '<td style="font-size:11px;padding-left:32px;color:var(--muted)">' + escHTML(r.saleDate) + '</td>' +
+          '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.customer) + '</td>' +
+          '<td style="font-weight:600">' + escHTML(r.item) + '</td>' +
+          '<td class="num">' + r.qty + '</td>' +
+          '<td><span style="background:#F1F5F9;border:1px solid var(--border);padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escHTML(r.unit) + '</span></td>' +
+          '<td class="num" style="color:var(--muted)">₹' + r.rate + '</td>' +
+          '<td class="num" style="font-weight:600">₹' + r.amount + '</td>' +
+          '<td style="font-size:10px;color:var(--muted)">' + escHTML(r.uploadedBy || '--') + '</td>' +
+        '</tr>';
+      });
+    }
+  });
+
+  tbody.innerHTML = html;
+}
+
+function _renderRetailFlat(tbody, list) {
+  var total = list.length;
+  var page = list.slice((_retailPage - 1) * PER, _retailPage * PER);
+  var totalPages = Math.max(1, Math.ceil(total / PER));
+  var prev = document.getElementById('rs-prev'), next = document.getElementById('rs-next'), pg = document.getElementById('rs-page');
+  if (prev) prev.disabled = _retailPage <= 1;
+  if (next) next.disabled = _retailPage >= totalPages;
+  if (pg) pg.textContent = _retailPage + ' / ' + totalPages;
+
+  tbody.innerHTML = page.map(function(r) {
+    return '<tr>' +
+      '<td style="font-size:11px">' + escHTML(r.saleDate) + '</td>' +
+      '<td style="font-weight:600">' + escHTML(r.customer) + '</td>' +
+      '<td>' + escHTML(r.item) + '</td>' +
+      '<td class="num">' + r.qty + '</td>' +
+      '<td><span style="background:#F1F5F9;border:1px solid var(--border);padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escHTML(r.unit) + '</span></td>' +
+      '<td class="num" style="color:var(--muted)">₹' + r.rate + '</td>' +
+      '<td class="num" style="font-weight:700;color:var(--primary)">₹' + r.amount + '</td>' +
+      '<td style="font-size:10px;color:var(--muted)">' + escHTML(r.uploadedBy || '--') + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function _toggleRetailGroup(idx) {
+  _retailExpanded[idx] = !_retailExpanded[idx];
+  _renderRetailSalesTable();
+}
+
+// ---- Retail Action: WhatsApp ----
+function _retailWhatsApp(customerName) {
+  // Try to find party with matching name for phone
+  var party = (DB.parties || []).find(function(p) {
+    return p.name && p.name.toLowerCase().trim() === customerName.toLowerCase().trim();
+  });
+  if (!party || !party.phone) {
+    Swal.fire({
+      icon: 'info',
+      title: 'No contact found',
+      html: '<b>' + escHTML(customerName) + '</b> ka phone number Parties list me nahi hai.<br><br>Kya aap ek naya party create karna chahte hain?',
+      showCancelButton: true,
+      confirmButtonText: 'Create Party',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#4285F4'
+    }).then(function(r) {
+      if (r.isConfirmed) _retailMakeInvoice(customerName);
+    });
+    return;
+  }
+  var mobile = (party.phone || party.phone2 || '').replace(/\D/g, '');
+  if (mobile.length === 10) mobile = '91' + mobile;
+  window.open('https://wa.me/' + mobile, '_blank');
+}
+
+// ---- Retail Action: View Customer Summary ----
+function _retailCustomerSummary(customerName) {
+  var rows = (_retailData.allRows || []).filter(function(r) { return r.customer === customerName; });
+  if (!rows.length) { Swal.fire('No data', 'Customer entries not found', 'info'); return; }
+
+  var totalQty = rows.reduce(function(s, r) { return s + (r.qty || 0); }, 0);
+  var totalAmt = rows.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
+
+  var byItem = {};
+  rows.forEach(function(r) {
+    if (!byItem[r.item]) byItem[r.item] = { qty: 0, amt: 0, count: 0 };
+    byItem[r.item].qty += r.qty || 0;
+    byItem[r.item].amt += r.amount || 0;
+    byItem[r.item].count++;
+  });
+
+  var itemRows = Object.keys(byItem).map(function(k) {
+    var i = byItem[k];
+    return '<tr style="font-size:11px">' +
+      '<td style="padding:4px 8px">' + escHTML(k) + '</td>' +
+      '<td style="padding:4px 8px;text-align:right">' + _ruFmt(i.qty) + '</td>' +
+      '<td style="padding:4px 8px;text-align:right">₹' + _ruFmt(i.amt) + '</td>' +
+      '<td style="padding:4px 8px;text-align:right;color:var(--muted)">' + i.count + 'x</td>' +
+    '</tr>';
+  }).join('');
+
+  Swal.fire({
+    title: escHTML(customerName),
+    html:
+      '<div style="display:flex;gap:12px;justify-content:center;margin-bottom:14px">' +
+        '<div style="background:#E8F0FE;border-radius:8px;padding:10px 16px">' +
+          '<div style="font-size:10px;color:#1967D2;font-weight:700;text-transform:uppercase">Entries</div>' +
+          '<div style="font-size:20px;font-weight:800;color:#1967D2">' + rows.length + '</div>' +
+        '</div>' +
+        '<div style="background:#E6F4EA;border-radius:8px;padding:10px 16px">' +
+          '<div style="font-size:10px;color:#137333;font-weight:700;text-transform:uppercase">Total Qty</div>' +
+          '<div style="font-size:20px;font-weight:800;color:#137333">' + _ruFmt(totalQty) + '</div>' +
+        '</div>' +
+        '<div style="background:#FEF7E0;border-radius:8px;padding:10px 16px">' +
+          '<div style="font-size:10px;color:#8a4200;font-weight:700;text-transform:uppercase">Total ₹</div>' +
+          '<div style="font-size:20px;font-weight:800;color:#8a4200">₹' + _ruFmt(totalAmt) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="max-height:280px;overflow-y:auto;border:1px solid #E2E8F0;border-radius:8px">' +
+        '<table style="width:100%;border-collapse:collapse">' +
+          '<thead style="background:#F8FAFC;position:sticky;top:0">' +
+            '<tr style="font-size:10px;color:#64748B;text-transform:uppercase">' +
+              '<th style="padding:6px 8px;text-align:left">Item</th>' +
+              '<th style="padding:6px 8px;text-align:right">Qty</th>' +
+              '<th style="padding:6px 8px;text-align:right">Amount</th>' +
+              '<th style="padding:6px 8px;text-align:right">Count</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' + itemRows + '</tbody>' +
+        '</table>' +
+      '</div>',
+    width: 620,
+    showCancelButton: true,
+    showConfirmButton: true,
+    confirmButtonText: '<i class="fas fa-file-invoice"></i> Make Invoice',
+    cancelButtonText: 'Close',
+    confirmButtonColor: '#4285F4'
+  }).then(function(r) {
+    if (r.isConfirmed) _retailMakeInvoice(customerName);
+  });
+}
+
+// ---- Retail Action: Make Invoice from retail data ----
+function _retailMakeInvoice(customerName) {
+  // Find or prompt to create party
+  var party = (DB.parties || []).find(function(p) {
+    return p.name && p.name.toLowerCase().trim() === customerName.toLowerCase().trim();
+  });
+
+  if (!party) {
+    Swal.fire({
+      icon: 'question',
+      title: 'Party not found',
+      html: '<b>' + escHTML(customerName) + '</b> Parties list me nahi hai.<br><br>Pehle party create karein?',
+      showCancelButton: true,
+      confirmButtonText: 'Go to Add Party',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#4285F4'
+    }).then(function(r) {
+      if (r.isConfirmed) {
+        nav('addParty');
+        setTimeout(function() {
+          var nameEl = document.getElementById('ap-name');
+          if (nameEl) nameEl.value = customerName;
+          Swal.fire({
+            icon: 'info',
+            title: 'Pre-filled!',
+            text: 'Party name pre-filled hai. Baaki details bharein aur Save karein.',
+            timer: 2500,
+            showConfirmButton: false
+          });
+        }, 350);
+      }
+    });
+    return;
+  }
+
+  // Party exists — sum total retail amount for this customer (recent entries)
+  var rows = (_retailData.allRows || []).filter(function(r) { return r.customer === customerName; });
+  var totalAmt = rows.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
+  var itemList = rows.map(function(r) { return r.item; }).filter(function(v, i, a) { return a.indexOf(v) === i; }).slice(0, 5).join(', ');
+
+  Swal.fire({
+    icon: 'question',
+    title: 'Create Invoice from Retail?',
+    html: 'Party: <b>' + escHTML(party.name) + '</b><br>' +
+          'Total retail amount: <b style="color:#137333">₹' + _ruFmt(totalAmt) + '</b><br>' +
+          'Items: ' + escHTML(itemList) + (rows.length > 5 ? ' (+ more)' : '') + '<br><br>' +
+          '<div style="font-size:11px;color:#64748B;text-align:left;background:#F8FAFC;padding:10px;border-radius:6px">' +
+            '<b>Note:</b> Ye ek naya invoice create karega us party ke liye, jisme aap ' +
+            'bill amount aur details edit kar sakte hain. Retail entries waise hi rahenge.' +
+          '</div>',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-arrow-right"></i> Proceed to New Invoice',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#4285F4'
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+    nav('addInvoice');
+    setTimeout(function() {
+      // Pre-select party in the searchable select
+      var inp = document.getElementById('ai-ss-inp');
+      if (inp) inp.value = party.name;
+      if (_ssState['ai-ss']) {
+        _ssState['ai-ss'].value = party.partyID;
+        _ssState['ai-ss'].text = party.name;
+      }
+      // Fill hidden
+      var idEl = document.getElementById('ai-party-id'); if (idEl) idEl.value = party.partyID;
+      var codeEl = document.getElementById('ai-party-code'); if (codeEl) codeEl.value = party.partyCode || '';
+      var nameEl = document.getElementById('ai-party-name'); if (nameEl) nameEl.value = party.name;
+      // Pre-fill gross amount
+      var grossEl = document.getElementById('ai-gross');
+      if (grossEl) grossEl.value = Math.round(totalAmt);
+      // Pre-fill head
+      var headEl = document.getElementById('ai-head');
+      if (headEl) headEl.value = party.head || '';
+      // Trigger slab auto-calc
+      if (typeof onAIParty === 'function') onAIParty(party.partyID);
+      if (typeof calcNet === 'function') calcNet();
+      Swal.fire({
+        icon: 'success',
+        title: 'Invoice form pre-filled!',
+        html: 'Retail amount ₹' + _ruFmt(totalAmt) + ' pre-filled hai.<br>Invoice number aur slab check karein.',
+        timer: 3200,
+        showConfirmButton: false
+      });
+    }, 400);
+  });
+}
+
+// Top retail customers — highest amount
+(function _renderTopRetailers() {
+  var rows = _retailData.allRows || [];
+  if (!rows.length) return;
+  var byCust = {};
+  rows.forEach(function(r) {
+    var c = r.customer || 'Unknown';
+    if (!byCust[c]) byCust[c] = { amt: 0, count: 0 };
+    byCust[c].amt += r.amount || 0;
+    byCust[c].count++;
+  });
+  var top = Object.keys(byCust).sort(function(a, b) { return byCust[b].amt - byCust[a].amt; }).slice(0, 5);
+  var el = document.getElementById('rs-top-customers');
+  if (!el) return;
+  el.innerHTML = top.map(function(c, i) {
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:12px">' +
+      '<span><span style="color:var(--muted);font-size:10px;font-weight:700;margin-right:6px">#' + (i+1) + '</span>' +
+      '<span style="font-weight:600">' + escHTML(c) + '</span> <span style="color:var(--muted);font-size:10px">(' + byCust[c].count + ' entries)</span></span>' +
+      '<span style="font-weight:700;color:var(--primary)">₹' + _ruFmt(byCust[c].amt) + '</span>' +
+    '</div>';
+  }).join('');
+})();
 
