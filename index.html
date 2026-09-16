@@ -63,6 +63,18 @@
       padding: 0
     }
 
+.card, .stat-card, .tbl-wrap {
+  contain: layout style paint;
+}
+
+    .modal-box, .edit-drawer {
+  will-change: transform, opacity;
+}
+
+<img src="..." loading="lazy" decoding="async">
+
+    
+    
     :root {
       /* Google brand palette — mapped onto the app's existing semantic roles:
          primary/action = Google Blue, success/paid = Google Green,
@@ -5748,6 +5760,8 @@
         navigator.serviceWorker.register('./sw.js', {scope: './'}).catch(function () { });
       });
     }
+
+    oninput="_debouncedRenderParties()"
   </script>
 
 </body>
