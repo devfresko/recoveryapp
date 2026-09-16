@@ -2682,7 +2682,16 @@
               class="fas fa-file-upload"></i><span class="sb-lbl">CSV Upload</span></div>
 
           <div class="sb-nav-divider"></div>
-          <div class="sb-section-label">Collections</div>
+<div class="sb-section-label">Retail Sales</div>
+<div class="sb-nav-item" id="nav-retailUpload" data-tip="Retail Upload" onclick="nav('retailUpload')">
+  <i class="fas fa-store"></i><span class="sb-lbl">Retail Upload</span>
+</div>
+<div class="sb-nav-item" id="nav-retailSales" data-tip="Retail Sales" onclick="nav('retailSales')">
+  <i class="fas fa-receipt"></i><span class="sb-lbl">Retail Sales</span>
+</div>
+
+          <div class="sb-nav-divider"></div>
+          <div class="sb-section-label">s</div>
           <div class="sb-nav-item" id="nav-slab15due" data-tip="1.5% Slab Due" onclick="nav('slab15due')"><i
               class="fas fa-percentage" style="color:#34A853"></i><span class="sb-lbl">1.5% Due</span><span
               class="sb-badge" id="badge-s15" style="background:#34A853">0</span></div>
@@ -4154,6 +4163,128 @@
             </div>
           </div>
 
+
+<!-- ===== RETAIL UPLOAD VIEW ===== -->
+<div id="view-retailUpload" class="view">
+  <div class="page-hd">
+    <div>
+      <div class="page-title">Retail Sale Register Upload</div>
+      <div class="page-sub">Daily retail sale PDF upload karein — auto-parsed & Google Sheets mein save</div>
+    </div>
+  </div>
+
+  <!-- Steps indicator -->
+  <div id="ru-steps" style="display:flex;background:#fff;border-radius:12px;border:1px solid var(--border);margin-bottom:18px;overflow:hidden">
+    <div class="ru-step active" id="ru-step1" style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--primary);background:#E8F0FE">
+      <i class="fas fa-upload" style="margin-right:6px"></i>1. Upload & Parse
+    </div>
+    <div class="ru-step" id="ru-step2" style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--muted);border-left:1px solid var(--border)">
+      <i class="fas fa-list-check" style="margin-right:6px"></i>2. Preview & Confirm
+    </div>
+    <div class="ru-step" id="ru-step3" style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--muted);border-left:1px solid var(--border)">
+      <i class="fas fa-check" style="margin-right:6px"></i>3. Done
+    </div>
+  </div>
+
+  <div id="ru-stepContent"></div>
+</div>
+
+<!-- ===== RETAIL SALES VIEW ===== -->
+<div id="view-retailSales" class="view">
+  <div class="page-hd">
+    <div>
+      <div class="page-title">Retail Sales Register</div>
+      <div class="page-sub" id="rs-sub">Saare uploaded retail entries</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" onclick="nav('retailUpload')"><i class="fas fa-cloud-upload-alt"></i> New Upload</button>
+      <button class="btn btn-primary" onclick="renderRetailSales()"><i class="fas fa-sync-alt"></i> Refresh</button>
+    </div>
+  </div>
+
+  <div class="g4" style="margin-bottom:16px">
+    <div class="stat-card sc-blue">
+      <div class="stat-label">Total Entries</div>
+      <div class="stat-val" id="rs-total" style="font-size:22px">0</div>
+    </div>
+    <div class="stat-card sc-green">
+      <div class="stat-label">Total Qty</div>
+      <div class="stat-val" id="rs-qty" style="font-size:22px">0</div>
+    </div>
+    <div class="stat-card sc-slate">
+      <div class="stat-label">Total Amount</div>
+      <div class="stat-val" id="rs-amt" style="font-size:22px">₹0</div>
+    </div>
+    <div class="stat-card sc-amber">
+      <div class="stat-label">Uploads</div>
+      <div class="stat-val" id="rs-uploads" style="font-size:22px">0</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+    <div class="search-wrap" style="flex:1;min-width:200px">
+      <i class="fas fa-search"></i>
+      <input class="form-input" id="rs-search" placeholder="Search customer or item..." oninput="_debounce(renderRetailSales,300)()">
+    </div>
+    <input class="form-input" type="date" id="rs-from" onchange="renderRetailSales()" style="width:130px;padding:7px 10px" title="From">
+    <input class="form-input" type="date" id="rs-to" onchange="renderRetailSales()" style="width:130px;padding:7px 10px" title="To">
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rs-search').value='';document.getElementById('rs-from').value='';document.getElementById('rs-to').value='';renderRetailSales()"><i class="fas fa-times"></i></button>
+  </div>
+
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Item</th>
+            <th class="num">Qty</th>
+            <th>Unit</th>
+            <th class="num">Rate</th>
+            <th class="num">Amount</th>
+            <th>Uploaded By</th>
+          </tr>
+        </thead>
+        <tbody id="rs-tbody"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <span class="pager-info" id="rs-info">0 entries</span>
+      <div class="pager-btns">
+        <button class="pager-btn" id="rs-prev" onclick="retailPage(-1)"><i class="fas fa-chevron-left"></i></button>
+        <span class="pager-page" id="rs-page">1</span>
+        <button class="pager-btn" id="rs-next" onclick="retailPage(1)"><i class="fas fa-chevron-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
+      <i class="fas fa-history" style="color:var(--primary);margin-right:6px"></i>Upload History
+    </div>
+    <div class="tbl-wrap" style="border:none;border-radius:0">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Upload Time</th>
+            <th>PDF Filename</th>
+            <th>Date Range</th>
+            <th class="num">Items</th>
+            <th class="num">Qty</th>
+            <th class="num">Amount</th>
+            <th>By</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="rs-log-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+          
+
           <div id="view-reports" class="view">
             <div class="page-hd">
               <div>
@@ -4257,6 +4388,16 @@
             <input type="hidden" id="rp-party-code">
             <input type="hidden" id="rp-party-name">
           </div>
+
+          <div id="rp-fifo-box" style="display:none;margin-bottom:12px;background:#E8F0FE;border:1px solid #BFDBFE;border-radius:8px;padding:10px 14px">
+  <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12.5px;font-weight:600;color:#1967D2">
+    <input type="checkbox" id="rp-fifo-toggle" onchange="onFIFOToggle()" style="width:16px;height:16px;cursor:pointer">
+    <span><i class="fas fa-layer-group" style="margin-right:4px"></i>FIFO Mode — Auto-apply to oldest invoices first</span>
+  </label>
+  <div id="rp-fifo-hint" style="font-size:11px;color:#475569;margin-top:6px;display:none">
+    Saare pending invoices auto-select honge (oldest first). Amount allocate hoga automatically.
+  </div>
+</div>
 
           <div id="rp-bills-box" style="display:none;margin-bottom:12px">
             <div class="form-section-title" style="margin-bottom:8px">Select Invoices to pay</div>
