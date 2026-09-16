@@ -4520,3 +4520,574 @@ function shortPage(d) {
           icon.classList.add('fa-moon');
         }
       }
+
+// ============================================================
+// RETAIL SALE REGISTER — Frontend (integrated from RetailUploader)
+// ============================================================
+
+var _retailStep = 1;
+var _retailData = { parsed: null, result: null, allRows: [], allLog: [] };
+var _retailPage = 1;
+var _ruParsing = false;
+
+// ---- NAV additions ----
+var _origNav = nav;
+nav = function(v) {
+  _origNav(v);
+  if (v === 'retailUpload') { _retailStep = 1; _retailData.parsed = null; _retailData.result = null; _renderRetailUpload(); }
+  if (v === 'retailSales') renderRetailSales();
+};
+
+// ---- STEP 1: Upload ----
+function _renderRetailUpload() {
+  var sc = document.getElementById('ru-stepContent');
+  if (!sc) return;
+  _updateRetailSteps();
+  if (_retailStep === 1) _renderRU1(sc);
+  else if (_retailStep === 2) _renderRU2(sc);
+  else _renderRU3(sc);
+}
+
+function _updateRetailSteps() {
+  [1,2,3].forEach(function(n) {
+    var el = document.getElementById('ru-step' + n);
+    if (!el) return;
+    var base = 'flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;';
+    var border = n > 1 ? 'border-left:1px solid var(--border);' : '';
+    if (_retailStep === n) el.style.cssText = base + border + 'color:var(--primary);background:#E8F0FE';
+    else if (_retailStep > n) el.style.cssText = base + border + 'color:var(--green);background:#E6F4EA';
+    else el.style.cssText = base + border + 'color:var(--muted);background:#fff';
+  });
+}
+
+function _renderRU1(sc) {
+  sc.innerHTML =
+    '<div class="card card-p">' +
+    '<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="fas fa-file-pdf" style="color:var(--red);margin-right:8px"></i>Upload Local Sale Register PDF</div>' +
+    '<input type="file" id="ru-fileInput" accept=".pdf" style="display:none">' +
+    '<div id="ru-dropzone" onclick="document.getElementById(\'ru-fileInput\').click()" style="border:2px dashed var(--border);border-radius:12px;padding:42px 24px;text-align:center;cursor:pointer;transition:all .18s;background:#FAFAFA">' +
+      '<div style="width:64px;height:64px;border-radius:16px;margin:0 auto 14px;background:linear-gradient(135deg,#d1eff3,#b8e5eb);display:flex;align-items:center;justify-content:center;font-size:26px;color:#367884">' +
+        '<i class="fas fa-file-arrow-up"></i>' +
+      '</div>' +
+      '<div style="font-size:16px;font-weight:700;margin-bottom:6px">PDF yahan drop karein ya click karein</div>' +
+      '<div style="font-size:12.5px;color:var(--muted);margin-bottom:4px">Sirf <strong>.pdf</strong> Local Sale Register files accept hoti hain</div>' +
+      '<div style="font-size:11px;color:var(--sub)"><i class="fas fa-shield-halved" style="color:var(--green);margin-right:4px"></i>Browser mein process hoti hai — data sheet pe hi jaata hai</div>' +
+    '</div>' +
+    '<div id="ru-status" style="margin-top:16px"></div>' +
+    '</div>' +
+    '<div class="info-box amber" style="margin-top:12px">' +
+      '<i class="fas fa-triangle-exclamation"></i>' +
+      '<div><b>Local Sale Register</b> PDF upload karein — Purchase Register alag app mein jaata hai.&nbsp;' +
+      '<a href="#" onclick="nav(\'retailSales\');return false" style="color:#5A7B00;font-weight:700">Pehle ke uploads dekhein →</a></div>' +
+    '</div>';
+
+  var dz = document.getElementById('ru-dropzone');
+  var fi = document.getElementById('ru-fileInput');
+  dz.ondragover = function(e) { e.preventDefault(); dz.style.borderColor = 'var(--primary)'; dz.style.background = '#E8F0FE'; };
+  dz.ondragleave = function() { dz.style.borderColor = 'var(--border)'; dz.style.background = '#FAFAFA'; };
+  dz.ondrop = function(e) {
+    e.preventDefault();
+    dz.style.borderColor = 'var(--border)'; dz.style.background = '#FAFAFA';
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) _ruHandleFile(e.dataTransfer.files[0]);
+  };
+  fi.onchange = function(e) { if (e.target.files && e.target.files[0]) _ruHandleFile(e.target.files[0]); };
+}
+
+function _ruHandleFile(file) {
+  if (file.type !== 'application/pdf') { Swal.fire('Error', 'PDF file upload karein', 'error'); return; }
+  if (_ruParsing) return;
+  _ruParsing = true;
+  document.getElementById('ru-status').innerHTML =
+    '<div class="card card-p">' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-weight:700;font-size:13px">' +
+      '<span><i class="fas fa-spinner fa-spin" style="color:var(--primary);margin-right:6px"></i>PDF parse ho raha hai...</span>' +
+      '<span id="ru-pct" style="color:var(--primary)">0%</span>' +
+    '</div>' +
+    '<div style="height:8px;background:#F1F5F9;border-radius:99px;overflow:hidden">' +
+      '<div id="ru-progress" style="height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--primary));transition:width .4s ease;border-radius:99px"></div>' +
+    '</div>' +
+    '<div id="ru-det" style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:8px">PDF engine initializing...</div>' +
+    '</div>';
+
+  var reader = new FileReader();
+  reader.onload = function(e) { _ruSetProgress(15); _ruProcessPDF(e.target.result, file.name); };
+  reader.onerror = function() {
+    _ruParsing = false;
+    document.getElementById('ru-status').innerHTML = '<div class="info-box red"><i class="fas fa-exclamation-circle"></i>File read error. Dobara try karein.</div>';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function _ruSetProgress(p) {
+  var f = document.getElementById('ru-progress'); if (f) f.style.width = p + '%';
+  var px = document.getElementById('ru-pct'); if (px) px.textContent = p + '%';
+}
+
+// Retail PDF parser — coordinate-based (from RetailUploader)
+var _RU_DATE_RE = /^\d{2}\/\d{2}\/\d{4}$/;
+var _RU_DATE_RANGE_RE = /(\d{2}\/\d{2}\/\d{4})\s+To\s*:-\s*(\d{2}\/\d{2}\/\d{4})/;
+var _RU_NUM_RE = /^\d[\d.]*$/;
+var _RU_SKIP_RE = /^(AGRONICO|C-65|MAIL\s*:|MSME:|LOCAL\s+SALE\s+REGISTER|Date\s*:-|Purchase\s+Date|DATE\s+TOTAL|GRAND\s+TOTAL)/i;
+
+function _ruPf(s) { var v = parseFloat(String(s || '').replace(/[^\d.]/g, '')); return isNaN(v) ? 0 : Math.round(v * 100) / 100; }
+function _ruXCol(x) {
+  if (x < 90) return 'date'; if (x < 300) return 'item'; if (x < 340) return 'qty';
+  if (x < 420) return 'unit'; if (x < 510) return 'rate'; return 'amount';
+}
+function _ruIsCustomer(t) {
+  if (_RU_DATE_RE.test(t.trim())) return false;
+  if (/\d{4,}/.test(t)) return false;
+  var L = t.replace(/[^a-zA-Z]/g, ''), U = t.replace(/[^A-Z]/g, '');
+  return L.length >= 3 && U.length / Math.max(L.length, 1) >= 0.5;
+}
+async function _ruPageItems(page) {
+  var vp = page.getViewport({ scale: 1 });
+  var tc = await page.getTextContent({ normalizeWhitespace: false, disableCombineTextItems: true });
+  var out = [];
+  tc.items.forEach(function(it) {
+    var s = it.str && it.str.trim();
+    if (s) out.push({ x: it.transform[4], y: Math.round(vp.height - it.transform[5]), text: s });
+  });
+  return out;
+}
+function _ruGrpY(items) {
+  var m = {};
+  items.forEach(function(it) {
+    var k = null, ks = Object.keys(m).map(Number);
+    for (var i = 0; i < ks.length; i++) { if (Math.abs(ks[i] - it.y) <= 2) { k = ks[i]; break; } }
+    if (k === null) k = it.y;
+    if (!m[k]) m[k] = []; m[k].push(it);
+  });
+  return m;
+}
+async function _ruParseAll(pdf) {
+  var rows = [], dr = '', cust = '';
+  for (var pg = 1; pg <= pdf.numPages; pg++) {
+    _ruSetProgress(20 + Math.floor((pg / pdf.numPages) * 55));
+    var det = document.getElementById('ru-det'); if (det) det.textContent = 'Page ' + pg + ' / ' + pdf.numPages + ' extract ho rahi hai...';
+    var page = await pdf.getPage(pg);
+    var items = await _ruPageItems(page);
+    var yM = _ruGrpY(items);
+    var yKs = Object.keys(yM).map(Number).sort(function(a, b) { return a - b; });
+    var recs = [];
+    yKs.forEach(function(y) {
+      var ri = yM[y].sort(function(a, b) { return a.x - b.x; });
+      var rec = { y: y, date: '', item: [], qty: '', unit: '', rate: '', amount: '' };
+      ri.forEach(function(it) {
+        var c = _ruXCol(it.x);
+        if (c === 'item') rec.item.push(it.text);
+        else if (c === 'date') rec.date = it.text.trim();
+        else if (rec[c] !== undefined) rec[c] = (rec[c] ? rec[c] + ' ' : '') + it.text;
+      });
+      rec.item = rec.item.join(' ').trim();
+      rec._f = ri.map(function(it) { return it.text; }).join(' ');
+      recs.push(rec);
+    });
+
+    var pD = '', pI = '';
+    recs.forEach(function(r) {
+      var f = r._f;
+      var dm = _RU_DATE_RANGE_RE.exec(f);
+      if (dm) { dr = dm[1] + ' to ' + dm[2]; return; }
+      if (_RU_SKIP_RE.test(f)) return;
+      if (f.indexOf('info@fresko.co.in') !== -1) return;
+      var hA = r.amount && _RU_NUM_RE.test(r.amount.split(' ')[0]);
+      var hR = r.rate && _RU_NUM_RE.test(r.rate.split(' ')[0]);
+      var hD = r.date && _RU_DATE_RE.test(r.date);
+      var hI = r.item.length > 0;
+      if (hA && hR) {
+        var fD = hD ? r.date : pD;
+        var fI = hI ? r.item : pI;
+        var fQ = r.qty || '0';
+        var fU = r.unit || 'KG';
+        if (fD && _RU_DATE_RE.test(fD) && fI) {
+          rows.push({ Sale_Date: fD, Customer_Name: cust, Item_Name: fI,
+            Qty: _ruPf(fQ), Unit: fU.toUpperCase(), Rate: _ruPf(r.rate), Amount: _ruPf(r.amount) });
+          pD = pI = '';
+        }
+      } else if (hD || hI) {
+        if (hD) pD = r.date;
+        if (hI) pI = (pI ? pI + ' ' : '') + r.item;
+        if (!hD && _ruIsCustomer(f)) { cust = f.trim(); pD = pI = ''; }
+      } else if (_ruIsCustomer(f)) { cust = f.trim(); pD = pI = ''; }
+    });
+  }
+  return { rows: rows, dateRange: dr };
+}
+
+async function _ruProcessPDF(buf, fileName) {
+  try {
+    var pdf = await pdfjsLib.getDocument(buf).promise;
+    var res = await _ruParseAll(pdf);
+    _ruSetProgress(80);
+    var det = document.getElementById('ru-det'); if (det) det.textContent = 'Duplicate check ho raha hai...';
+
+    google.script.run
+      .withSuccessHandler(function(r) {
+        _ruParsing = false;
+        _ruSetProgress(100);
+        if (!r.success) {
+          document.getElementById('ru-status').innerHTML = '<div class="info-box red"><i class="fas fa-exclamation-circle"></i>Backend: ' + (r.error || 'Unknown') + '</div>';
+          return;
+        }
+        _retailData.parsed = r;
+        _retailStep = 2;
+        setTimeout(_renderRetailUpload, 300);
+      })
+      .withFailureHandler(function(err) {
+        _ruParsing = false;
+        document.getElementById('ru-status').innerHTML = '<div class="info-box red"><i class="fas fa-exclamation-circle"></i>Backend Error: ' + (err && err.message || 'Unknown') + '</div>';
+      })
+      .checkRetailDuplicates(res.rows, res.dateRange, fileName);
+  } catch (err) {
+    _ruParsing = false;
+    document.getElementById('ru-status').innerHTML = '<div class="info-box red"><i class="fas fa-exclamation-circle"></i>PDF Error: ' + (err && err.message || 'Unknown') + '</div>';
+  }
+}
+
+// ---- STEP 2: Preview ----
+function _ruFmt(n) { return (Math.round(n * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function _renderRU2(sc) {
+  var d = _retailData.parsed || {}, nr = d.newRows || [], dr = d.dupRows || [], s = d.summary || {};
+  _updateRetailSteps();
+
+  var chips = '<div class="g4" style="margin-bottom:16px">' +
+    '<div class="stat-card sc-blue"><div class="stat-label">New Entries</div><div class="stat-val">' + (s.newCount || 0) + '</div></div>' +
+    '<div class="stat-card sc-green"><div class="stat-label">Total Qty</div><div class="stat-val">' + _ruFmt(s.totalQty || 0) + '</div></div>' +
+    '<div class="stat-card sc-amber"><div class="stat-label">Skipped (Dup)</div><div class="stat-val">' + (s.dupCount || 0) + '</div></div>' +
+    '<div class="stat-card sc-slate"><div class="stat-label">Total Amount</div><div class="stat-val">₹' + _ruFmt(s.totalAmount || 0) + '</div></div>' +
+    '</div>';
+
+  if (nr.length === 0) {
+    sc.innerHTML = chips +
+      '<div class="card card-p" style="text-align:center;padding:48px">' +
+      '<div style="width:64px;height:64px;border-radius:50%;background:#FEF7E0;border:2px solid #F9AB00;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;color:#F9AB00"><i class="fas fa-check-double"></i></div>' +
+      '<div style="font-size:18px;font-weight:800;margin-bottom:7px">Sab entries pehle se exist karti hain</div>' +
+      '<p style="color:var(--muted);font-size:13px;margin-bottom:22px">Is PDF ka data pehle se Google Sheet mein save hai.</p>' +
+      '<button class="btn btn-secondary" onclick="_ruReset()"><i class="fas fa-rotate-left"></i> Doosri PDF Upload Karein</button>' +
+      '</div>';
+    return;
+  }
+
+  var cG = {}, cO = [];
+  nr.forEach(function(r) {
+    var c = r.Customer_Name || 'Unknown';
+    if (!cG[c]) { cG[c] = []; cO.push(c); }
+    cG[c].push(r);
+  });
+  var tb = '', idx = 1;
+  cO.forEach(function(c) {
+    tb += '<tr style="background:#E8F0FE"><td colspan="8" style="font-weight:700;color:var(--primary);font-size:11px"><i class="fas fa-user" style="margin-right:6px"></i>' + escHTML(c) + ' <span style="font-weight:500;color:var(--muted)">(' + cG[c].length + ' items)</span></td></tr>';
+    cG[c].forEach(function(r) {
+      tb += '<tr>' +
+        '<td style="color:var(--sub);font-weight:600;font-size:11px">' + (idx++) + '</td>' +
+        '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Sale_Date) + '</td>' +
+        '<td style="font-weight:600">' + escHTML(r.Item_Name) + '</td>' +
+        '<td class="num">' + r.Qty + '</td>' +
+        '<td><span style="background:#F1F5F9;border:1px solid var(--border);padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escHTML(r.Unit) + '</span></td>' +
+        '<td class="num" style="color:var(--muted)">₹' + r.Rate + '</td>' +
+        '<td class="num" style="font-weight:700;color:var(--primary)">₹' + r.Amount + '</td>' +
+        '</tr>';
+    });
+  });
+
+  sc.innerHTML = chips +
+    '<div class="card">' +
+    '<div style="padding:13px 18px;background:#F8FAFC;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-weight:700;font-size:13px">' +
+      '<span><i class="fas fa-table-list" style="color:var(--primary);margin-right:6px"></i>Sale Preview — ' + nr.length + ' new entries</span>' +
+      '<span style="font-size:11px;color:var(--muted);font-weight:500">' + dr.length + ' duplicates skip honge</span>' +
+    '</div>' +
+    '<div class="tbl-wrap" style="border:none;border-radius:0;max-height:400px;overflow-y:auto">' +
+      '<table class="tbl"><thead><tr>' +
+      '<th>#</th><th>Date</th><th>Item Name</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th class="num">Amount</th>' +
+      '</tr></thead><tbody>' + tb + '</tbody></table>' +
+    '</div></div>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="btn btn-secondary" onclick="_ruReset()"><i class="fas fa-arrow-left"></i> Wapas</button>' +
+      '<button class="btn btn-primary" id="ru-commitBtn" onclick="_ruCommit()"><i class="fas fa-cloud-upload-alt"></i> Confirm & Save</button>' +
+    '</div>';
+}
+
+function _ruCommit() {
+  var btn = document.getElementById('ru-commitBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Save ho raha hai...'; }
+  var d = _retailData.parsed || {};
+  var meta = {
+    pdfFilename: d.pdfFilename || 'RETAIL SALE REGISTER',
+    dateRange: d.dateRange || '',
+    totalParsed: (d.summary && d.summary.totalParsed) || 0,
+    dupCount: (d.summary && d.summary.dupCount) || 0,
+    totalQty: (d.summary && d.summary.totalQty) || 0,
+    totalAmount: (d.summary && d.summary.totalAmount) || 0
+  };
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Confirm & Save'; }
+      if (res && res.success) {
+        _retailData.result = res;
+        _retailStep = 3;
+        _renderRetailUpload();
+        Swal.fire({ icon: 'success', title: 'Uploaded!', text: res.written + ' entries save ho gayi!', timer: 2200, showConfirmButton: false });
+      } else {
+        Swal.fire('Error', (res && res.error) || 'Save failed', 'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Confirm & Save'; }
+      Swal.fire('Error', (e && e.message) || 'Network error', 'error');
+    })
+    .commitRetailData(d.newRows || [], meta);
+}
+
+function _renderRU3(sc) {
+  var res = _retailData.result || {};
+  _updateRetailSteps();
+  sc.innerHTML =
+    '<div class="card card-p" style="text-align:center;padding:52px 28px">' +
+    '<div style="width:80px;height:80px;border-radius:50%;margin:0 auto 18px;background:#E6F4EA;border:3px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--green)">' +
+      '<i class="fas fa-check"></i>' +
+    '</div>' +
+    '<div style="font-size:22px;font-weight:800;margin-bottom:8px">Import Successful!</div>' +
+    '<div style="display:flex;gap:10px;justify-content:center;margin:14px 0 22px">' +
+      '<div style="padding:9px 20px;border-radius:9px;background:#E6F4EA;color:#137333;font-size:13px;font-weight:700"><i class="fas fa-file-circle-check" style="margin-right:6px"></i>' + (res.written || 0) + ' Entries Saved</div>' +
+      (res.skipped ? '<div style="padding:9px 20px;border-radius:9px;background:#FEF7E0;color:#8a4200;font-size:13px;font-weight:700"><i class="fas fa-ban" style="margin-right:6px"></i>' + res.skipped + ' Duplicates Skipped</div>' : '') +
+    '</div>' +
+    '<p style="color:var(--muted);font-size:13px;margin-bottom:24px">Retail sale entries successfully Google Sheet mein save ho gayi hain.</p>' +
+    '<div style="display:flex;gap:8px;justify-content:center">' +
+      '<button class="btn btn-secondary" onclick="_ruReset()"><i class="fas fa-rotate-right"></i> Aur PDF Upload Karein</button>' +
+      '<button class="btn btn-primary" onclick="nav(\'retailSales\')"><i class="fas fa-receipt"></i> Retail Sales Dekhein</button>' +
+    '</div></div>';
+}
+
+function _ruReset() {
+  _retailStep = 1;
+  _retailData = { parsed: null, result: null, allRows: _retailData.allRows, allLog: _retailData.allLog };
+  _renderRetailUpload();
+}
+
+// ---- RETAIL SALES VIEW ----
+function renderRetailSales() {
+  var tbody = document.getElementById('rs-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = emptyRow(8, 'Loading...');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) { tbody.innerHTML = emptyRow(8, 'Failed to load'); return; }
+      _retailData.allRows = r.rows || [];
+      _retailData.allLog = r.log || [];
+      _renderRetailSalesTable();
+      _renderRetailLog();
+      _renderRetailStats();
+    })
+    .withFailureHandler(function(e) {
+      tbody.innerHTML = emptyRow(8, 'Error: ' + (e && e.message));
+    })
+    .getRetailData();
+}
+
+function _renderRetailStats() {
+  var rows = _retailData.allRows || [];
+  var log = _retailData.allLog || [];
+  txt('rs-total', rows.length);
+  txt('rs-qty', _ruFmt(rows.reduce(function(s, r) { return s + (r.qty || 0); }, 0)));
+  txt('rs-amt', '₹' + _ruFmt(rows.reduce(function(s, r) { return s + (r.amount || 0); }, 0)));
+  txt('rs-uploads', log.length);
+}
+
+function _renderRetailSalesTable() {
+  var q = ((document.getElementById('rs-search') || {}).value || '').toLowerCase();
+  var from = (document.getElementById('rs-from') || {}).value || '';
+  var to = (document.getElementById('rs-to') || {}).value || '';
+
+  var list = (_retailData.allRows || []).filter(function(r) {
+    if (q && !(r.customer || '').toLowerCase().includes(q) && !(r.item || '').toLowerCase().includes(q)) return false;
+    if (from || to) {
+      var d = parseIST(r.saleDate);
+      if (from && d && d < new Date(from)) return false;
+      if (to && d && d > new Date(to + 'T23:59:59')) return false;
+    }
+    return true;
+  });
+
+  var total = list.length;
+  var page = list.slice((_retailPage - 1) * PER, _retailPage * PER);
+  txt('rs-sub', total + ' entries');
+  txt('rs-info', total > 0 ? (((_retailPage - 1) * PER + 1) + '-' + Math.min(_retailPage * PER, total) + ' of ' + total) : '0 entries');
+  var totalPages = Math.max(1, Math.ceil(total / PER));
+  var prev = document.getElementById('rs-prev'), next = document.getElementById('rs-next'), pg = document.getElementById('rs-page');
+  if (prev) prev.disabled = _retailPage <= 1;
+  if (next) next.disabled = _retailPage >= totalPages;
+  if (pg) pg.textContent = _retailPage + ' / ' + totalPages;
+
+  var tbody = document.getElementById('rs-tbody');
+  tbody.innerHTML = page.length === 0
+    ? emptyRow(8, 'No entries found. Pehle upload karein.')
+    : page.map(function(r) {
+      return '<tr>' +
+        '<td style="font-size:11px">' + escHTML(r.saleDate) + '</td>' +
+        '<td style="font-weight:600">' + escHTML(r.customer) + '</td>' +
+        '<td>' + escHTML(r.item) + '</td>' +
+        '<td class="num">' + r.qty + '</td>' +
+        '<td><span style="background:#F1F5F9;border:1px solid var(--border);padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escHTML(r.unit) + '</span></td>' +
+        '<td class="num" style="color:var(--muted)">₹' + r.rate + '</td>' +
+        '<td class="num" style="font-weight:700;color:var(--primary)">₹' + r.amount + '</td>' +
+        '<td style="font-size:10px;color:var(--muted)">' + escHTML(r.uploadedBy || '--') + '</td>' +
+        '</tr>';
+    }).join('');
+}
+
+function _renderRetailLog() {
+  var tbody = document.getElementById('rs-log-tbody');
+  if (!tbody) return;
+  var log = _retailData.allLog || [];
+  tbody.innerHTML = log.length === 0
+    ? emptyRow(8, 'No uploads yet')
+    : log.slice(0, 20).map(function(l) {
+      var badge = (l.status || '').toLowerCase().indexOf('success') !== -1
+        ? '<span class="badge badge-paid">Success</span>'
+        : '<span class="badge badge-overdue">' + escHTML(l.status || '--') + '</span>';
+      return '<tr>' +
+        '<td style="font-size:11px">' + escHTML(l.date) + '</td>' +
+        '<td style="font-size:11px">' + escHTML(l.filename || '--') + '</td>' +
+        '<td style="font-size:11px;color:var(--muted)">' + escHTML(l.dateRange || '--') + '</td>' +
+        '<td class="num">' + (l.items || 0) + '</td>' +
+        '<td class="num">' + _ruFmt(l.qty || 0) + '</td>' +
+        '<td class="num" style="font-weight:700">₹' + _ruFmt(l.amount || 0) + '</td>' +
+        '<td style="font-size:10px;color:var(--muted)">' + escHTML(l.by || '--') + '</td>' +
+        '<td>' + badge + '</td>' +
+        '</tr>';
+    }).join('');
+}
+
+function retailPage(d) {
+  var list = _retailData.allRows || [];
+  var totalPages = Math.max(1, Math.ceil(list.length / PER));
+  _retailPage = Math.max(1, Math.min(_retailPage + d, totalPages));
+  _renderRetailSalesTable();
+}
+
+// ============================================================
+// FIFO LOGIC — Auto-allocate payment to oldest invoices first
+// ============================================================
+
+function onFIFOToggle() {
+  var checked = document.getElementById('rp-fifo-toggle').checked;
+  var hint = document.getElementById('rp-fifo-hint');
+  if (hint) hint.style.display = checked ? 'block' : 'none';
+
+  if (checked) {
+    // Auto-select all pending invoices in sorted order
+    var checks = document.querySelectorAll('.rp-inv-check');
+    checks.forEach(function(c) { c.checked = true; });
+    _applyFIFOAllocation();
+  } else {
+    // Uncheck all
+    var checks = document.querySelectorAll('.rp-inv-check');
+    checks.forEach(function(c) { c.checked = false; });
+    updateRPSummary();
+  }
+}
+
+function _applyFIFOAllocation() {
+  var amountEl = document.getElementById('rp-amount');
+  var amount = parseFloat(amountEl.value) || 0;
+  if (amount <= 0) { updateRPSummary(); return; }
+
+  // Get all checked invoices, sorted by invoice date (oldest first)
+  var checks = Array.from(document.querySelectorAll('.rp-inv-check'));
+  // Sort by invoice number? Better: sort by data attribute if we add sale date
+  // Since list is already sorted oldest-first by onRPParty(), just use DOM order
+  // But we want to prioritize FIFO allocation
+  var remaining = amount;
+  checks.forEach(function(c) {
+    var expected = parseFloat(c.dataset.expected || 0);
+    if (remaining <= 0) { c.checked = false; return; }
+    c.checked = true;
+    remaining -= expected;
+  });
+
+  // Show FIFO allocation summary
+  _showFIFOSummary(amount);
+  updateRPSummary();
+}
+
+function _showFIFOSummary(totalAmount) {
+  var checks = Array.from(document.querySelectorAll('.rp-inv-check:checked'));
+  var summary = document.getElementById('rp-selection-summary');
+  if (!summary) return;
+
+  var remaining = totalAmount;
+  var lines = [];
+  checks.forEach(function(c) {
+    if (remaining <= 0) return;
+    var expected = parseFloat(c.dataset.expected || 0);
+    var alloc = Math.min(remaining, expected);
+    remaining -= alloc;
+    lines.push('<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px dashed #E2E8F0">' +
+      '<span style="color:var(--muted);font-family:monospace">' + c.value + '</span>' +
+      '<span style="font-weight:700;color:var(--green)">₹' + Math.round(alloc).toLocaleString('en-IN') + '</span>' +
+      '</div>');
+  });
+
+  if (remaining > 0) {
+    lines.push('<div style="display:flex;justify-content:space-between;font-size:11px;padding:6px 0;margin-top:4px;background:#FEF7E0;border-radius:4px;padding-left:6px;padding-right:6px">' +
+      '<span style="color:#8a4200;font-weight:700"><i class="fas fa-exclamation-triangle"></i> Unallocated</span>' +
+      '<span style="font-weight:800;color:#8a4200">₹' + Math.round(remaining).toLocaleString('en-IN') + '</span>' +
+      '</div>');
+  }
+
+  var fifoBox = document.getElementById('rp-fifo-breakdown');
+  if (!fifoBox) {
+    fifoBox = document.createElement('div');
+    fifoBox.id = 'rp-fifo-breakdown';
+    fifoBox.style.cssText = 'margin-top:8px;padding:8px 10px;background:#E8F0FE;border-radius:6px;border:1px solid #BFDBFE;max-height:180px;overflow-y:auto';
+    summary.appendChild(fifoBox);
+  }
+  fifoBox.innerHTML = '<div style="font-size:10.5px;font-weight:700;color:#1967D2;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' +
+    '<i class="fas fa-layer-group" style="margin-right:4px"></i>FIFO Allocation (oldest first)</div>' + lines.join('');
+}
+
+// Hook FIFO into existing rp-amount input
+(function _hookFIFOToAmount() {
+  var _setup = function() {
+    var amtEl = document.getElementById('rp-amount');
+    if (amtEl && !amtEl._fifoHooked) {
+      amtEl._fifoHooked = true;
+      amtEl.addEventListener('input', function() {
+        var tgl = document.getElementById('rp-fifo-toggle');
+        if (tgl && tgl.checked) _applyFIFOAllocation();
+      });
+    }
+    var dtbgEl = document.getElementById('rp-dtbg');
+    if (dtbgEl && !dtbgEl._fifoHooked) {
+      dtbgEl._fifoHooked = true;
+      dtbgEl.addEventListener('input', function() {
+        var tgl = document.getElementById('rp-fifo-toggle');
+        if (tgl && tgl.checked) _applyFIFOAllocation();
+      });
+    }
+  };
+  // Poll every 500ms for the modal element (safe, lightweight)
+  setInterval(function() {
+    if (document.getElementById('rp-modal') && document.getElementById('rp-modal').classList.contains('show')) {
+      _setup();
+      var tgl = document.getElementById('rp-fifo-toggle');
+      var box = document.getElementById('rp-fifo-box');
+      if (tgl && box && !tgl._wasReset) {
+        // Only show FIFO box if a party has invoices
+        var checks = document.querySelectorAll('.rp-inv-check');
+        box.style.display = checks.length > 0 ? 'block' : 'none';
+      }
+    } else {
+      // Reset on modal close
+      var tgl = document.getElementById('rp-fifo-toggle');
+      if (tgl) { tgl.checked = false; }
+      var hint = document.getElementById('rp-fifo-hint');
+      if (hint) hint.style.display = 'none';
+      var bd = document.getElementById('rp-fifo-breakdown');
+      if (bd) bd.remove();
+    }
+  }, 600);
+})();
+
+
