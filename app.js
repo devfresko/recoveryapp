@@ -171,6 +171,7 @@
         _populateFilters();
         _buildAllPartySS();   // build searchable selects with latest party data
         _updateBadges();
+        _refreshRetailOutstanding();
 
         if (!_loadedOnce) {
           _loadedOnce = true;
@@ -5472,4 +5473,446 @@ function _retailMakeInvoice(customerName) {
     '</div>';
   }).join('');
 })();
+
+
+// ============================================================
+// RETAIL PAYMENT — TAB SWITCHING + FIFO + STATEMENT
+// ============================================================
+
+var _rpActiveTab = 'invoice';
+var _rptSelectedCustomer = '';
+var _rptEntries = [];
+
+// ---- Tab Switching ----
+function _switchRPTab(tab) {
+  _rpActiveTab = tab;
+  var invBtn = document.getElementById('rp-tab-invoice-btn');
+  var rtBtn  = document.getElementById('rp-tab-retail-btn');
+  var invCont = document.getElementById('rp-tab-invoice-content');
+  var rtCont  = document.getElementById('rp-tab-retail-content');
+
+  var activeStyle = 'flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:700;background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.08)';
+  var inactiveStyle = 'flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:600;background:transparent;color:var(--muted)';
+
+  if (tab === 'retail') {
+    invBtn.style.cssText = inactiveStyle;
+    rtBtn.style.cssText  = activeStyle.replace('var(--primary)', '#7C3AED');
+    invCont.style.display = 'none';
+    rtCont.style.display  = 'block';
+    _setDefaultDates();
+    _loadRetailCustomers();
+  } else {
+    invBtn.style.cssText = activeStyle;
+    rtBtn.style.cssText  = inactiveStyle;
+    invCont.style.display = 'block';
+    rtCont.style.display  = 'none';
+  }
+}
+
+// ---- Load retail customers with pending ----
+function _loadRetailCustomers() {
+  var el = document.getElementById('rpt-retail-cust-ss');
+  if (!el) return;
+  el.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)">Loading customers...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) { el.innerHTML = '<div style="padding:10px;color:var(--red);font-size:12px">Failed to load</div>'; return; }
+      var customers = r.customers || [];
+      if (!customers.length) {
+        el.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:var(--muted)">' +
+          '<i class="fas fa-check-circle" style="color:var(--green);font-size:22px;display:block;margin-bottom:6px"></i>' +
+          'Koi retail outstanding nahi hai.' +
+          '</div>';
+        return;
+      }
+      var opts = customers.map(function(c) {
+        return {
+          id: c.name, name: c.name,
+          meta: '₹' + _ruFmt(c.pending) + ' · ' + c.entries + ' entries · oldest: ' + c.oldestDateStr
+        };
+      });
+      buildSS('rpt-retail-cust-ss', opts, function(custName) {
+        _rptSelectedCustomer = custName;
+        _loadRetailEntries(custName);
+      }, 'Search customer...');
+    })
+    .withFailureHandler(function(e) {
+      el.innerHTML = '<div style="padding:10px;color:var(--red);font-size:12px">Error: ' + (e && e.message) + '</div>';
+    })
+    .getRetailCustomersWithPending();
+}
+
+// ---- Load entries for selected customer (FIFO sorted) ----
+function _loadRetailEntries(customerName) {
+  var box = document.getElementById('rpt-retail-entries-box');
+  var list = document.getElementById('rpt-retail-entries-list');
+  var summary = document.getElementById('rpt-retail-summary');
+  if (!box || !list) return;
+
+  list.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)">Loading entries...</div>';
+  box.style.display = 'block';
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) { list.innerHTML = '<div style="color:var(--red);padding:10px">Failed</div>'; return; }
+      _rptEntries = r.entries || [];
+      if (!_rptEntries.length) {
+        list.innerHTML = '<div style="padding:14px;text-align:center;color:var(--green);font-size:12px">Koi pending entry nahi.</div>';
+        return;
+      }
+      var totalPending = _rptEntries.reduce(function(s, e) { return s + e.pending; }, 0);
+      txt('rpt-total-pending', '₹' + _ruFmt(totalPending));
+      txt('rpt-entry-count', _rptEntries.length);
+      _renderRetailEntriesList();
+    })
+    .withFailureHandler(function(e) {
+      list.innerHTML = '<div style="color:var(--red);padding:10px">Error: ' + (e && e.message) + '</div>';
+    })
+    .getRetailEntriesForCustomer(customerName);
+}
+
+function _renderRetailEntriesList() {
+  var list = document.getElementById('rpt-retail-entries-list');
+  if (!list) return;
+  list.innerHTML = _rptEntries.map(function(e, idx) {
+    var d = parseIST(e.saleDate);
+    var daysOld = d ? Math.floor((new Date() - d) / 86400000) : 0;
+    var ageColor = daysOld > 60 ? '#EA4335' : daysOld > 30 ? '#F9AB00' : '#94A3B8';
+    return '<div style="background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;gap:10px;align-items:center">' +
+      '<span style="font-size:10px;font-weight:700;color:var(--muted);min-width:20px">#' + (idx + 1) + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px">' +
+          '<span style="font-weight:600;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + escHTML(e.item) + '</span>' +
+          '<span style="font-size:11px;font-weight:700;color:var(--primary)">₹' + _ruFmt(e.pending) + '</span>' +
+        '</div>' +
+        '<div style="font-size:10px;color:var(--muted);margin-top:2px">' +
+          escHTML(e.saleDate) + ' · ' + e.qty + ' ' + escHTML(e.unit) +
+          ' <span style="color:' + ageColor + ';font-weight:600;margin-left:6px">' + daysOld + 'd old</span>' +
+          (e.paid > 0 ? ' <span style="color:var(--green);margin-left:6px">Paid: ₹' + _ruFmt(e.paid) + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ---- FIFO preview for retail ----
+function _rptUpdateFIFO() {
+  var amtEl = document.getElementById('rpt-amount');
+  var amount = amtEl ? (parseFloat(amtEl.value) || 0) : 0;
+  var box = document.getElementById('rpt-retail-fifo-breakdown');
+  if (!box || !_rptEntries.length) return;
+  if (amount <= 0) { box.style.display = 'none'; return; }
+
+  var remaining = amount;
+  var lines = [];
+  var idx = 1;
+  _rptEntries.forEach(function(e) {
+    if (remaining <= 0) return;
+    var alloc = Math.min(remaining, e.pending);
+    remaining -= alloc;
+    var status = alloc >= e.pending ? 'FULL' : 'PARTIAL';
+    var statusColor = alloc >= e.pending ? '#34A853' : '#F9AB00';
+    lines.push(
+      '<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px dashed #BFDBFE">' +
+        '<span style="color:#475569;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:60%">' +
+          (idx++) + '. ' + escHTML(e.item) + ' <span style="color:' + statusColor + ';font-size:9px;font-weight:700">[' + status + ']</span></span>' +
+        '<span style="font-weight:700;color:#137333">₹' + _ruFmt(alloc) + '</span>' +
+      '</div>'
+    );
+  });
+
+  if (remaining > 0.5) {
+    lines.push(
+      '<div style="display:flex;justify-content:space-between;font-size:11px;padding:6px 8px;margin-top:6px;background:#FEF7E0;border-radius:5px">' +
+        '<span style="color:#8a4200;font-weight:700"><i class="fas fa-exclamation-triangle"></i> Unallocated</span>' +
+        '<span style="font-weight:800;color:#8a4200">₹' + _ruFmt(remaining) + '</span>' +
+      '</div>'
+    );
+  }
+
+  box.innerHTML = '<div style="font-size:10.5px;font-weight:700;color:#1967D2;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' +
+    '<i class="fas fa-layer-group" style="margin-right:4px"></i>FIFO Allocation (oldest first)' +
+    '</div>' + lines.join('');
+  box.style.display = 'block';
+}
+
+// Hook amount input for live FIFO preview
+(function _hookRetailAmount() {
+  setInterval(function() {
+    var amtEl = document.getElementById('rpt-amount');
+    if (amtEl && !amtEl._retailHooked) {
+      amtEl._retailHooked = true;
+      amtEl.addEventListener('input', _rptUpdateFIFO);
+    }
+  }, 500);
+})();
+
+// ---- Submit retail payment ----
+function _rptSubmit() {
+  if (!_rptSelectedCustomer) { Swal.fire('Required', 'Select a customer', 'warning'); return; }
+  var amt = parseFloat(document.getElementById('rpt-amount').value) || 0;
+  if (amt <= 0) { Swal.fire('Required', 'Enter valid amount', 'warning'); return; }
+
+  var data = {
+    customer: _rptSelectedCustomer,
+    amount: amt,
+    paymentDate: document.getElementById('rpt-date').value
+      ? (function(){var d=new Date(document.getElementById('rpt-date').value);
+          return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();})()
+      : '',
+    mode: document.getElementById('rpt-mode').value,
+    refNo: document.getElementById('rpt-ref').value,
+    remarks: document.getElementById('rpt-remarks').value
+  };
+
+  Swal.fire({ title: 'Recording...', didOpen: () => Swal.showLoading(), background: '#0F172A', color: '#fff' });
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r.success) {
+        Swal.fire({ icon: 'success', title: 'Payment Recorded!', html: r.msg, timer: 2500, showConfirmButton: false });
+        _rptResetRetailTab();
+        _loadRetailCustomers();
+        // Refresh dashboard card
+        _refreshRetailOutstanding();
+      } else {
+        Swal.fire('Error', r.error || 'Failed', 'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      Swal.fire('Error', (e && e.message) || 'Network error', 'error');
+    })
+    .recordRetailPayment(data, URL_NAME);
+}
+
+function _rptResetRetailTab() {
+  ['rpt-amount', 'rpt-ref', 'rpt-remarks'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var box = document.getElementById('rpt-retail-entries-box');
+  if (box) box.style.display = 'none';
+  var fb = document.getElementById('rpt-retail-fifo-breakdown');
+  if (fb) { fb.style.display = 'none'; fb.innerHTML = ''; }
+  _rptSelectedCustomer = '';
+  _rptEntries = [];
+  var inp = document.getElementById('rpt-retail-cust-ss-inp');
+  if (inp) inp.value = '';
+  if (_ssState['rpt-retail-cust-ss']) { _ssState['rpt-retail-cust-ss'].value = ''; _ssState['rpt-retail-cust-ss'].text = ''; }
+}
+
+// ---- Hook the submit button — replace the footer button's onclick ----
+// The RP modal footer has "Record Payment" button. We'll make it tab-aware.
+(function _hookRPSubmit() {
+  setInterval(function() {
+    var modal = document.getElementById('rp-modal');
+    if (!modal || !modal.classList.contains('show')) return;
+    var btn = modal.querySelector('.modal-ft .btn-green');
+    if (btn && !btn._tabHooked) {
+      btn._tabHooked = true;
+      // Save original onclick (from HTML)
+      var origClick = btn.onclick;
+      btn.onclick = function(e) {
+        if (_rpActiveTab === 'retail') {
+          e.preventDefault();
+          _rptSubmit();
+        } else {
+          if (typeof origClick === 'function') origClick.call(btn, e);
+          else if (typeof submitPayment === 'function') submitPayment();
+        }
+      };
+    }
+  }, 500);
+})();
+
+// ---- Reset tab on modal open ----
+var _origOpenRPModal = openRPModal;
+openRPModal = function() {
+  _origOpenRPModal.apply(this, arguments);
+  // Reset to invoice tab by default
+  setTimeout(function() {
+    _switchRPTab('invoice');
+    _rptResetRetailTab();
+  }, 50);
+};
+
+// ============================================================
+// RETAIL OUTSTANDING — Dashboard + Retail Sales view
+// ============================================================
+
+function _refreshRetailOutstanding() {
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) return;
+      // Dashboard card
+      txt('s-retail-out', '₹' + _ruFmt(r.totalOutstanding || 0));
+      txt('s-retail-cust-count', r.customerCount || 0);
+
+      // Retail sales view card
+      var totalBadge = document.getElementById('rs-out-total-badge');
+      if (totalBadge) totalBadge.textContent = '₹' + _ruFmt(r.totalOutstanding || 0);
+
+      var listEl = document.getElementById('rs-outstanding-list');
+      if (!listEl) return;
+
+      var top = r.topCustomers || [];
+      if (!top.length) {
+        listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--green);font-size:12px">' +
+          '<i class="fas fa-check-circle" style="font-size:20px;display:block;margin-bottom:6px"></i>' +
+          'Sab retail customers settled hain!' +
+          '</div>';
+        return;
+      }
+
+      listEl.innerHTML = top.map(function(c) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid #F1F5F9;gap:10px">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-weight:600;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + escHTML(c.name) + '</div>' +
+            '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + c.entries + ' entries · oldest: ' + c.oldestDateStr + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;flex-shrink:0">' +
+            '<div style="font-weight:800;color:#7C3AED;font-size:13px">₹' + _ruFmt(c.pending) + '</div>' +
+          '</div>' +
+          '<button class="act-btn ab-fu" style="margin-left:4px" onclick="_openRetailStatement(\'' + escQ(c.name) + '\')" title="View Statement"><i class="fas fa-file-invoice"></i></button>' +
+          '<button class="act-btn ab-pay" style="margin-left:2px" onclick="_rptQuickPay(\'' + escQ(c.name) + '\')" title="Record Payment"><i class="fas fa-indian-rupee-sign"></i></button>' +
+        '</div>';
+      }).join('');
+    })
+    .getRetailOutstandingSummary();
+}
+
+function _rptQuickPay(customerName) {
+  // Open RP modal, switch to retail tab, pre-select customer
+  openRPModal();
+  setTimeout(function() {
+    _switchRPTab('retail');
+    setTimeout(function() {
+      _rptSelectedCustomer = customerName;
+      var inp = document.getElementById('rpt-retail-cust-ss-inp');
+      if (inp) inp.value = customerName;
+      if (_ssState['rpt-retail-cust-ss']) {
+        _ssState['rpt-retail-cust-ss'].value = customerName;
+        _ssState['rpt-retail-cust-ss'].text = customerName;
+      }
+      _loadRetailEntries(customerName);
+    }, 400);
+  }, 200);
+}
+
+// ============================================================
+// RETAIL STATEMENT MODAL
+// ============================================================
+
+var _rstmtCustomer = '';
+
+function _openRetailStatement(customerName) {
+  _rstmtCustomer = customerName;
+  document.getElementById('rstmt-title').innerHTML =
+    '<i class="fas fa-file-invoice" style="margin-right:8px;color:#7C3AED"></i>Statement: ' + escHTML(customerName);
+  document.getElementById('rstmt-sub').textContent = 'All retail entries for this customer';
+  document.getElementById('rstmt-body').innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">Loading...</div>';
+  document.getElementById('retail-stmt-modal').classList.add('show');
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) { document.getElementById('rstmt-body').innerHTML = 'Failed to load'; return; }
+      var entries = r.entries || [];
+      if (!entries.length) {
+        document.getElementById('rstmt-body').innerHTML =
+          '<div style="text-align:center;padding:30px;color:var(--green)">' +
+            '<i class="fas fa-check-circle" style="font-size:32px;margin-bottom:10px;display:block"></i>' +
+            'No pending entries.' +
+          '</div>';
+        return;
+      }
+
+      var totalPending = entries.reduce(function(s, e) { return s + e.pending; }, 0);
+      var totalPaid    = entries.reduce(function(s, e) { return s + e.paid; }, 0);
+      var totalAmt     = entries.reduce(function(s, e) { return s + e.amount; }, 0);
+
+      var rows = entries.map(function(e, i) {
+        var d = parseIST(e.saleDate);
+        var days = d ? Math.floor((new Date() - d) / 86400000) : 0;
+        var ageColor = days > 60 ? '#EA4335' : days > 30 ? '#F9AB00' : '#94A3B8';
+        return '<tr>' +
+          '<td style="font-size:11px;color:var(--muted);text-align:center">' + (i + 1) + '</td>' +
+          '<td style="font-size:11px">' + escHTML(e.saleDate) + '</td>' +
+          '<td style="font-weight:600">' + escHTML(e.item) + '</td>' +
+          '<td class="num">' + e.qty + ' ' + escHTML(e.unit) + '</td>' +
+          '<td class="num">₹' + _ruFmt(e.amount) + '</td>' +
+          '<td class="num" style="color:var(--green)">₹' + _ruFmt(e.paid) + '</td>' +
+          '<td class="num" style="font-weight:700;color:var(--red)">₹' + _ruFmt(e.pending) + '</td>' +
+          '<td style="text-align:center;color:' + ageColor + ';font-size:11px;font-weight:600">' + days + 'd</td>' +
+        '</tr>';
+      }).join('');
+
+      document.getElementById('rstmt-body').innerHTML =
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">' +
+          '<div style="background:#E8F0FE;border-radius:8px;padding:10px 14px">' +
+            '<div style="font-size:10px;color:#1967D2;font-weight:700;text-transform:uppercase">Total Amount</div>' +
+            '<div style="font-size:18px;font-weight:800;color:#1967D2;margin-top:4px">₹' + _ruFmt(totalAmt) + '</div>' +
+          '</div>' +
+          '<div style="background:#E6F4EA;border-radius:8px;padding:10px 14px">' +
+            '<div style="font-size:10px;color:#137333;font-weight:700;text-transform:uppercase">Total Paid</div>' +
+            '<div style="font-size:18px;font-weight:800;color:#137333;margin-top:4px">₹' + _ruFmt(totalPaid) + '</div>' +
+          '</div>' +
+          '<div style="background:#FCE8E6;border-radius:8px;padding:10px 14px">' +
+            '<div style="font-size:10px;color:#C5221F;font-weight:700;text-transform:uppercase">Pending</div>' +
+            '<div style="font-size:18px;font-weight:800;color:#C5221F;margin-top:4px">₹' + _ruFmt(totalPending) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="tbl-wrap">' +
+          '<table class="tbl"><thead><tr>' +
+            '<th style="text-align:center">#</th><th>Date</th><th>Item</th><th class="num">Qty</th>' +
+            '<th class="num">Amount</th><th class="num">Paid</th><th class="num">Pending</th><th style="text-align:center">Age</th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table>' +
+        '</div>';
+    })
+    .getRetailEntriesForCustomer(customerName);
+}
+
+function closeRetailStatement() {
+  document.getElementById('retail-stmt-modal').classList.remove('show');
+}
+
+function _rstmtPay() {
+  if (!_rstmtCustomer) return;
+  closeRetailStatement();
+  setTimeout(function() { _rptQuickPay(_rstmtCustomer); }, 200);
+}
+
+function _rstmtPrint() {
+  var body = document.getElementById('rstmt-body').innerHTML;
+  var customer = _rstmtCustomer;
+  var w = window.open('', '_blank');
+  w.document.write(
+    '<html><head><title>Statement — ' + customer + '</title>' +
+    '<style>' +
+    'body{font-family:Inter,Arial,sans-serif;padding:20px;color:#1e293b}' +
+    'h2{margin-bottom:4px}' +
+    '.meta{color:#64748b;font-size:12px;margin-bottom:20px}' +
+    'table{width:100%;border-collapse:collapse;font-size:12px}' +
+    'th{background:#F8FAFC;padding:8px;text-align:left;border-bottom:2px solid #E2E8F0;font-size:10px;text-transform:uppercase;color:#64748b}' +
+    'td{padding:8px;border-bottom:1px solid #F1F5F9}' +
+    '.num{text-align:right}' +
+    '</style></head><body>' +
+    '<h2>Retail Statement — ' + customer + '</h2>' +
+    '<div class="meta">Generated on ' + new Date().toLocaleString('en-IN') + '</div>' +
+    body +
+    '<div style="margin-top:24px;font-size:11px;color:#94A3B8;text-align:center">— Fresko Retail Statement —</div>' +
+    '</body></html>'
+  );
+  w.document.close();
+  setTimeout(function() { w.print(); }, 300);
+}
+
+// Hook into renderRetailSales — also refresh outstanding card
+var _origRenderRetailSales2 = renderRetailSales;
+renderRetailSales = function() {
+  _origRenderRetailSales2.apply(this, arguments);
+  _refreshRetailOutstanding();
+};
+
+
+
+
 
