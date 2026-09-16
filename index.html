@@ -63,18 +63,19 @@
       padding: 0
     }
 
-.card, .stat-card, .tbl-wrap {
-  contain: layout style paint;
-}
+    .card,
+    .stat-card,
+    .tbl-wrap {
+      contain: layout style paint;
+    }
 
-    .modal-box, .edit-drawer {
-  will-change: transform, opacity;
-}
+    .modal-box,
+    .edit-drawer {
+      will-change: transform, opacity;
+    }
 
-<img src="..." loading="lazy" decoding="async">
 
-    
-    
+
     :root {
       /* Google brand palette — mapped onto the app's existing semantic roles:
          primary/action = Google Blue, success/paid = Google Green,
@@ -5485,7 +5486,7 @@
             Follow-up</div>
           <button class="modal-close" onclick="closeFUModal()"><i class="fas fa-times"></i></button>
         </div>
-        <div id="rp-tab-invoice-content"></div>
+
         <div class="modal-body">
           <div class="form-row">
             <div class="form-group">
@@ -5595,7 +5596,7 @@
         <button class="modal-close" onclick="closePartyModal()" style="color:#94A3B8"><i
             class="fas fa-times"></i></button>
       </div>
-      <div id="rp-tab-invoice-content"></div>
+
       <div class="modal-body">
         <div class="g4" style="margin-bottom:16px">
           <div class="stat-card sc-slate" style="padding:12px">
@@ -5761,7 +5762,7 @@
       });
     }
 
-    oninput="_debouncedRenderParties()"
+    
   </script>
 
 </body>
