@@ -3,7 +3,8 @@
 <head>
   <base target="_top">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>Fresko Payment Follow-up</title>
   <meta name="theme-color" content="#005F73">
   <meta name="description" content="Fresko — Payment Follow-up & Collections System">
@@ -25,11 +26,11 @@
       theme: {
         extend: {
           colors: {
-            'g-blue':   { DEFAULT: '#4285F4', dark: '#1967D2', light: '#E8F0FE' },
-            'g-red':    { DEFAULT: '#EA4335', dark: '#C5221F', light: '#FCE8E6' },
-            'g-yellow': { DEFAULT: '#FBBC05', dark: '#F29900', light: '#FEF7E0' },
-            'g-green':  { DEFAULT: '#34A853', dark: '#188038', light: '#E6F4EA' },
-            'fresko-teal': { DEFAULT: '#0E7C86', dark: '#075E66', light: '#E6F5F5' },
+            'g-blue': {DEFAULT: '#4285F4', dark: '#1967D2', light: '#E8F0FE'},
+            'g-red': {DEFAULT: '#EA4335', dark: '#C5221F', light: '#FCE8E6'},
+            'g-yellow': {DEFAULT: '#FBBC05', dark: '#F29900', light: '#FEF7E0'},
+            'g-green': {DEFAULT: '#34A853', dark: '#188038', light: '#E6F4EA'},
+            'fresko-teal': {DEFAULT: '#0E7C86', dark: '#075E66', light: '#E6F5F5'},
             'fresko-leaf': '#8BC53F'
           }
         }
@@ -107,8 +108,8 @@
       --sidebar-w: 260px;
       --topbar-h: 64px;
       --radius: 14px;
-      --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     }
 
     html,
@@ -768,17 +769,45 @@
       margin-top: 6px
     }
 
-    .sc-red { border-top: 4px solid var(--red); }
-    .sc-amber { border-top: 4px solid var(--amber); }
-    .sc-green { border-top: 4px solid var(--green); }
-    .sc-blue { border-top: 4px solid var(--blue); }
-    .sc-slate { border-top: 4px solid var(--slate); }
+    .sc-red {
+      border-top: 4px solid var(--red);
+    }
 
-    .sc-red .stat-val { color: var(--red); }
-    .sc-amber .stat-val { color: var(--amber); }
-    .sc-green .stat-val { color: var(--green); }
-    .sc-blue .stat-val { color: var(--blue); }
-    .sc-slate .stat-val { color: var(--slate); }
+    .sc-amber {
+      border-top: 4px solid var(--amber);
+    }
+
+    .sc-green {
+      border-top: 4px solid var(--green);
+    }
+
+    .sc-blue {
+      border-top: 4px solid var(--blue);
+    }
+
+    .sc-slate {
+      border-top: 4px solid var(--slate);
+    }
+
+    .sc-red .stat-val {
+      color: var(--red);
+    }
+
+    .sc-amber .stat-val {
+      color: var(--amber);
+    }
+
+    .sc-green .stat-val {
+      color: var(--green);
+    }
+
+    .sc-blue .stat-val {
+      color: var(--blue);
+    }
+
+    .sc-slate .stat-val {
+      color: var(--slate);
+    }
 
     .g2 {
       display: grid;
@@ -877,19 +906,89 @@
       letter-spacing: 0.02em;
     }
 
-    .badge-paid { background: #DCFCE7; color: #137333; border: 1px solid #A8DAB5; }
-    .badge-pending { background: #DBEAFE; color: #1E40AF; border: 1px solid #BFDBFE; }
-    .badge-partpaid { background: #FEEFC3; color: #854D0E; border: 1px solid #FDE293; }
-    .badge-overdue { background: #FAD2CF; color: #991B1B; border: 1px solid #F6AEA9; }
-    .badge-active { background: #DCFCE7; color: #137333; border: 1px solid #A8DAB5; }
-    .badge-inactive { background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB; }
-    .badge-high { background: #FAD2CF; color: #991B1B; border: 1px solid #F6AEA9; }
-    .badge-medium { background: #FEEFC3; color: #854D0E; border: 1px solid #FDE293; }
-    .badge-low { background: #E6F4EA; color: #137333; border: 1px solid #A8DAB5; }
+    .badge-paid {
+      background: #DCFCE7;
+      color: #137333;
+      border: 1px solid #A8DAB5;
+    }
 
-    .slab-15 { background: #E6F4EA; color: #1E8E3E; border: 1px solid #D1FAE5; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 2px 8px; }
-    .slab-1 { background: #FEF7E0; color: #F9AB00; border: 1px solid #FEF3C7; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 2px 8px; }
-    .slab-0 { background: #F9FAFB; color: #6B7280; border: 1px solid #F3F4F6; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 2px 8px; }
+    .badge-pending {
+      background: #DBEAFE;
+      color: #1E40AF;
+      border: 1px solid #BFDBFE;
+    }
+
+    .badge-partpaid {
+      background: #FEEFC3;
+      color: #854D0E;
+      border: 1px solid #FDE293;
+    }
+
+    .badge-overdue {
+      background: #FAD2CF;
+      color: #991B1B;
+      border: 1px solid #F6AEA9;
+    }
+
+    .badge-active {
+      background: #DCFCE7;
+      color: #137333;
+      border: 1px solid #A8DAB5;
+    }
+
+    .badge-inactive {
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid #E5E7EB;
+    }
+
+    .badge-high {
+      background: #FAD2CF;
+      color: #991B1B;
+      border: 1px solid #F6AEA9;
+    }
+
+    .badge-medium {
+      background: #FEEFC3;
+      color: #854D0E;
+      border: 1px solid #FDE293;
+    }
+
+    .badge-low {
+      background: #E6F4EA;
+      color: #137333;
+      border: 1px solid #A8DAB5;
+    }
+
+    .slab-15 {
+      background: #E6F4EA;
+      color: #1E8E3E;
+      border: 1px solid #D1FAE5;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+    }
+
+    .slab-1 {
+      background: #FEF7E0;
+      color: #F9AB00;
+      border: 1px solid #FEF3C7;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+    }
+
+    .slab-0 {
+      background: #F9FAFB;
+      color: #6B7280;
+      border: 1px solid #F3F4F6;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+    }
 
     .btn {
       display: inline-flex;
@@ -916,25 +1015,69 @@
       transform: translateY(0);
     }
 
-    .btn-primary { background: var(--red); color: #fff; border-color: var(--red); }
-    .btn-primary:hover { background: var(--red-d); }
-    
-    .btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
-    .btn-secondary:hover { background: #F8FAFC; border-color: #CBD5E1; }
-    
-    .btn-green { background: #34A853; color: #fff; }
-    .btn-green:hover { background: #1E8E3E; }
+    .btn-primary {
+      background: var(--red);
+      color: #fff;
+      border-color: var(--red);
+    }
 
-    .btn-amber { background: #FBBC05; color: #fff; }
-    .btn-amber:hover { background: #F9AB00; }
+    .btn-primary:hover {
+      background: var(--red-d);
+    }
 
-    .btn-blue { background: #4285F4; color: #fff; }
-    .btn-blue:hover { background: #2563EB; }
+    .btn-secondary {
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
 
-    .btn-ghost { background: transparent; color: var(--muted); }
-    .btn-ghost:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+    .btn-secondary:hover {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+    }
 
-    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+    .btn-green {
+      background: #34A853;
+      color: #fff;
+    }
+
+    .btn-green:hover {
+      background: #1E8E3E;
+    }
+
+    .btn-amber {
+      background: #FBBC05;
+      color: #fff;
+    }
+
+    .btn-amber:hover {
+      background: #F9AB00;
+    }
+
+    .btn-blue {
+      background: #4285F4;
+      color: #fff;
+    }
+
+    .btn-blue:hover {
+      background: #2563EB;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
 
     .btn:disabled {
       opacity: .5;
@@ -1259,8 +1402,15 @@
     }
 
     @keyframes modalIn {
-      from { opacity: 0; transform: scale(0.95) translateY(10px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
     }
 
     .modal-box.modal-lg {
@@ -1343,7 +1493,7 @@
       background: var(--dark);
       color: #fff;
       border-color: var(--dark);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     }
 
     .fpill.active.red {
@@ -1699,47 +1849,229 @@
       transform: scale(1.08);
     }
 
-    .act-btn.ab-fu:hover  { border-color: #4285F4; background: #E8F0FE; color: #4285F4; }
-    .act-btn.ab-pay:hover { border-color: #34A853; background: #E6F4EA; color: #34A853; }
-    .act-btn.ab-view:hover { border-color: #64748B; background: #F8FAFC; }
-    .act-btn.ab-call:hover { border-color: #4285F4; background: #E8F0FE; }
-    .act-btn.ab-wa:hover   { border-color: #25D366; background: #E6F4EA; }
-    .act-btn.ab-edit { color: #7C3AED; }
-    .act-btn.ab-edit:hover { border-color: #7C3AED; background: #F5F3FF; color: #7C3AED; }
+    .act-btn.ab-fu:hover {
+      border-color: #4285F4;
+      background: #E8F0FE;
+      color: #4285F4;
+    }
+
+    .act-btn.ab-pay:hover {
+      border-color: #34A853;
+      background: #E6F4EA;
+      color: #34A853;
+    }
+
+    .act-btn.ab-view:hover {
+      border-color: #64748B;
+      background: #F8FAFC;
+    }
+
+    .act-btn.ab-call:hover {
+      border-color: #4285F4;
+      background: #E8F0FE;
+    }
+
+    .act-btn.ab-wa:hover {
+      border-color: #25D366;
+      background: #E6F4EA;
+    }
+
+    .act-btn.ab-edit {
+      color: #7C3AED;
+    }
+
+    .act-btn.ab-edit:hover {
+      border-color: #7C3AED;
+      background: #F5F3FF;
+      color: #7C3AED;
+    }
 
     /* ── Edit Drawer ─────────────────────────────────── */
     .edit-drawer-overlay {
-      display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);
-      z-index:1100;backdrop-filter:blur(2px);
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .45);
+      z-index: 1100;
+      backdrop-filter: blur(2px);
     }
-    .edit-drawer-overlay.show { display:flex;justify-content:flex-end; }
+
+    .edit-drawer-overlay.show {
+      display: flex;
+      justify-content: flex-end;
+    }
+
     .edit-drawer {
-      width:480px;max-width:100vw;height:100vh;background:#fff;
-      display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,.15);
-      animation:drawerIn .22s ease;
+      width: 480px;
+      max-width: 100vw;
+      height: 100vh;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 32px rgba(0, 0, 0, .15);
+      animation: drawerIn .22s ease;
     }
-    @keyframes drawerIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+
+    @keyframes drawerIn {
+      from {
+        transform: translateX(100%)
+      }
+
+      to {
+        transform: translateX(0)
+      }
+    }
+
     .edit-drawer-head {
-      padding:18px 20px 14px;border-bottom:1px solid #E2E8F0;
-      display:flex;align-items:center;gap:10px;flex-shrink:0;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
     }
-    .edit-drawer-icon { width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0; }
-    .edit-drawer-title { font-size:15px;font-weight:700;color:#0F172A;flex:1; }
-    .edit-drawer-sub   { font-size:11px;color:var(--muted);margin-top:1px; }
-    .edit-drawer-close { width:32px;height:32px;border-radius:8px;border:1px solid #E2E8F0;background:#F8FAFC;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#64748B;flex-shrink:0; }
-    .edit-drawer-close:hover { background:#FAD2CF;border-color:#F6AEA9;color:var(--red); }
-    .edit-drawer-body { flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px; }
-    .edit-drawer-footer { padding:14px 20px;border-top:1px solid #E2E8F0;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#FAFAFA; }
-    .edit-section-title { font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.8px;text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid #F1F5F9; }
-    .edit-field { display:flex;flex-direction:column;gap:4px; }
-    .edit-field label { font-size:12px;font-weight:600;color:#374151; }
-    .edit-field input,.edit-field select,.edit-field textarea { padding:8px 10px;border:1px solid #E2E8F0;border-radius:7px;font-size:13px;color:#0F172A;outline:none;transition:border .15s;background:#fff;width:100%;box-sizing:border-box; }
-    .edit-field input:focus,.edit-field select:focus,.edit-field textarea:focus { border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,237,.08); }
-    .edit-field textarea { resize:vertical;min-height:72px; }
-    .edit-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
-    .edit-grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px; }
-    .edit-hint { font-size:10px;color:#94A3B8;margin-top:1px; }
-    .edit-badge-row { background:#F8FAFC;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border:1px solid #E2E8F0;font-size:12px; }
+
+    .edit-drawer-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .edit-drawer-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0F172A;
+      flex: 1;
+    }
+
+    .edit-drawer-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .edit-drawer-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #64748B;
+      flex-shrink: 0;
+    }
+
+    .edit-drawer-close:hover {
+      background: #FAD2CF;
+      border-color: #F6AEA9;
+      color: var(--red);
+    }
+
+    .edit-drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .edit-drawer-footer {
+      padding: 14px 20px;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-shrink: 0;
+      background: #FAFAFA;
+    }
+
+    .edit-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: #94A3B8;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .edit-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .edit-field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .edit-field input,
+    .edit-field select,
+    .edit-field textarea {
+      padding: 8px 10px;
+      border: 1px solid #E2E8F0;
+      border-radius: 7px;
+      font-size: 13px;
+      color: #0F172A;
+      outline: none;
+      transition: border .15s;
+      background: #fff;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .edit-field input:focus,
+    .edit-field select:focus,
+    .edit-field textarea:focus {
+      border-color: #7C3AED;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, .08);
+    }
+
+    .edit-field textarea {
+      resize: vertical;
+      min-height: 72px;
+    }
+
+    .edit-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .edit-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .edit-hint {
+      font-size: 10px;
+      color: #94A3B8;
+      margin-top: 1px;
+    }
+
+    .edit-badge-row {
+      background: #F8FAFC;
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #E2E8F0;
+      font-size: 12px;
+    }
 
 
     .overdue-age {
@@ -1751,11 +2083,34 @@
       border-radius: 99px;
     }
 
-    .age-1 { background: #FEEFC3; color: #EA8600; border: 1px solid #FDE293; }
-    .age-2 { background: #FED7AA; color: #C2410C; border: 1px solid #FDBA74; }
-    .age-3 { background: #FAD2CF; color: #DC2626; border: 1px solid #F6AEA9; }
-    .age-4 { background: #F6AEA9; color: #C5221F; border: 1px solid #FCA5A5; }
-    .age-5 { background: #EA4335; color: #fff; }
+    .age-1 {
+      background: #FEEFC3;
+      color: #EA8600;
+      border: 1px solid #FDE293;
+    }
+
+    .age-2 {
+      background: #FED7AA;
+      color: #C2410C;
+      border: 1px solid #FDBA74;
+    }
+
+    .age-3 {
+      background: #FAD2CF;
+      color: #DC2626;
+      border: 1px solid #F6AEA9;
+    }
+
+    .age-4 {
+      background: #F6AEA9;
+      color: #C5221F;
+      border: 1px solid #FCA5A5;
+    }
+
+    .age-5 {
+      background: #EA4335;
+      color: #fff;
+    }
 
 
     /* -- LOGIN PAGE STYLES ------------------------------------ */
@@ -1800,8 +2155,15 @@
     }
 
     @keyframes cardIn {
-      from { opacity: 0; transform: translateY(18px); }
-      to   { opacity: 1; transform: none; }
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
     }
 
     /* Red top accent bar */
@@ -2196,8 +2558,15 @@
     }
 
     @keyframes viewIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* ============================================================
@@ -2212,117 +2581,268 @@
 
     /* ── Base Layout ─────────────────────────────────────────── */
     #shell {
-      display: flex; width: 100vw; height: 100vh;
-      overflow: hidden; background: var(--bg);
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
     }
+
     #main {
-      flex: 1; display: flex; flex-direction: column;
-      min-width: 0; width: 100%; height: 100%; overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
     }
+
     #content {
-      flex: 1; overflow-y: auto; padding: 24px; width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      width: 100%;
     }
 
     /* View transition */
-    .view { display: none; }
+    .view {
+      display: none;
+    }
+
     .view.active {
       display: block;
       animation: viewIn 0.22s ease both;
     }
+
     @keyframes viewIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* ── Mobile drawer backdrop ───────────────────────────────── */
     #sb-backdrop {
       display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.45);
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
       z-index: 9998;
       backdrop-filter: blur(2px);
       -webkit-backdrop-filter: blur(2px);
     }
-    #sb-backdrop.show { display: block; }
+
+    #sb-backdrop.show {
+      display: block;
+    }
 
     /* ── Sidebar mobile open ──────────────────────────────────── */
     #sb.mobile-show {
       left: 0 !important;
-      box-shadow: 12px 0 60px rgba(0,0,0,0.55);
+      box-shadow: 12px 0 60px rgba(0, 0, 0, 0.55);
     }
 
     /* ══════════════════════════════════════════════════════════
        LARGE DESKTOP  > 1280px  — full sidebar
        ══════════════════════════════════════════════════════════ */
     @media (min-width: 1281px) {
-      #sb { width: 260px; }
-      .g2 { grid-template-columns: repeat(2,1fr); }
-      .g3 { grid-template-columns: repeat(3,1fr); }
-      .g4 { grid-template-columns: repeat(4,1fr); }
-      .g5 { grid-template-columns: repeat(5,1fr); }
-      #content { padding: 28px; }
+      #sb {
+        width: 260px;
+      }
+
+      .g2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .g3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .g4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .g5 {
+        grid-template-columns: repeat(5, 1fr);
+      }
+
+      #content {
+        padding: 28px;
+      }
     }
 
     /* ══════════════════════════════════════════════════════════
        SMALL DESKTOP  1025px – 1280px  — icon sidebar
        ══════════════════════════════════════════════════════════ */
     @media (min-width: 1025px) and (max-width: 1280px) {
-      #sb:not(.mobile-show) { width: 64px !important; min-width: 64px !important; }
+      #sb:not(.mobile-show) {
+        width: 64px !important;
+        min-width: 64px !important;
+      }
+
       #sb:not(.mobile-show) .sb-lbl,
       #sb:not(.mobile-show) .sb-logo-text,
       #sb:not(.mobile-show) .sb-user-meta,
       #sb:not(.mobile-show) .sb-logout-lbl,
       #sb:not(.mobile-show) .sb-section-label,
-      #sb:not(.mobile-show) .sb-collapse-btn { display: none !important; }
-      #sb:not(.mobile-show) .sb-header { padding: 0; justify-content: center; }
-      #sb:not(.mobile-show) .sb-logo-box { width: 44px; height: 44px; padding: 0; justify-content: center; }
-      #sb:not(.mobile-show) #sb-logo-full { display: none !important; }
-      #sb:not(.mobile-show) #sb-logo-mini { display: flex !important; }
-      #sb:not(.mobile-show) .sb-nav-item { justify-content: center; padding: 10px 0; margin: 2px 8px; width: 48px; }
-      #sb:not(.mobile-show) .sb-nav-item i { font-size: 16px; width: auto; margin: 0; }
-      #sb:not(.mobile-show) .sb-badge {
-        position: absolute; top: 4px; right: 4px;
-        min-width: 15px; height: 15px; padding: 0 3px; font-size: 8px;
-        display: flex; align-items: center; justify-content: center;
-        border-radius: 8px; border: 2px solid #0F172A;
+      #sb:not(.mobile-show) .sb-collapse-btn {
+        display: none !important;
       }
-      #sb:not(.mobile-show) .sb-user-card { width: 48px; justify-content: center; padding: 8px 0; margin: 0 auto 8px; background: none; border: none; }
-      #sb:not(.mobile-show) .sb-logout-btn { width: 48px; justify-content: center; padding: 8px 0; margin: 0 auto; }
-      .g4, .g5 { grid-template-columns: repeat(2,1fr) !important; }
-      #content { padding: 20px; }
+
+      #sb:not(.mobile-show) .sb-header {
+        padding: 0;
+        justify-content: center;
+      }
+
+      #sb:not(.mobile-show) .sb-logo-box {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        justify-content: center;
+      }
+
+      #sb:not(.mobile-show) #sb-logo-full {
+        display: none !important;
+      }
+
+      #sb:not(.mobile-show) #sb-logo-mini {
+        display: flex !important;
+      }
+
+      #sb:not(.mobile-show) .sb-nav-item {
+        justify-content: center;
+        padding: 10px 0;
+        margin: 2px 8px;
+        width: 48px;
+      }
+
+      #sb:not(.mobile-show) .sb-nav-item i {
+        font-size: 16px;
+        width: auto;
+        margin: 0;
+      }
+
+      #sb:not(.mobile-show) .sb-badge {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        min-width: 15px;
+        height: 15px;
+        padding: 0 3px;
+        font-size: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 2px solid #0F172A;
+      }
+
+      #sb:not(.mobile-show) .sb-user-card {
+        width: 48px;
+        justify-content: center;
+        padding: 8px 0;
+        margin: 0 auto 8px;
+        background: none;
+        border: none;
+      }
+
+      #sb:not(.mobile-show) .sb-logout-btn {
+        width: 48px;
+        justify-content: center;
+        padding: 8px 0;
+        margin: 0 auto;
+      }
+
+      .g4,
+      .g5 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+
+      #content {
+        padding: 20px;
+      }
     }
 
     /* ══════════════════════════════════════════════════════════
        TABLET  769px – 1024px  — 200px sidebar, 2-col grids
        ══════════════════════════════════════════════════════════ */
     @media (min-width: 769px) and (max-width: 1024px) {
-      :root { --sidebar-w: 200px; --topbar-h: 58px; }
-      #sb { width: 200px !important; }
+      :root {
+        --sidebar-w: 200px;
+        --topbar-h: 58px;
+      }
+
+      #sb {
+        width: 200px !important;
+      }
 
       /* Slightly smaller sidebar text */
-      .sb-lbl { font-size: 11.5px !important; }
-      .sb-nav-item { padding: 9px 12px; margin: 2px 8px; font-size: 12px; }
-      .sb-section-label { font-size: 8.5px; }
+      .sb-lbl {
+        font-size: 11.5px !important;
+      }
+
+      .sb-nav-item {
+        padding: 9px 12px;
+        margin: 2px 8px;
+        font-size: 12px;
+      }
+
+      .sb-section-label {
+        font-size: 8.5px;
+      }
 
       /* Grids */
-      .g3 { grid-template-columns: repeat(2,1fr) !important; }
-      .g4, .g5 { grid-template-columns: repeat(2,1fr) !important; }
-      .g2 { grid-template-columns: repeat(2,1fr) !important; }
+      .g3 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+
+      .g4,
+      .g5 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+
+      .g2 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
 
       /* Content */
-      #content { padding: 16px; }
-      #topbar { padding: 0 16px; }
+      #content {
+        padding: 16px;
+      }
+
+      #topbar {
+        padding: 0 16px;
+      }
 
       /* Tables */
-      table.tbl { font-size: 12px; }
-      .tbl td, .tbl th { padding: 9px 10px; }
+      table.tbl {
+        font-size: 12px;
+      }
+
+      .tbl td,
+      .tbl th {
+        padding: 9px 10px;
+      }
 
       /* Cards */
-      .card-p { padding: 16px 18px; }
-      .stat-val { font-size: 22px !important; }
+      .card-p {
+        padding: 16px 18px;
+      }
+
+      .stat-val {
+        font-size: 22px !important;
+      }
 
       /* Page header */
-      .page-title { font-size: 18px; }
+      .page-title {
+        font-size: 18px;
+      }
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -2338,13 +2858,17 @@
       #sb {
         position: fixed;
         left: -280px;
-        top: 0; bottom: 0;
+        top: 0;
+        bottom: 0;
         width: 280px !important;
         z-index: 9999;
-        transition: left 0.28s cubic-bezier(0.4,0,0.2,1);
+        transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: none;
       }
-      #sb.collapsed { width: 280px !important; }
+
+      #sb.collapsed {
+        width: 280px !important;
+      }
 
       /* Always show labels inside the drawer */
       #sb.collapsed .sb-lbl,
@@ -2356,7 +2880,9 @@
       #sb.collapsed .sb-logout-lbl,
       #sb .sb-logout-lbl,
       #sb.collapsed .sb-section-label,
-      #sb .sb-section-label { display: block !important; }
+      #sb .sb-section-label {
+        display: block !important;
+      }
 
       #sb .sb-nav-item {
         justify-content: flex-start !important;
@@ -2365,64 +2891,168 @@
         width: auto !important;
         gap: 12px !important;
       }
-      #sb .sb-nav-item i { font-size: 16px !important; width: 20px !important; }
-      #sb.collapsed .sb-collapse-btn { display: none; }
 
-      #main { margin-left: 0; }
+      #sb .sb-nav-item i {
+        font-size: 16px !important;
+        width: 20px !important;
+      }
+
+      #sb.collapsed .sb-collapse-btn {
+        display: none;
+      }
+
+      #main {
+        margin-left: 0;
+      }
 
       /* Hide non-essential topbar items */
-      .hide-sm { display: none !important; }
-      .tb-breadcrumb { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .hide-sm {
+        display: none !important;
+      }
+
+      .tb-breadcrumb {
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
       /* Topbar */
-      #topbar { padding: 0 12px; height: var(--topbar-h); }
+      #topbar {
+        padding: 0 12px;
+        height: var(--topbar-h);
+      }
 
       /* Content */
-      #content { padding: 12px; }
+      #content {
+        padding: 12px;
+      }
 
       /* All grids → single column */
-      .g2, .g3, .g4, .g5 { grid-template-columns: 1fr !important; }
-      .form-row, .form-row-3 { grid-template-columns: 1fr !important; }
+      .g2,
+      .g3,
+      .g4,
+      .g5 {
+        grid-template-columns: 1fr !important;
+      }
+
+      .form-row,
+      .form-row-3 {
+        grid-template-columns: 1fr !important;
+      }
 
       /* Page header */
-      .page-hd { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 16px; }
-      .page-title { font-size: 18px; }
-      .page-actions { width: 100%; }
-      .page-actions .btn { width: 100%; justify-content: center; }
+      .page-hd {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .page-title {
+        font-size: 18px;
+      }
+
+      .page-actions {
+        width: 100%;
+      }
+
+      .page-actions .btn {
+        width: 100%;
+        justify-content: center;
+      }
 
       /* Cards */
-      .card-p { padding: 14px; }
-      .stat-card { padding: 14px; }
-      .stat-card:hover { transform: none; box-shadow: var(--shadow); }
-      .stat-val { font-size: 22px !important; }
-      .stat-label { font-size: 10px; }
+      .card-p {
+        padding: 14px;
+      }
+
+      .stat-card {
+        padding: 14px;
+      }
+
+      .stat-card:hover {
+        transform: none;
+        box-shadow: var(--shadow);
+      }
+
+      .stat-val {
+        font-size: 22px !important;
+      }
+
+      .stat-label {
+        font-size: 10px;
+      }
 
       /* Tables — horizontal scroll */
-      .tbl-wrap { border-radius: 10px; }
-      table.tbl { min-width: 640px; font-size: 12px; }
-      .tbl td, .tbl th { padding: 9px 10px; }
-      .act-btn { width: 30px; height: 30px; font-size: 12px; }
+      .tbl-wrap {
+        border-radius: 10px;
+      }
+
+      table.tbl {
+        min-width: 640px;
+        font-size: 12px;
+      }
+
+      .tbl td,
+      .tbl th {
+        padding: 9px 10px;
+      }
+
+      .act-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+      }
 
       /* Modals */
-      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+      }
+
       .modal-box {
         border-radius: 20px 20px 0 0 !important;
         max-height: 90vh !important;
         width: 100% !important;
         max-width: 100% !important;
-        animation: modalUp .3s cubic-bezier(0.34,1.56,0.64,1);
+        animation: modalUp .3s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
+
       @keyframes modalUp {
-        from { opacity:0; transform: translateY(40px); }
-        to   { opacity:1; transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(40px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
-      .modal-hd { padding: 14px 18px; }
-      .modal-body { padding: 16px 18px; }
-      .modal-ft { padding: 14px 18px; gap: 8px; }
-      .modal-ft .btn { flex: 1; justify-content: center; }
+
+      .modal-hd {
+        padding: 14px 18px;
+      }
+
+      .modal-body {
+        padding: 16px 18px;
+      }
+
+      .modal-ft {
+        padding: 14px 18px;
+        gap: 8px;
+      }
+
+      .modal-ft .btn {
+        flex: 1;
+        justify-content: center;
+      }
 
       /* Edit drawer */
-      .edit-drawer { width: 100vw !important; }
+      .edit-drawer {
+        width: 100vw !important;
+      }
 
       /* Filter pills scroll horizontally */
       .filter-row {
@@ -2432,72 +3062,174 @@
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
       }
-      .filter-row::-webkit-scrollbar { display: none; }
-      .fpill { flex-shrink: 0; }
+
+      .filter-row::-webkit-scrollbar {
+        display: none;
+      }
+
+      .fpill {
+        flex-shrink: 0;
+      }
 
       /* Pager */
-      .pager { padding: 10px 12px; }
-      .pager-info { font-size: 11px; }
+      .pager {
+        padding: 10px 12px;
+      }
+
+      .pager-info {
+        font-size: 11px;
+      }
 
       /* Stat cards in overdue view */
-      .g5 .stat-card { padding: 10px 12px; }
+      .g5 .stat-card {
+        padding: 10px 12px;
+      }
     }
 
     /* ══════════════════════════════════════════════════════════
        SMALL PHONE  ≤480px  — ultra compact
        ══════════════════════════════════════════════════════════ */
     @media (max-width: 480px) {
-      :root { --topbar-h: 50px; }
+      :root {
+        --topbar-h: 50px;
+      }
 
-      .co-name { font-size: 17px !important; }
-      .tb-breadcrumb { display: none !important; }
-      #topbar { padding: 0 10px; }
-      #content { padding: 10px; }
+      .co-name {
+        font-size: 17px !important;
+      }
 
-      .stat-val { font-size: 19px !important; }
-      .stat-card { padding: 12px; }
-      .page-title { font-size: 16px; }
+      .tb-breadcrumb {
+        display: none !important;
+      }
 
-      table.tbl { min-width: 560px; font-size: 11px; }
-      .tbl td, .tbl th { padding: 7px 8px; }
-      .act-btn { width: 28px; height: 28px; font-size: 11px; }
+      #topbar {
+        padding: 0 10px;
+      }
 
-      .modal-box { max-height: 95vh !important; }
-      .modal-hd { padding: 12px 14px; }
-      .modal-body { padding: 12px 14px; }
-      .modal-ft { padding: 10px 14px; flex-direction: column; }
-      .modal-ft .btn { width: 100%; }
+      #content {
+        padding: 10px;
+      }
 
-      .btn { padding: 9px 16px; font-size: 12px; }
-      .btn-sm { padding: 5px 10px; font-size: 11px; }
+      .stat-val {
+        font-size: 19px !important;
+      }
+
+      .stat-card {
+        padding: 12px;
+      }
+
+      .page-title {
+        font-size: 16px;
+      }
+
+      table.tbl {
+        min-width: 560px;
+        font-size: 11px;
+      }
+
+      .tbl td,
+      .tbl th {
+        padding: 7px 8px;
+      }
+
+      .act-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+      }
+
+      .modal-box {
+        max-height: 95vh !important;
+      }
+
+      .modal-hd {
+        padding: 12px 14px;
+      }
+
+      .modal-body {
+        padding: 12px 14px;
+      }
+
+      .modal-ft {
+        padding: 10px 14px;
+        flex-direction: column;
+      }
+
+      .modal-ft .btn {
+        width: 100%;
+      }
+
+      .btn {
+        padding: 9px 16px;
+        font-size: 12px;
+      }
+
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
 
       /* Login card */
-      #login-wrapper .card { padding: 28px 20px 24px; border-radius: 14px; }
-      .logo-box { padding: 6px 14px; }
-      .logo-box img { height: 34px; }
+      #login-wrapper .card {
+        padding: 28px 20px 24px;
+        border-radius: 14px;
+      }
+
+      .logo-box {
+        padding: 6px 14px;
+      }
+
+      .logo-box img {
+        height: 34px;
+      }
     }
 
     /* ══════════════════════════════════════════════════════════
        TOUCH / HOVER improvements
        ══════════════════════════════════════════════════════════ */
     @media (hover: none) {
+
       /* Remove hover transforms on touch — they get stuck */
-      .stat-card:hover { transform: none; }
-      .btn:hover { transform: none; }
-      .sb-nav-item:hover { transform: none; }
-      .act-btn:hover { transform: none; }
+      .stat-card:hover {
+        transform: none;
+      }
+
+      .btn:hover {
+        transform: none;
+      }
+
+      .sb-nav-item:hover {
+        transform: none;
+      }
+
+      .act-btn:hover {
+        transform: none;
+      }
 
       /* Bigger touch targets */
-      .act-btn { width: 34px; height: 34px; }
-      .pager-btn { width: 36px; height: 36px; }
-      .sb-nav-item { padding: 12px 14px; }
+      .act-btn {
+        width: 34px;
+        height: 34px;
+      }
+
+      .pager-btn {
+        width: 36px;
+        height: 36px;
+      }
+
+      .sb-nav-item {
+        padding: 12px 14px;
+      }
     }
 
     /* ══════════════════════════════════════════════════════════
        REDUCED MOTION
        ══════════════════════════════════════════════════════════ */
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
+
+      *,
+      *::before,
+      *::after {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
       }
@@ -2519,6 +3251,7 @@
       width: 100vw;
       overflow: hidden;
     }
+
     body.dark {
       --bg: #0F172A;
       --text: #F8FAFC;
@@ -2527,23 +3260,41 @@
       --sub: #64748B;
       --white: #1E293B;
     }
-    body.dark .card, body.dark .stat-card, body.dark .tbl-wrap, body.dark #topbar, body.dark .modal-content, body.dark input, body.dark select, body.dark textarea {
+
+    body.dark .card,
+    body.dark .stat-card,
+    body.dark .tbl-wrap,
+    body.dark #topbar,
+    body.dark .modal-content,
+    body.dark input,
+    body.dark select,
+    body.dark textarea {
       background: var(--white);
       border-color: var(--border);
       color: var(--text);
     }
+
     body.dark table.tbl th {
       background: #0F172A;
       border-bottom-color: var(--border);
     }
+
     body.dark table.tbl tr:hover td {
       background: #334155;
     }
+
     body.dark table.tbl td {
       border-bottom-color: #1E293B;
     }
-    body.dark .tb-btn:hover { background: #334155; }
-    body.dark .page-title, body.dark .stat-val { color: var(--text); }
+
+    body.dark .tb-btn:hover {
+      background: #334155;
+    }
+
+    body.dark .page-title,
+    body.dark .stat-val {
+      color: var(--text);
+    }
   </style>
 </head>
 
@@ -2634,7 +3385,8 @@
           <div class="sb-logo-box" id="sb-logo-box">
 
             <div id="sb-logo-full" style="display:flex;align-items:center;height:100%">
-              <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko" style="height:28px;width:auto;display:block">
+              <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko"
+                style="height:28px;width:auto;display:block">
             </div>
 
             <div id="sb-logo-mini"
@@ -2675,20 +3427,21 @@
           <div class="sb-nav-item" id="nav-invoices" data-tip="All Invoices" onclick="nav('invoices')"><i
               class="fas fa-file-invoice"></i><span class="sb-lbl">All Invoices</span></div>
           <div class="sb-nav-item" id="nav-pending" data-tip="Pending Invoices" onclick="nav('pending')"><i
-              class="fas fa-file-invoice-dollar" style="color:#F9AB00"></i><span class="sb-lbl">Pending Invoices</span></div>
+              class="fas fa-file-invoice-dollar" style="color:#F9AB00"></i><span class="sb-lbl">Pending Invoices</span>
+          </div>
           <div class="sb-nav-item" id="nav-addInvoice" data-tip="New Invoice" onclick="nav('addInvoice')"><i
               class="fas fa-file-invoice-dollar"></i><span class="sb-lbl">New Invoice</span></div>
           <div class="sb-nav-item" id="nav-upload" data-tip="CSV Upload" onclick="nav('upload')"><i
               class="fas fa-file-upload"></i><span class="sb-lbl">CSV Upload</span></div>
 
           <div class="sb-nav-divider"></div>
-<div class="sb-section-label">Retail Sales</div>
-<div class="sb-nav-item" id="nav-retailUpload" data-tip="Retail Upload" onclick="nav('retailUpload')">
-  <i class="fas fa-store"></i><span class="sb-lbl">Retail Upload</span>
-</div>
-<div class="sb-nav-item" id="nav-retailSales" data-tip="Retail Sales" onclick="nav('retailSales')">
-  <i class="fas fa-receipt"></i><span class="sb-lbl">Retail Sales</span>
-</div>
+          <div class="sb-section-label">Retail Sales</div>
+          <div class="sb-nav-item" id="nav-retailUpload" data-tip="Retail Upload" onclick="nav('retailUpload')">
+            <i class="fas fa-store"></i><span class="sb-lbl">Retail Upload</span>
+          </div>
+          <div class="sb-nav-item" id="nav-retailSales" data-tip="Retail Sales" onclick="nav('retailSales')">
+            <i class="fas fa-receipt"></i><span class="sb-lbl">Retail Sales</span>
+          </div>
 
           <div class="sb-nav-divider"></div>
           <div class="sb-section-label">s</div>
@@ -2709,7 +3462,8 @@
           <div class="sb-nav-item" id="nav-latepay" data-tip="Late Payments" onclick="nav('latepay')"><i
               class="fas fa-clock" style="color:#F9AB00"></i><span class="sb-lbl">Late Payments</span></div>
           <div class="sb-nav-item" id="nav-recPayment" data-tip="Record Payment" onclick="openRPModal()"><i
-              class="fas fa-indian-rupee-sign" style="color:#4ADE80"></i><span class="sb-lbl">Record Payment</span></div>
+              class="fas fa-indian-rupee-sign" style="color:#4ADE80"></i><span class="sb-lbl">Record Payment</span>
+          </div>
 
           <div class="sb-nav-divider"></div>
           <div class="sb-section-label">Follow-ups</div>
@@ -2717,8 +3471,9 @@
               class="fas fa-phone-alt"></i><span class="sb-lbl">All Follow-ups</span></div>
           <div class="sb-nav-item" id="nav-promises" data-tip="Promise Tracker" onclick="nav('promises')"><i
               class="fas fa-handshake"></i><span class="sb-lbl">Promise Tracker</span></div>
-          <div class="sb-nav-item nav-admin-only" id="nav-escalations" data-tip="Escalations" onclick="nav('escalations')" style="display:none"><i
-              class="fas fa-arrow-up"></i><span class="sb-lbl">Escalations</span></div>
+          <div class="sb-nav-item nav-admin-only" id="nav-escalations" data-tip="Escalations"
+            onclick="nav('escalations')" style="display:none"><i class="fas fa-arrow-up"></i><span
+              class="sb-lbl">Escalations</span></div>
 
           <div class="sb-nav-divider nav-admin-only" style="display:none"></div>
           <div class="sb-section-label nav-admin-only" style="display:none">Reports</div>
@@ -2726,10 +3481,12 @@
             style="display:none"><i class="fas fa-chart-bar"></i><span class="sb-lbl">Reports</span></div>
           <div class="sb-nav-divider nav-admin-only" style="display:none"></div>
           <div class="sb-section-label nav-admin-only" style="display:none">Adjustments</div>
-          <div class="sb-nav-item nav-admin-only" id="nav-discountTBG" data-tip="Discount to be Given" onclick="nav('discountTBG')" style="display:none"><i
-              class="fas fa-tag" style="color:#7C3AED"></i><span class="sb-lbl">Discount TBG</span></div>
-          <div class="sb-nav-item nav-admin-only" id="nav-writeoffs" data-tip="Write-Offs" onclick="nav('writeoffs')" style="display:none"><i
-              class="fas fa-times-circle" style="color:#F9AB00"></i><span class="sb-lbl">Write-Offs</span></div>
+          <div class="sb-nav-item nav-admin-only" id="nav-discountTBG" data-tip="Discount to be Given"
+            onclick="nav('discountTBG')" style="display:none"><i class="fas fa-tag" style="color:#7C3AED"></i><span
+              class="sb-lbl">Discount TBG</span></div>
+          <div class="sb-nav-item nav-admin-only" id="nav-writeoffs" data-tip="Write-Offs" onclick="nav('writeoffs')"
+            style="display:none"><i class="fas fa-times-circle" style="color:#F9AB00"></i><span
+              class="sb-lbl">Write-Offs</span></div>
 
         </nav>
 
@@ -2797,33 +3554,52 @@
             </div>
 
 
+
+
             <div class="g4" style="margin-bottom:14px">
               <div class="stat-card sc-slate">
-                <i class="fas fa-wallet" style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06;transform:rotate(-10deg)"></i>
+                <i class="fas fa-wallet"
+                  style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06;transform:rotate(-10deg)"></i>
                 <div class="stat-label">Total Outstanding</div>
                 <div class="stat-val" id="s-outstanding">₹0</div>
                 <div class="stat-sub" id="s-parties">0 parties</div>
               </div>
               <div class="stat-card sc-red">
-                <i class="fas fa-exclamation-triangle" style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06;transform:rotate(5deg)"></i>
+                <i class="fas fa-exclamation-triangle"
+                  style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06;transform:rotate(5deg)"></i>
                 <div class="stat-label">Overdue</div>
                 <div class="stat-val" id="s-overdue">₹0</div>
                 <div class="stat-sub" id="s-overdue-c">0 invoices</div>
               </div>
               <div class="stat-card sc-amber">
-                <i class="fas fa-calendar-day" style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06"></i>
+                <i class="fas fa-calendar-day"
+                  style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06"></i>
                 <div class="stat-label">Due Today</div>
                 <div class="stat-val" id="s-today">₹0</div>
                 <div class="stat-sub" id="s-today-c">0 invoices</div>
               </div>
               <div class="stat-card sc-green">
-                <i class="fas fa-check-double" style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06"></i>
+                <i class="fas fa-check-double"
+                  style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06"></i>
                 <div class="stat-label">Collected This Month</div>
                 <div class="stat-val" id="s-collected">₹0</div>
                 <div class="stat-sub" id="s-coll-c">0 payments</div>
               </div>
             </div>
 
+
+            <div class="card" style="margin-bottom:16px;border-left:3px solid #7C3AED">
+              <div
+                style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+                <span><i class="fas fa-exclamation-circle" style="color:#7C3AED;margin-right:6px"></i>Retail Outstanding
+                  by Customer</span>
+                <span id="rs-out-total-badge" class="badge"
+                  style="background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;font-size:11px">₹0</span>
+              </div>
+              <div id="rs-outstanding-list" style="padding:8px 14px;max-height:240px;overflow-y:auto">
+                <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading...</div>
+              </div>
+            </div>
 
             <div class="g3" style="margin-bottom:16px">
               <div class="stat-card" style="border-left:3px solid #34A853">
@@ -2966,10 +3742,12 @@
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div class="search-wrap" style="flex:1;min-width:200px">
                 <i class="fas fa-search"></i>
-                <input class="form-input" id="od-search" placeholder="Search party or invoice..." oninput="renderOverdue()">
+                <input class="form-input" id="od-search" placeholder="Search party or invoice..."
+                  oninput="renderOverdue()">
               </div>
               <div id="od-party-sd" style="width:180px"></div>
-              <button class="btn btn-ghost btn-sm" onclick="clearODFilter()" title="Clear"><i class="fas fa-times"></i></button>
+              <button class="btn btn-ghost btn-sm" onclick="clearODFilter()" title="Clear"><i
+                  class="fas fa-times"></i></button>
             </div>
             <div class="card">
               <div class="tbl-wrap">
@@ -3009,7 +3787,8 @@
                   oninput="_debounce(renderParties,300)()">
               </div>
               <div style="display:flex;align-items:center;gap:6px">
-                <select class="form-input" id="party-filter-sel" onchange="setPartyFilterDrop(this.value)" style="width:190px;padding:7px 10px;font-size:12px;border-radius:8px">
+                <select class="form-input" id="party-filter-sel" onchange="setPartyFilterDrop(this.value)"
+                  style="width:190px;padding:7px 10px;font-size:12px;border-radius:8px">
                   <optgroup label="Slab">
                     <option value="ALL">All Parties</option>
                     <option value="15">1.5% Slab</option>
@@ -3229,9 +4008,12 @@
             <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
               <div class="search-wrap" style="flex:1;min-width:200px">
                 <i class="fas fa-search"></i>
-                <input class="form-input" id="pi-search" placeholder="Search party name..." oninput="_debounce(renderPendingSummary,300)()">
+                <input class="form-input" id="pi-search" placeholder="Search party name..."
+                  oninput="_debounce(renderPendingSummary,300)()">
               </div>
-              <button class="btn btn-ghost btn-sm" onclick="(function(){document.getElementById('pi-search').value='';renderPendingSummary();})()" title="Clear"><i class="fas fa-times"></i></button>
+              <button class="btn btn-ghost btn-sm"
+                onclick="(function(){document.getElementById('pi-search').value='';renderPendingSummary();})()"
+                title="Clear"><i class="fas fa-times"></i></button>
             </div>
             <div class="card">
               <div class="tbl-wrap">
@@ -3349,7 +4131,8 @@
             <div class="page-hd">
               <div>
                 <div class="page-title">Invoice Upload</div>
-                <div class="page-sub">Bulk import invoices -- upload the Fresko invoice PDF (from Tally) or a CSV/Excel file</div>
+                <div class="page-sub">Bulk import invoices -- upload the Fresko invoice PDF (from Tally) or a CSV/Excel
+                  file</div>
               </div>
             </div>
             <div style="max-width:760px;margin:0 auto">
@@ -3367,7 +4150,8 @@
                   <div>
                     <div style="font-size:12px;font-weight:700;margin-bottom:1px">Upload your file</div>
                     <div style="font-size:11px;color:var(--muted)">Accepts <b>.pdf</b> (multi-invoice Tally export)
-                      &nbsp;&nbsp; <b>.csv</b> &nbsp;&nbsp; <b>.xlsx</b> &nbsp;&nbsp; <b>.xls</b> -- invoices detected automatically</div>
+                      &nbsp;&nbsp; <b>.csv</b> &nbsp;&nbsp; <b>.xlsx</b> &nbsp;&nbsp; <b>.xls</b> -- invoices detected
+                      automatically</div>
                   </div>
                 </div>
                 <div id="drop-zone" onclick="document.getElementById('csv-inp').click()"
@@ -3378,7 +4162,8 @@
                     style="font-size:30px;color:var(--sub);margin-bottom:8px;display:block"></i>
                   <div style="font-weight:700;color:var(--text);margin-bottom:3px">Click to browse or drag & drop file
                     here</div>
-                  <div style="font-size:11px;color:var(--muted)">.pdf &nbsp;&nbsp;.csv &nbsp;&nbsp;.xlsx &nbsp;&nbsp;.xls
+                  <div style="font-size:11px;color:var(--muted)">.pdf &nbsp;&nbsp;.csv &nbsp;&nbsp;.xlsx
+                    &nbsp;&nbsp;.xls
                     &nbsp;&nbsp;(max 25 MB)</div>
                 </div>
                 <input type="file" id="csv-inp" accept=".pdf,.csv,.xlsx,.xls" style="display:none"
@@ -3396,20 +4181,25 @@
                 </div>
                 <div id="pdf-progress" style="display:none;margin-top:10px">
                   <div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden">
-                    <div id="pdf-progress-bar" style="height:100%;width:0%;background:var(--g-green);transition:width .15s"></div>
+                    <div id="pdf-progress-bar"
+                      style="height:100%;width:0%;background:var(--g-green);transition:width .15s"></div>
                   </div>
-                  <div style="font-size:11px;color:var(--muted);margin-top:4px" id="pdf-progress-txt">Reading PDF...</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px" id="pdf-progress-txt">Reading PDF...
+                  </div>
                 </div>
               </div>
 
 
               <div class="info-box blue" style="margin-bottom:12px">
                 <i class="fas fa-info-circle"></i>
-                <div style="font-size:11px"><b>PDF mode:</b> each invoice page (Invoice No, Invoice Date, Party Name, Invoice Total, Market Charge, Net Amt) is read directly from the Fresko invoice PDF -- no column mapping needed.<br>
-                  <b>CSV/Excel mode -- required columns (auto-detected, any order):</b> DATE  BILL NO.
-                   NET VALUE<br>
-                  Party matched by NAME  Slab auto-fetched from Parties  Due Date auto-calculated
-                   Duplicate Bill/Invoice Nos skipped</div>
+                <div style="font-size:11px"><b>PDF mode:</b> each invoice page (Invoice No, Invoice Date, Party Name,
+                  Invoice Total, Market Charge, Net Amt) is read directly from the Fresko invoice PDF -- no column
+                  mapping needed.<br>
+                  <b>CSV/Excel mode -- required columns (auto-detected, any order):</b> DATE BILL NO.
+                  NET VALUE<br>
+                  Party matched by NAME Slab auto-fetched from Parties Due Date auto-calculated
+                  Duplicate Bill/Invoice Nos skipped
+                </div>
               </div>
 
               <div id="csv-map-box" style="display:none;margin-bottom:14px">
@@ -3464,9 +4254,12 @@
             </div>
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div id="s15-party-sd" style="width:180px;min-width:160px"></div>
-              <input class="form-input" type="date" id="s15-from" onchange="renderSlabDue('15')" style="width:130px;padding:7px 10px" title="From Date">
-              <input class="form-input" type="date" id="s15-to" onchange="renderSlabDue('15')" style="width:130px;padding:7px 10px" title="To Date">
-              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('s15')" title="Clear"><i class="fas fa-times"></i></button>
+              <input class="form-input" type="date" id="s15-from" onchange="renderSlabDue('15')"
+                style="width:130px;padding:7px 10px" title="From Date">
+              <input class="form-input" type="date" id="s15-to" onchange="renderSlabDue('15')"
+                style="width:130px;padding:7px 10px" title="To Date">
+              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('s15')" title="Clear"><i
+                  class="fas fa-times"></i></button>
             </div>
             <div class="card">
               <div class="tbl-wrap">
@@ -3480,7 +4273,10 @@
                       <th class="num">Bill Value (₹)</th>
                       <th class="num">TDS (₹)</th>
                       <th class="num" style="color:#34A853">1.5% Disc (₹)</th>
-                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Expected<br><span style="font-size:10px;color:#34A853">1.5%</span> <span style="font-size:10px;color:#F9AB00">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
+                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">
+                        Expected<br><span style="font-size:10px;color:#34A853">1.5%</span> <span
+                          style="font-size:10px;color:#F9AB00">1%</span> <span
+                          style="font-size:10px;color:#6B7280">Nil</span></th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -3521,9 +4317,12 @@
             </div>
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div id="s1-party-sd" style="width:180px;min-width:160px"></div>
-              <input class="form-input" type="date" id="s1-from" onchange="renderSlabDue('1')" style="width:130px;padding:7px 10px" title="From Date">
-              <input class="form-input" type="date" id="s1-to" onchange="renderSlabDue('1')" style="width:130px;padding:7px 10px" title="To Date">
-              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('s1')" title="Clear"><i class="fas fa-times"></i></button>
+              <input class="form-input" type="date" id="s1-from" onchange="renderSlabDue('1')"
+                style="width:130px;padding:7px 10px" title="From Date">
+              <input class="form-input" type="date" id="s1-to" onchange="renderSlabDue('1')"
+                style="width:130px;padding:7px 10px" title="To Date">
+              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('s1')" title="Clear"><i
+                  class="fas fa-times"></i></button>
             </div>
             <div class="card">
               <div class="tbl-wrap">
@@ -3537,7 +4336,10 @@
                       <th class="num">Bill Value (₹)</th>
                       <th class="num">TDS (₹)</th>
                       <th class="num" style="color:#F9AB00">1% Disc (₹)</th>
-                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Expected<br><span style="font-size:10px;color:#34A853">1.5%</span> <span style="font-size:10px;color:#F9AB00">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
+                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">
+                        Expected<br><span style="font-size:10px;color:#34A853">1.5%</span> <span
+                          style="font-size:10px;color:#F9AB00">1%</span> <span
+                          style="font-size:10px;color:#6B7280">Nil</span></th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -3574,9 +4376,12 @@
             </div>
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div id="sNil-party-sd" style="width:180px;min-width:160px"></div>
-              <input class="form-input" type="date" id="sNil-from" onchange="renderSlabDue('Nil')" style="width:130px;padding:7px 10px" title="From Date">
-              <input class="form-input" type="date" id="sNil-to" onchange="renderSlabDue('Nil')" style="width:130px;padding:7px 10px" title="To Date">
-              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('sNil')" title="Clear"><i class="fas fa-times"></i></button>
+              <input class="form-input" type="date" id="sNil-from" onchange="renderSlabDue('Nil')"
+                style="width:130px;padding:7px 10px" title="From Date">
+              <input class="form-input" type="date" id="sNil-to" onchange="renderSlabDue('Nil')"
+                style="width:130px;padding:7px 10px" title="To Date">
+              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('sNil')" title="Clear"><i
+                  class="fas fa-times"></i></button>
             </div>
             <div class="card">
               <div class="tbl-wrap">
@@ -3589,7 +4394,10 @@
                       <th>Due Date</th>
                       <th class="num">Bill Value (₹)</th>
                       <th class="num">TDS (₹)</th>
-                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Party Pays<br><span style="font-size:10px;color:#1E8E3E">1.5%</span> <span style="font-size:10px;color:#F9AB00">1%</span> <span style="font-size:10px;color:#6B7280">Nil</span></th>
+                      <th class="num" style="color:#475569;white-space:normal;line-height:1.3;min-width:120px">Party
+                        Pays<br><span style="font-size:10px;color:#1E8E3E">1.5%</span> <span
+                          style="font-size:10px;color:#F9AB00">1%</span> <span
+                          style="font-size:10px;color:#6B7280">Nil</span></th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -3630,7 +4438,8 @@
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div class="search-wrap" style="flex:1;min-width:160px">
                 <i class="fas fa-search"></i>
-                <input class="form-input" id="sp-search" placeholder="Search party..." oninput="_debounce(renderShortPay,300)()">
+                <input class="form-input" id="sp-search" placeholder="Search party..."
+                  oninput="_debounce(renderShortPay,300)()">
               </div>
               <input class="form-input" type="date" id="sp-from" onchange="renderShortPay()"
                 style="width:130px;padding:7px 10px" title="From date">
@@ -3679,9 +4488,13 @@
                 <div class="page-sub" id="lp-sub">Payments received after due date -- follow up why delay occurred</div>
               </div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <button class="btn btn-ghost btn-sm" onclick="collapseAllLP()" title="Collapse all parties"><i class="fas fa-compress-alt"></i> Collapse All</button>
-                <button class="btn btn-ghost btn-sm" onclick="expandAllLP()" title="Expand all parties"><i class="fas fa-expand-alt"></i> Expand All</button>
-                <span id="lp-total-badge" class="badge" style="font-size:13px;padding:6px 14px;background:#FEF7E0;color:#F9AB00;border:1px solid #FDD663">0 late</span>
+                <button class="btn btn-ghost btn-sm" onclick="collapseAllLP()" title="Collapse all parties"><i
+                    class="fas fa-compress-alt"></i> Collapse All</button>
+                <button class="btn btn-ghost btn-sm" onclick="expandAllLP()" title="Expand all parties"><i
+                    class="fas fa-expand-alt"></i> Expand All</button>
+                <span id="lp-total-badge" class="badge"
+                  style="font-size:13px;padding:6px 14px;background:#FEF7E0;color:#F9AB00;border:1px solid #FDD663">0
+                  late</span>
               </div>
             </div>
             <div class="info-box amber" style="margin-bottom:14px">
@@ -3692,7 +4505,8 @@
             <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
               <div class="search-wrap" style="flex:1;min-width:180px">
                 <i class="fas fa-search"></i>
-                <input class="form-input" id="lp-search" placeholder="Search party..." oninput="_debounce(renderLatePay,300)()">
+                <input class="form-input" id="lp-search" placeholder="Search party..."
+                  oninput="_debounce(renderLatePay,300)()">
               </div>
               <input class="form-input" type="date" id="lp-from" onchange="renderLatePay()"
                 style="width:130px;padding:7px 10px" title="From date">
@@ -3716,7 +4530,19 @@
                       <th>Actions</th>
                     </tr>
                   </thead>
-                  <thead id="lp-thead"><tr><th style="cursor:pointer;user-select:none" onclick="setLPSort('party')">Party</th><th>Due Date</th><th>Paid Date</th><th class="num" style="cursor:pointer;user-select:none" onclick="setLPSort('maxDays')">Days Late</th><th class="num" style="cursor:pointer;user-select:none" onclick="setLPSort('amt')">Amount</th><th style="cursor:pointer;user-select:none" onclick="setLPSort('count')">Count</th><th></th></tr></thead><tbody id="lp-tbody"></tbody>
+                  <thead id="lp-thead">
+                    <tr>
+                      <th style="cursor:pointer;user-select:none" onclick="setLPSort('party')">Party</th>
+                      <th>Due Date</th>
+                      <th>Paid Date</th>
+                      <th class="num" style="cursor:pointer;user-select:none" onclick="setLPSort('maxDays')">Days Late
+                      </th>
+                      <th class="num" style="cursor:pointer;user-select:none" onclick="setLPSort('amt')">Amount</th>
+                      <th style="cursor:pointer;user-select:none" onclick="setLPSort('count')">Count</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="lp-tbody"></tbody>
                 </table>
               </div>
               <div class="pager">
@@ -3740,9 +4566,12 @@
                 <div class="page-sub" id="pay-sub">All payments recorded</div>
               </div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <button class="btn btn-ghost btn-sm" onclick="collapseAllPay()" title="Collapse all parties"><i class="fas fa-compress-alt"></i> Collapse All</button>
-                <button class="btn btn-ghost btn-sm" onclick="expandAllPay()" title="Expand all parties"><i class="fas fa-expand-alt"></i> Expand All</button>
-                <button class="btn btn-green" onclick="openRPModal()"><i class="fas fa-indian-rupee-sign"></i> Record Payment</button>
+                <button class="btn btn-ghost btn-sm" onclick="collapseAllPay()" title="Collapse all parties"><i
+                    class="fas fa-compress-alt"></i> Collapse All</button>
+                <button class="btn btn-ghost btn-sm" onclick="expandAllPay()" title="Expand all parties"><i
+                    class="fas fa-expand-alt"></i> Expand All</button>
+                <button class="btn btn-green" onclick="openRPModal()"><i class="fas fa-indian-rupee-sign"></i> Record
+                  Payment</button>
               </div>
             </div>
             <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
@@ -3783,7 +4612,18 @@
                       <th>Recorded By</th>
                     </tr>
                   </thead>
-                  <thead id="pay-thead"><tr><th style="cursor:pointer;user-select:none" onclick="setPaySort('party')">Party</th><th style="cursor:pointer;user-select:none" onclick="setPaySort('date')">Date</th><th>Mode</th><th>Ref No</th><th class="num" style="cursor:pointer;user-select:none" onclick="setPaySort('amt')">Amount</th><th>Applied To</th><th>By</th></tr></thead><tbody id="pay-tbody"></tbody>
+                  <thead id="pay-thead">
+                    <tr>
+                      <th style="cursor:pointer;user-select:none" onclick="setPaySort('party')">Party</th>
+                      <th style="cursor:pointer;user-select:none" onclick="setPaySort('date')">Date</th>
+                      <th>Mode</th>
+                      <th>Ref No</th>
+                      <th class="num" style="cursor:pointer;user-select:none" onclick="setPaySort('amt')">Amount</th>
+                      <th>Applied To</th>
+                      <th>By</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pay-tbody"></tbody>
                 </table>
               </div>
               <div class="pager">
@@ -3839,7 +4679,8 @@
 
 
               <div style="text-align:center;padding:40px 20px;color:var(--muted)">
-                <i class="fas fa-indian-rupee-sign" style="font-size:32px;margin-bottom:12px;display:block;color:#34A853"></i>
+                <i class="fas fa-indian-rupee-sign"
+                  style="font-size:32px;margin-bottom:12px;display:block;color:#34A853"></i>
                 <div style="font-weight:600;margin-bottom:8px">Use the Record Payment button</div>
                 <div style="font-size:12px">Click ₹ button on any party, invoice, or use sidebar</div>
                 <button class="btn btn-green" style="margin-top:16px" onclick="openRPModal()">
@@ -3949,14 +4790,18 @@
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div class="filter-row" style="margin-bottom:0;flex:1">
                 <div class="fpill promise-pill active" onclick="setPromiseFilter(this,'ALL')">All</div>
-                <div class="fpill promise-pill" onclick="setPromiseFilter(this,'overdue-promise')">Promise Date Passed</div>
+                <div class="fpill promise-pill" onclick="setPromiseFilter(this,'overdue-promise')">Promise Date Passed
+                </div>
                 <div class="fpill promise-pill" onclick="setPromiseFilter(this,'Pending')">Awaiting</div>
                 <div class="fpill promise-pill" onclick="setPromiseFilter(this,'No')">Broken</div>
                 <div class="fpill promise-pill" onclick="setPromiseFilter(this,'Yes')">Kept</div>
               </div>
-              <input class="form-input" type="date" id="pt-from" onchange="renderPromises()" style="width:130px;padding:7px 10px" title="From Date">
-              <input class="form-input" type="date" id="pt-to" onchange="renderPromises()" style="width:130px;padding:7px 10px" title="To Date">
-              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('pt')" title="Clear"><i class="fas fa-times"></i></button>
+              <input class="form-input" type="date" id="pt-from" onchange="renderPromises()"
+                style="width:130px;padding:7px 10px" title="From Date">
+              <input class="form-input" type="date" id="pt-to" onchange="renderPromises()"
+                style="width:130px;padding:7px 10px" title="To Date">
+              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('pt')" title="Clear"><i
+                  class="fas fa-times"></i></button>
             </div>
             <div class="card">
               <div class="tbl-wrap">
@@ -4011,13 +4856,17 @@
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div class="search-wrap" style="flex:1;min-width:160px">
                 <i class="fas fa-search"></i>
-                <input class="form-input" id="esc-search" placeholder="Search party..." oninput="_debounce(renderEscalations,300)()">
+                <input class="form-input" id="esc-search" placeholder="Search party..."
+                  oninput="_debounce(renderEscalations,300)()">
               </div>
-              <input class="form-input" type="date" id="esc-from" onchange="renderEscalations()" style="width:130px;padding:7px 10px" title="From Date">
-              <input class="form-input" type="date" id="esc-to" onchange="renderEscalations()" style="width:130px;padding:7px 10px" title="To Date">
-              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('esc')" title="Clear"><i class="fas fa-times"></i></button>
+              <input class="form-input" type="date" id="esc-from" onchange="renderEscalations()"
+                style="width:130px;padding:7px 10px" title="From Date">
+              <input class="form-input" type="date" id="esc-to" onchange="renderEscalations()"
+                style="width:130px;padding:7px 10px" title="To Date">
+              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('esc')" title="Clear"><i
+                  class="fas fa-times"></i></button>
             </div>
-<div class="card">
+            <div class="card">
               <div class="tbl-wrap">
                 <table class="tbl">
                   <thead>
@@ -4044,23 +4893,31 @@
           <div id="view-discountTBG" class="view">
             <div class="page-hd">
               <div>
-                <div class="page-title" style="color:#7C3AED"><i class="fas fa-tag" style="margin-right:8px"></i>Discount to be Given</div>
+                <div class="page-title" style="color:#7C3AED"><i class="fas fa-tag"
+                    style="margin-right:8px"></i>Discount to be Given</div>
                 <div class="page-sub" id="dtbg-sub">Payments where discount was promised but not yet settled</div>
               </div>
-              <span id="dtbg-total-badge" class="badge" style="font-size:13px;padding:6px 14px;background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE">₹0 pending</span>
+              <span id="dtbg-total-badge" class="badge"
+                style="font-size:13px;padding:6px 14px;background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE">₹0
+                pending</span>
             </div>
             <div class="info-box" style="background:#F5F3FF;border:1px solid #DDD6FE;color:#6D28D9;margin-bottom:14px">
               <i class="fas fa-info-circle"></i>
-              <div style="font-size:12px"><b>Discount to be Given</b> = Payment ke waqt discount promise kiya tha lekin abhi credit/adjustment baaki hai.</div>
+              <div style="font-size:12px"><b>Discount to be Given</b> = Payment ke waqt discount promise kiya tha lekin
+                abhi credit/adjustment baaki hai.</div>
             </div>
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div class="search-wrap" style="flex:1;min-width:160px">
                 <i class="fas fa-search"></i>
-                <input class="form-input" id="dtbg-search" placeholder="Search party..." oninput="_debounce(renderDiscountTBG,300)()">
+                <input class="form-input" id="dtbg-search" placeholder="Search party..."
+                  oninput="_debounce(renderDiscountTBG,300)()">
               </div>
-              <input class="form-input" type="date" id="dtbg-from" onchange="renderDiscountTBG()" style="width:130px;padding:7px 10px">
-              <input class="form-input" type="date" id="dtbg-to" onchange="renderDiscountTBG()" style="width:130px;padding:7px 10px">
-              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('dtbg')" title="Clear"><i class="fas fa-times"></i></button>
+              <input class="form-input" type="date" id="dtbg-from" onchange="renderDiscountTBG()"
+                style="width:130px;padding:7px 10px">
+              <input class="form-input" type="date" id="dtbg-to" onchange="renderDiscountTBG()"
+                style="width:130px;padding:7px 10px">
+              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('dtbg')" title="Clear"><i
+                  class="fas fa-times"></i></button>
             </div>
             <div class="card">
               <div class="tbl-wrap">
@@ -4085,9 +4942,11 @@
               <div class="pager">
                 <span class="pager-info" id="dtbg-info">0 records</span>
                 <div class="pager-btns">
-                  <button class="pager-btn" id="dtbg-prev" onclick="dtbgPage(-1)"><i class="fas fa-chevron-left"></i></button>
+                  <button class="pager-btn" id="dtbg-prev" onclick="dtbgPage(-1)"><i
+                      class="fas fa-chevron-left"></i></button>
                   <span class="pager-page" id="dtbg-page">1</span>
-                  <button class="pager-btn" id="dtbg-next" onclick="dtbgPage(1)"><i class="fas fa-chevron-right"></i></button>
+                  <button class="pager-btn" id="dtbg-next" onclick="dtbgPage(1)"><i
+                      class="fas fa-chevron-right"></i></button>
                 </div>
               </div>
             </div>
@@ -4097,23 +4956,31 @@
           <div id="view-writeoffs" class="view">
             <div class="page-hd">
               <div>
-                <div class="page-title" style="color:#F9AB00"><i class="fas fa-times-circle" style="margin-right:8px"></i>Write-Offs</div>
+                <div class="page-title" style="color:#F9AB00"><i class="fas fa-times-circle"
+                    style="margin-right:8px"></i>Write-Offs</div>
                 <div class="page-sub" id="wo-sub">Invoices where pending amount has been written off</div>
               </div>
-              <span id="wo-total-badge" class="badge" style="font-size:13px;padding:6px 14px;background:#FEF7E0;color:#F9AB00;border:1px solid #FDD663">₹0 written off</span>
+              <span id="wo-total-badge" class="badge"
+                style="font-size:13px;padding:6px 14px;background:#FEF7E0;color:#F9AB00;border:1px solid #FDD663">₹0
+                written off</span>
             </div>
             <div class="info-box amber" style="margin-bottom:14px">
               <i class="fas fa-exclamation-triangle"></i>
-              <div style="font-size:12px"><b>Write-Off</b> = Invoice ka pending amount jo recover nahi ho sakta, use write-off karke books se clear kiya.</div>
+              <div style="font-size:12px"><b>Write-Off</b> = Invoice ka pending amount jo recover nahi ho sakta, use
+                write-off karke books se clear kiya.</div>
             </div>
             <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
               <div class="search-wrap" style="flex:1;min-width:160px">
                 <i class="fas fa-search"></i>
-                <input class="form-input" id="wo-search" placeholder="Search party, invoice..." oninput="_debounce(renderWriteOffs,300)()">
+                <input class="form-input" id="wo-search" placeholder="Search party, invoice..."
+                  oninput="_debounce(renderWriteOffs,300)()">
               </div>
-              <input class="form-input" type="date" id="wo-from" onchange="renderWriteOffs()" style="width:130px;padding:7px 10px">
-              <input class="form-input" type="date" id="wo-to" onchange="renderWriteOffs()" style="width:130px;padding:7px 10px">
-              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('wo')" title="Clear"><i class="fas fa-times"></i></button>
+              <input class="form-input" type="date" id="wo-from" onchange="renderWriteOffs()"
+                style="width:130px;padding:7px 10px">
+              <input class="form-input" type="date" id="wo-to" onchange="renderWriteOffs()"
+                style="width:130px;padding:7px 10px">
+              <button class="btn btn-ghost btn-sm" onclick="clearDateFilter('wo')" title="Clear"><i
+                  class="fas fa-times"></i></button>
             </div>
             <div class="g4" style="margin-bottom:14px">
               <div class="stat-card" style="padding:12px;border-left:3px solid #F9AB00">
@@ -4155,142 +5022,170 @@
               <div class="pager">
                 <span class="pager-info" id="wo-info">0 records</span>
                 <div class="pager-btns">
-                  <button class="pager-btn" id="wo-prev" onclick="woPage(-1)"><i class="fas fa-chevron-left"></i></button>
+                  <button class="pager-btn" id="wo-prev" onclick="woPage(-1)"><i
+                      class="fas fa-chevron-left"></i></button>
                   <span class="pager-page" id="wo-page">1</span>
-                  <button class="pager-btn" id="wo-next" onclick="woPage(1)"><i class="fas fa-chevron-right"></i></button>
+                  <button class="pager-btn" id="wo-next" onclick="woPage(1)"><i
+                      class="fas fa-chevron-right"></i></button>
                 </div>
               </div>
             </div>
           </div>
 
 
-<!-- ===== RETAIL UPLOAD VIEW ===== -->
-<div id="view-retailUpload" class="view">
-  <div class="page-hd">
-    <div>
-      <div class="page-title">Retail Sale Register Upload</div>
-      <div class="page-sub">Daily retail sale PDF upload karein — auto-parsed & Google Sheets mein save</div>
-    </div>
-  </div>
+          <!-- ===== RETAIL UPLOAD VIEW ===== -->
+          <div id="view-retailUpload" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Sale Register Upload</div>
+                <div class="page-sub">Daily retail sale PDF upload karein — auto-parsed & Google Sheets mein save</div>
+              </div>
+            </div>
 
-  <!-- Steps indicator -->
-  <div id="ru-steps" style="display:flex;background:#fff;border-radius:12px;border:1px solid var(--border);margin-bottom:18px;overflow:hidden">
-    <div class="ru-step active" id="ru-step1" style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--primary);background:#E8F0FE">
-      <i class="fas fa-upload" style="margin-right:6px"></i>1. Upload & Parse
-    </div>
-    <div class="ru-step" id="ru-step2" style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--muted);border-left:1px solid var(--border)">
-      <i class="fas fa-list-check" style="margin-right:6px"></i>2. Preview & Confirm
-    </div>
-    <div class="ru-step" id="ru-step3" style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--muted);border-left:1px solid var(--border)">
-      <i class="fas fa-check" style="margin-right:6px"></i>3. Done
-    </div>
-  </div>
+            <!-- Steps indicator -->
+            <div id="ru-steps"
+              style="display:flex;background:#fff;border-radius:12px;border:1px solid var(--border);margin-bottom:18px;overflow:hidden">
+              <div class="ru-step active" id="ru-step1"
+                style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--primary);background:#E8F0FE">
+                <i class="fas fa-upload" style="margin-right:6px"></i>1. Upload & Parse
+              </div>
+              <div class="ru-step" id="ru-step2"
+                style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--muted);border-left:1px solid var(--border)">
+                <i class="fas fa-list-check" style="margin-right:6px"></i>2. Preview & Confirm
+              </div>
+              <div class="ru-step" id="ru-step3"
+                style="flex:1;text-align:center;padding:12px;font-size:12px;font-weight:600;color:var(--muted);border-left:1px solid var(--border)">
+                <i class="fas fa-check" style="margin-right:6px"></i>3. Done
+              </div>
+            </div>
 
-  <div id="ru-stepContent"></div>
-</div>
+            <div id="ru-stepContent"></div>
+          </div>
 
-<!-- ===== RETAIL SALES VIEW ===== -->
-<div id="view-retailSales" class="view">
-  <div class="page-hd">
-    <div>
-      <div class="page-title">Retail Sales Register</div>
-      <div class="page-sub" id="rs-sub">Saare uploaded retail entries</div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-secondary" onclick="nav('retailUpload')"><i class="fas fa-cloud-upload-alt"></i> New Upload</button>
-      <button class="btn btn-primary" onclick="renderRetailSales()"><i class="fas fa-sync-alt"></i> Refresh</button>
-    </div>
-  </div>
+          <!-- ===== RETAIL SALES VIEW ===== -->
+          <div id="view-retailSales" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Sales Register</div>
+                <div class="page-sub" id="rs-sub">Saare uploaded retail entries</div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-secondary" onclick="nav('retailUpload')"><i class="fas fa-cloud-upload-alt"></i>
+                  New Upload</button>
+                <button class="btn btn-primary" onclick="renderRetailSales()"><i class="fas fa-sync-alt"></i>
+                  Refresh</button>
+              </div>
+            </div>
 
-  <div class="g4" style="margin-bottom:16px">
-    <div class="stat-card sc-blue">
-      <div class="stat-label">Total Entries</div>
-      <div class="stat-val" id="rs-total" style="font-size:22px">0</div>
-    </div>
-    <div class="stat-card sc-green">
-      <div class="stat-label">Total Qty</div>
-      <div class="stat-val" id="rs-qty" style="font-size:22px">0</div>
-    </div>
-    <div class="stat-card sc-slate">
-      <div class="stat-label">Total Amount</div>
-      <div class="stat-val" id="rs-amt" style="font-size:22px">₹0</div>
-    </div>
-    <div class="stat-card sc-amber">
-      <div class="stat-label">Uploads</div>
-      <div class="stat-val" id="rs-uploads" style="font-size:22px">0</div>
-    </div>
-  </div>
+            <div class="card" style="margin-bottom:16px;border-left:3px solid #7C3AED">
+              <div
+                style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+                <span><i class="fas fa-exclamation-circle" style="color:#7C3AED;margin-right:6px"></i>Retail Outstanding
+                  by Customer</span>
+                <span id="rs-out-total-badge" class="badge"
+                  style="background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;font-size:11px">₹0</span>
+              </div>
+              <div id="rs-outstanding-list" style="padding:8px 14px;max-height:240px;overflow-y:auto">
+                <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading...</div>
+              </div>
+            </div>
 
-  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-    <div class="search-wrap" style="flex:1;min-width:200px">
-      <i class="fas fa-search"></i>
-      <input class="form-input" id="rs-search" placeholder="Search customer or item..." oninput="_debounce(renderRetailSales,300)()">
-    </div>
-    <input class="form-input" type="date" id="rs-from" onchange="renderRetailSales()" style="width:130px;padding:7px 10px" title="From">
-    <input class="form-input" type="date" id="rs-to" onchange="renderRetailSales()" style="width:130px;padding:7px 10px" title="To">
-    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rs-search').value='';document.getElementById('rs-from').value='';document.getElementById('rs-to').value='';renderRetailSales()"><i class="fas fa-times"></i></button>
-  </div>
+            <div class="g4" style="margin-bottom:16px">
+              <div class="stat-card sc-blue">
+                <div class="stat-label">Total Entries</div>
+                <div class="stat-val" id="rs-total" style="font-size:22px">0</div>
+              </div>
+              <div class="stat-card sc-green">
+                <div class="stat-label">Total Qty</div>
+                <div class="stat-val" id="rs-qty" style="font-size:22px">0</div>
+              </div>
+              <div class="stat-card sc-slate">
+                <div class="stat-label">Total Amount</div>
+                <div class="stat-val" id="rs-amt" style="font-size:22px">₹0</div>
+              </div>
+              <div class="stat-card sc-amber">
+                <div class="stat-label">Uploads</div>
+                <div class="stat-val" id="rs-uploads" style="font-size:22px">0</div>
+              </div>
+            </div>
 
-  <div class="card">
-    <div class="tbl-wrap">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Customer</th>
-            <th>Item</th>
-            <th class="num">Qty</th>
-            <th>Unit</th>
-            <th class="num">Rate</th>
-            <th class="num">Amount</th>
-            <th>Uploaded By</th>
-          </tr>
-        </thead>
-        <tbody id="rs-tbody"></tbody>
-      </table>
-    </div>
-    <div class="pager">
-      <span class="pager-info" id="rs-info">0 entries</span>
-      <div class="pager-btns">
-        <button class="pager-btn" id="rs-prev" onclick="retailPage(-1)"><i class="fas fa-chevron-left"></i></button>
-        <span class="pager-page" id="rs-page">1</span>
-        <button class="pager-btn" id="rs-next" onclick="retailPage(1)"><i class="fas fa-chevron-right"></i></button>
-      </div>
-    </div>
-  </div>
+            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+              <div class="search-wrap" style="flex:1;min-width:200px">
+                <i class="fas fa-search"></i>
+                <input class="form-input" id="rs-search" placeholder="Search customer or item..."
+                  oninput="_debounce(renderRetailSales,300)()">
+              </div>
+              <input class="form-input" type="date" id="rs-from" onchange="renderRetailSales()"
+                style="width:130px;padding:7px 10px" title="From">
+              <input class="form-input" type="date" id="rs-to" onchange="renderRetailSales()"
+                style="width:130px;padding:7px 10px" title="To">
+              <button class="btn btn-ghost btn-sm"
+                onclick="document.getElementById('rs-search').value='';document.getElementById('rs-from').value='';document.getElementById('rs-to').value='';renderRetailSales()"><i
+                  class="fas fa-times"></i></button>
+            </div>
 
-  <div class="card" style="margin-top:16px">
-    <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
-      <i class="fas fa-history" style="color:var(--primary);margin-right:6px"></i>Upload History
-    </div>
-    <div class="tbl-wrap" style="border:none;border-radius:0">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>Upload Time</th>
-            <th>PDF Filename</th>
-            <th>Date Range</th>
-            <th class="num">Items</th>
-            <th class="num">Qty</th>
-            <th class="num">Amount</th>
-            <th>By</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="rs-log-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+            <div class="card">
+              <div class="tbl-wrap">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Customer</th>
+                      <th>Item</th>
+                      <th class="num">Qty</th>
+                      <th>Unit</th>
+                      <th class="num">Rate</th>
+                      <th class="num">Amount</th>
+                      <th>Uploaded By</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rs-tbody"></tbody>
+                </table>
+              </div>
+              <div class="pager">
+                <span class="pager-info" id="rs-info">0 entries</span>
+                <div class="pager-btns">
+                  <button class="pager-btn" id="rs-prev" onclick="retailPage(-1)"><i
+                      class="fas fa-chevron-left"></i></button>
+                  <span class="pager-page" id="rs-page">1</span>
+                  <button class="pager-btn" id="rs-next" onclick="retailPage(1)"><i
+                      class="fas fa-chevron-right"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:16px">
+              <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
+                <i class="fas fa-history" style="color:var(--primary);margin-right:6px"></i>Upload History
+              </div>
+              <div class="tbl-wrap" style="border:none;border-radius:0">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Upload Time</th>
+                      <th>PDF Filename</th>
+                      <th>Date Range</th>
+                      <th class="num">Items</th>
+                      <th class="num">Qty</th>
+                      <th class="num">Amount</th>
+                      <th>By</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rs-log-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
 
 
           <div class="card" style="margin-top:16px">
-  <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
-    <i class="fas fa-trophy" style="color:#F9AB00;margin-right:6px"></i>Top Retail Customers
-  </div>
-  <div id="rs-top-customers" style="padding:14px 18px"></div>
-</div>
-          
+            <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
+              <i class="fas fa-trophy" style="color:#F9AB00;margin-right:6px"></i>Top Retail Customers
+            </div>
+            <div id="rs-top-customers" style="padding:14px 18px"></div>
+          </div>
+
 
           <div id="view-reports" class="view">
             <div class="page-hd">
@@ -4380,95 +5275,188 @@
           <div>
             <div class="modal-title" style="color:#fff"><i class="fas fa-indian-rupee-sign"
                 style="margin-right:8px;color:#4ADE80"></i>Record Payment</div>
-            <div style="color:#94A3B8;font-size:11px;margin-top:2px">Click invoice to fill amount  Net Value -
+            <div style="color:#94A3B8;font-size:11px;margin-top:2px">Click invoice to fill amount Net Value -
               TDS - Discount</div>
           </div>
           <button class="modal-close" onclick="closeRPModal()" style="color:#94A3B8"><i
               class="fas fa-times"></i></button>
         </div>
-        <div class="modal-body" style="max-height:72vh;overflow-y:auto">
+
+        <!-- Tab Switcher -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;background:#F1F5F9;padding:4px;border-radius:10px">
+          <button id="rp-tab-invoice-btn" onclick="_switchRPTab('invoice')"
+            style="flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:700;background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.08)">
+            <i class="fas fa-file-invoice" style="margin-right:6px"></i>Invoice Payment
+          </button>
+          <button id="rp-tab-retail-btn" onclick="_switchRPTab('retail')"
+            style="flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:600;background:transparent;color:var(--muted)">
+            <i class="fas fa-store" style="margin-right:6px"></i>Retail Payment
+          </button>
+        </div>
+
+        <div id="rp-tab-invoice-content">
+          <div class="modal-body" style="max-height:72vh;overflow-y:auto">
+
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label">Select Party <span class="req">*</span></label>
+              <div id="rp-modal-ss" style="width:100%"></div>
+              <input type="hidden" id="rp-party-id">
+              <input type="hidden" id="rp-party-code">
+              <input type="hidden" id="rp-party-name">
+            </div>
+
+            <div id="rp-fifo-box"
+              style="display:none;margin-bottom:12px;background:#E8F0FE;border:1px solid #BFDBFE;border-radius:8px;padding:10px 14px">
+              <label
+                style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12.5px;font-weight:600;color:#1967D2">
+                <input type="checkbox" id="rp-fifo-toggle" onchange="onFIFOToggle()"
+                  style="width:16px;height:16px;cursor:pointer">
+                <span><i class="fas fa-layer-group" style="margin-right:4px"></i>FIFO Mode — Auto-apply to oldest
+                  invoices
+                  first</span>
+              </label>
+              <div id="rp-fifo-hint" style="font-size:11px;color:#475569;margin-top:6px;display:none">
+                Saare pending invoices auto-select honge (oldest first). Amount allocate hoga automatically.
+              </div>
+            </div>
+
+            <div id="rp-bills-box" style="display:none;margin-bottom:12px">
+              <div class="form-section-title" style="margin-bottom:8px">Select Invoices to pay</div>
+              <div id="rp-bills-list" class="scroll"
+                style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+
+              <div id="rp-selection-summary"
+                style="margin-top:12px; padding:10px; background:#F8FAFC; border-radius:8px; border:1px solid var(--border); display:none">
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px">
+                  <span style="color:var(--muted)">Remaining to Collect:</span>
+                  <span id="rp-sel-amt" style="font-weight:700; color:var(--green)">₹0</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px">
+                  <span style="color:var(--muted)">Allocated to:</span>
+                  <span id="rp-sel-count" style="font-weight:600">0 invoices</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Payment Date <span class="req">*</span></label><input
+                  class="form-input" id="rp-date" type="date"></div>
+              <div class="form-group">
+                <label class="form-label">Amount Received (₹) <span class="req">*</span></label>
+                <input class="form-input" id="rp-amount" type="number" placeholder="Enter actual cash received">
+                <div id="rp-amount-ref" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Mode <span class="req">*</span></label>
+                <select class="form-input" id="rp-mode">
+                  <option value="RTGS">RTGS</option>
+                  <option value="NEFT">NEFT</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="IMPS">IMPS</option>
+                  <option value="DD">DD</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group"><label class="form-label">Reference No</label><input class="form-input"
+                  id="rp-ref" placeholder="UTR / Cheque / UPI ref"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">TDS Deducted (₹)</label><input class="form-input"
+                  id="rp-tds" type="number" placeholder="0"></div>
+              <div class="form-group"><label class="form-label">Discount Given (₹)</label><input class="form-input"
+                  id="rp-disc" type="number" placeholder="0" oninput="updateRPSummary()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" style="color:#7C3AED;font-weight:700"><i class="fas fa-tag"
+                    style="margin-right:4px"></i>Discount to be Given (₹)</label>
+                <input class="form-input" id="rp-dtbg" type="number" placeholder="0" style="border-color:#DDD6FE"
+                  oninput="updateRPSummary()">
+                <div style="font-size:10px;color:#7C3AED;margin-top:3px">Discount promised — to be settled later</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bank Name</label>
+                <input class="form-input" id="rp-bank" placeholder="Optional">
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Remarks</label><input class="form-input" id="rp-remarks"
+                placeholder="Optional notes"></div>
+          </div>
+        </div>
+
+        <!-- RETAIL PAYMENT TAB -->
+        <div id="rp-tab-retail-content" style="display:none">
+
+          <div class="info-box blue" style="margin-bottom:14px">
+            <i class="fas fa-info-circle"></i>
+            <div style="font-size:12px">
+              <b>Retail Payment:</b> Chhote customers ke retail entries ke against payment record karein.
+              Amount <b>oldest entry pe pehle</b> apply hoga (FIFO).
+            </div>
+          </div>
 
           <div class="form-group" style="margin-bottom:12px">
-            <label class="form-label">Select Party <span class="req">*</span></label>
-            <div id="rp-modal-ss" style="width:100%"></div>
-            <input type="hidden" id="rp-party-id">
-            <input type="hidden" id="rp-party-code">
-            <input type="hidden" id="rp-party-name">
+            <label class="form-label">Select Customer <span class="req">*</span></label>
+            <div id="rpt-retail-cust-ss" style="width:100%"></div>
           </div>
 
-          <div id="rp-fifo-box" style="display:none;margin-bottom:12px;background:#E8F0FE;border:1px solid #BFDBFE;border-radius:8px;padding:10px 14px">
-  <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12.5px;font-weight:600;color:#1967D2">
-    <input type="checkbox" id="rp-fifo-toggle" onchange="onFIFOToggle()" style="width:16px;height:16px;cursor:pointer">
-    <span><i class="fas fa-layer-group" style="margin-right:4px"></i>FIFO Mode — Auto-apply to oldest invoices first</span>
-  </label>
-  <div id="rp-fifo-hint" style="font-size:11px;color:#475569;margin-top:6px;display:none">
-    Saare pending invoices auto-select honge (oldest first). Amount allocate hoga automatically.
-  </div>
-</div>
+          <div id="rpt-retail-entries-box" style="display:none;margin-bottom:12px">
+            <div class="form-section-title" style="margin-bottom:8px">Pending Retail Entries (FIFO order)</div>
+            <div id="rpt-retail-entries-list" class="scroll"
+              style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
 
-          <div id="rp-bills-box" style="display:none;margin-bottom:12px">
-            <div class="form-section-title" style="margin-bottom:8px">Select Invoices to pay</div>
-            <div id="rp-bills-list" class="scroll"
-              style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
-            
-            <div id="rp-selection-summary" style="margin-top:12px; padding:10px; background:#F8FAFC; border-radius:8px; border:1px solid var(--border); display:none">
-              <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px">
-                <span style="color:var(--muted)">Remaining to Collect:</span>
-                <span id="rp-sel-amt" style="font-weight:700; color:var(--green)">₹0</span>
+            <div id="rpt-retail-summary"
+              style="margin-top:10px;padding:12px;background:#F8FAFC;border-radius:8px;border:1px solid var(--border)">
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+                <span style="color:var(--muted)">Total Pending:</span>
+                <span id="rpt-total-pending" style="font-weight:700;color:var(--red)">₹0</span>
               </div>
-              <div style="display:flex; justify-content:space-between; font-size:12px">
-                <span style="color:var(--muted)">Allocated to:</span>
-                <span id="rp-sel-count" style="font-weight:600">0 invoices</span>
+              <div style="display:flex;justify-content:space-between;font-size:12px">
+                <span style="color:var(--muted)">Entries:</span>
+                <span id="rpt-entry-count" style="font-weight:600">0</span>
               </div>
+            </div>
+
+            <div id="rpt-retail-fifo-breakdown"
+              style="display:none;margin-top:10px;padding:10px;background:#E8F0FE;border-radius:7px;border:1px solid #BFDBFE;max-height:180px;overflow-y:auto">
             </div>
           </div>
 
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Payment Date <span class="req">*</span></label><input
-                class="form-input" id="rp-date" type="date"></div>
-            <div class="form-group">
-              <label class="form-label">Amount Received (₹) <span class="req">*</span></label>
-              <input class="form-input" id="rp-amount" type="number" placeholder="Enter actual cash received">
-              <div id="rp-amount-ref" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
+            <div class="form-group"><label class="form-label">Payment Date <span class="req">*</span></label>
+              <input class="form-input" id="rpt-date" type="date">
+            </div>
+            <div class="form-group"><label class="form-label">Amount (₹) <span class="req">*</span></label>
+              <input class="form-input" id="rpt-amount" type="number" placeholder="Enter amount received">
             </div>
           </div>
           <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Mode <span class="req">*</span></label>
-              <select class="form-input" id="rp-mode">
-                <option value="RTGS">RTGS</option>
-                <option value="NEFT">NEFT</option>
-                <option value="Cheque">Cheque</option>
-                <option value="Cash">Cash</option>
-                <option value="UPI">UPI</option>
-                <option value="IMPS">IMPS</option>
-                <option value="DD">DD</option>
-                <option value="Other">Other</option>
+            <div class="form-group"><label class="form-label">Mode</label>
+              <select class="form-input" id="rpt-mode">
+                <option>Cash</option>
+                <option>UPI</option>
+                <option>RTGS</option>
+                <option>NEFT</option>
+                <option>Cheque</option>
+                <option>IMPS</option>
+                <option>Other</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Reference No</label><input class="form-input" id="rp-ref"
-                placeholder="UTR / Cheque / UPI ref"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">TDS Deducted (₹)</label><input class="form-input"
-                id="rp-tds" type="number" placeholder="0"></div>
-            <div class="form-group"><label class="form-label">Discount Given (₹)</label><input class="form-input"
-                id="rp-disc" type="number" placeholder="0" oninput="updateRPSummary()"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" style="color:#7C3AED;font-weight:700"><i class="fas fa-tag" style="margin-right:4px"></i>Discount to be Given (₹)</label>
-              <input class="form-input" id="rp-dtbg" type="number" placeholder="0" style="border-color:#DDD6FE" oninput="updateRPSummary()">
-              <div style="font-size:10px;color:#7C3AED;margin-top:3px">Discount promised — to be settled later</div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Bank Name</label>
-              <input class="form-input" id="rp-bank" placeholder="Optional">
+            <div class="form-group"><label class="form-label">Reference No</label>
+              <input class="form-input" id="rpt-ref" placeholder="Optional">
             </div>
           </div>
-          <div class="form-group"><label class="form-label">Remarks</label><input class="form-input" id="rp-remarks"
-              placeholder="Optional notes"></div>
+          <div class="form-group"><label class="form-label">Remarks</label>
+            <input class="form-input" id="rpt-remarks" placeholder="Optional">
+          </div>
+
         </div>
+
+
         <div class="modal-ft">
           <button class="btn btn-secondary" onclick="closeRPModal()">Cancel</button>
           <button class="btn btn-green" onclick="submitPayment()"><i class="fas fa-indian-rupee-sign"></i> Record
@@ -4485,6 +5473,7 @@
             Follow-up</div>
           <button class="modal-close" onclick="closeFUModal()"><i class="fas fa-times"></i></button>
         </div>
+        <div id="rp-tab-invoice-content"></div>
         <div class="modal-body">
           <div class="form-row">
             <div class="form-group">
@@ -4575,152 +5564,188 @@
             <input class="form-input" id="fu-attach" placeholder="Paste Drive link to screenshot / doc proof">
           </div>
         </div>
-        <div class="modal-ft">
-          <button class="btn btn-secondary" onclick="closeFUModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="submitFollowUp()"><i class="fas fa-save"></i> Save Follow-up</button>
-        </div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn btn-secondary" onclick="closeFUModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitFollowUp()"><i class="fas fa-save"></i> Save Follow-up</button>
       </div>
     </div>
-
-
-    <div class="modal-overlay" id="party-modal">
-      <div class="modal-box modal-lg">
-        <div class="modal-hd" style="background:var(--dark);border-radius:16px 16px 0 0">
-          <div>
-            <div class="modal-title" id="pm-name" style="color:#fff;font-size:16px">Party</div>
-            <div id="pm-sub" style="color:#94A3B8;font-size:11px;margin-top:2px">city  head</div>
-          </div>
-          <button class="modal-close" onclick="closePartyModal()" style="color:#94A3B8"><i
-              class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-          <div class="g4" style="margin-bottom:16px">
-            <div class="stat-card sc-slate" style="padding:12px">
-              <div class="stat-label">Outstanding</div>
-              <div class="stat-val" id="pm-out" style="font-size:18px">₹0</div>
-            </div>
-            <div class="stat-card" style="padding:12px">
-              <div class="stat-label" style="color:var(--muted)">Slab</div>
-              <div id="pm-slab" style="font-size:14px;font-weight:700;margin-top:4px">--</div>
-            </div>
-            <div class="stat-card" style="padding:12px">
-              <div class="stat-label" style="color:var(--muted)">Phone</div>
-              <div id="pm-phone" style="font-size:13px;font-weight:600;margin-top:4px">--</div>
-            </div>
-            <div class="stat-card" style="padding:12px">
-              <div class="stat-label" style="color:var(--muted)">Category</div>
-              <div id="pm-cat" style="font-size:14px;font-weight:700;margin-top:4px">--</div>
-            </div>
-          </div>
-          <div class="form-section-title" style="margin-bottom:8px">Pending Invoices</div>
-          <div id="pm-invoices" class="scroll"
-            style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;margin-bottom:14px">
-          </div>
-          <div id="pm-dtbg-section" style="display:none">
-            <div class="form-section-title" style="margin-bottom:6px;color:#7C3AED"><i class="fas fa-tag" style="margin-right:4px"></i>Discount to be Given</div>
-            <div id="pm-dtbg" class="scroll" style="max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:12px"></div>
-          </div>
-          <div id="pm-wo-section" style="display:none">
-            <div class="form-section-title" style="margin-bottom:6px;color:#F9AB00"><i class="fas fa-times-circle" style="margin-right:4px"></i>Write-Offs / Discounts Given</div>
-            <div id="pm-wo" class="scroll" style="max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:12px"></div>
-          </div>
-          <div class="form-section-title" style="margin-bottom:8px">Follow-up History</div>
-          <div id="pm-followups" class="scroll"
-            style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:5px"></div>
-        </div>
-        <div class="modal-ft">
-          <button class="btn btn-secondary btn-sm" onclick="closePartyModal()">Close</button>
-          <button class="btn btn-amber btn-sm" onclick="prefillFU()"><i class="fas fa-phone-alt"></i> Log
-            Follow-up</button>
-          <button class="btn btn-green btn-sm" onclick="prefillRP()"><i class="fas fa-indian-rupee-sign"></i> Record
-            Payment</button>
-        </div>
-      </div>
-    </div>
-
-    <script src="./app.js"></script>
   </div>
 
-    <!-- ===== EDIT INVOICE DRAWER ===== -->
-    <div class="edit-drawer-overlay" id="edit-inv-overlay" onclick="if(event.target===this)closeEditDrawer('inv')">
-      <div class="edit-drawer">
-        <div class="edit-drawer-head">
-          <div class="edit-drawer-icon" style="background:#F5F3FF;color:#7C3AED"><i class="fas fa-file-invoice"></i></div>
-          <div style="flex:1">
-            <div class="edit-drawer-title" id="edit-inv-title">Edit Invoice</div>
-            <div class="edit-drawer-sub" id="edit-inv-sub">Update invoice details</div>
-          </div>
-          <button class="edit-drawer-close" onclick="closeEditDrawer('inv')"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="edit-drawer-body" id="edit-inv-body"></div>
-        <div class="edit-drawer-footer">
-          <button class="btn btn-ghost" onclick="closeEditDrawer('inv')">Cancel</button>
-          <button class="btn btn-primary" style="background:#7C3AED;border-color:#7C3AED" onclick="saveEditInvoice()"><i class="fas fa-save"></i> Save Changes</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- ===== EDIT PAYMENT DRAWER ===== -->
-    <div class="edit-drawer-overlay" id="edit-pay-overlay" onclick="if(event.target===this)closeEditDrawer('pay')">
-      <div class="edit-drawer">
-        <div class="edit-drawer-head">
-          <div class="edit-drawer-icon" style="background:#E6F4EA;color:#1E8E3E"><i class="fas fa-indian-rupee-sign"></i></div>
-          <div style="flex:1">
-            <div class="edit-drawer-title" id="edit-pay-title">Edit Payment</div>
-            <div class="edit-drawer-sub" id="edit-pay-sub">Update payment details</div>
+  <div class="modal-overlay" id="party-modal">
+    <div class="modal-box modal-lg">
+      <div class="modal-hd" style="background:var(--dark);border-radius:16px 16px 0 0">
+        <div>
+          <div class="modal-title" id="pm-name" style="color:#fff;font-size:16px">Party</div>
+          <div id="pm-sub" style="color:#94A3B8;font-size:11px;margin-top:2px">city head</div>
+        </div>
+        <button class="modal-close" onclick="closePartyModal()" style="color:#94A3B8"><i
+            class="fas fa-times"></i></button>
+      </div>
+      <div id="rp-tab-invoice-content"></div>
+      <div class="modal-body">
+        <div class="g4" style="margin-bottom:16px">
+          <div class="stat-card sc-slate" style="padding:12px">
+            <div class="stat-label">Outstanding</div>
+            <div class="stat-val" id="pm-out" style="font-size:18px">₹0</div>
           </div>
-          <button class="edit-drawer-close" onclick="closeEditDrawer('pay')"><i class="fas fa-times"></i></button>
+          <div class="stat-card" style="padding:12px">
+            <div class="stat-label" style="color:var(--muted)">Slab</div>
+            <div id="pm-slab" style="font-size:14px;font-weight:700;margin-top:4px">--</div>
+          </div>
+          <div class="stat-card" style="padding:12px">
+            <div class="stat-label" style="color:var(--muted)">Phone</div>
+            <div id="pm-phone" style="font-size:13px;font-weight:600;margin-top:4px">--</div>
+          </div>
+          <div class="stat-card" style="padding:12px">
+            <div class="stat-label" style="color:var(--muted)">Category</div>
+            <div id="pm-cat" style="font-size:14px;font-weight:700;margin-top:4px">--</div>
+          </div>
         </div>
-        <div class="edit-drawer-body" id="edit-pay-body"></div>
-        <div class="edit-drawer-footer">
-          <button class="btn btn-ghost" onclick="closeEditDrawer('pay')">Cancel</button>
-          <button class="btn btn-primary" style="background:#1E8E3E;border-color:#1E8E3E" onclick="saveEditPayment()"><i class="fas fa-save"></i> Save Changes</button>
+        <div class="form-section-title" style="margin-bottom:8px">Pending Invoices</div>
+        <div id="pm-invoices" class="scroll"
+          style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;margin-bottom:14px">
         </div>
+        <div id="pm-dtbg-section" style="display:none">
+          <div class="form-section-title" style="margin-bottom:6px;color:#7C3AED"><i class="fas fa-tag"
+              style="margin-right:4px"></i>Discount to be Given</div>
+          <div id="pm-dtbg" class="scroll"
+            style="max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:12px">
+          </div>
+        </div>
+        <div id="pm-wo-section" style="display:none">
+          <div class="form-section-title" style="margin-bottom:6px;color:#F9AB00"><i class="fas fa-times-circle"
+              style="margin-right:4px"></i>Write-Offs / Discounts Given</div>
+          <div id="pm-wo" class="scroll"
+            style="max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:12px">
+          </div>
+        </div>
+        <div class="form-section-title" style="margin-bottom:8px">Follow-up History</div>
+        <div id="pm-followups" class="scroll"
+          style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:5px"></div>
       </div>
     </div>
+    <div class="modal-ft">
+      <button class="btn btn-secondary btn-sm" onclick="closePartyModal()">Close</button>
+      <button class="btn btn-amber btn-sm" onclick="prefillFU()"><i class="fas fa-phone-alt"></i> Log
+        Follow-up</button>
+      <button class="btn btn-green btn-sm" onclick="prefillRP()"><i class="fas fa-indian-rupee-sign"></i> Record
+        Payment</button>
+    </div>
+  </div>
+  </div>
 
-    <!-- ===== EDIT PARTY DRAWER ===== -->
-    <div class="edit-drawer-overlay" id="edit-party-overlay" onclick="if(event.target===this)closeEditDrawer('party')">
-      <div class="edit-drawer">
-        <div class="edit-drawer-head">
-          <div class="edit-drawer-icon" style="background:#E8F0FE;color:#4285F4"><i class="fas fa-building"></i></div>
-          <div style="flex:1">
-            <div class="edit-drawer-title" id="edit-party-title">Edit Party</div>
-            <div class="edit-drawer-sub" id="edit-party-sub">Update party details</div>
-          </div>
-          <button class="edit-drawer-close" onclick="closeEditDrawer('party')"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="edit-drawer-body" id="edit-party-body"></div>
-        <div class="edit-drawer-footer">
-          <button class="btn btn-ghost" onclick="closeEditDrawer('party')">Cancel</button>
-          <button class="btn btn-primary" onclick="saveEditParty()"><i class="fas fa-save"></i> Save Changes</button>
-        </div>
-      </div>
-    </div>
+  <script src="./app.js"></script>
+  </div>
 
-    <!-- ===== EDIT FOLLOW-UP DRAWER ===== -->
-    <div class="edit-drawer-overlay" id="edit-fu-overlay" onclick="if(event.target===this)closeEditDrawer('fu')">
-      <div class="edit-drawer">
-        <div class="edit-drawer-head">
-          <div class="edit-drawer-icon" style="background:#E6F4EA;color:#1E8E3E"><i class="fas fa-phone-alt"></i></div>
-          <div style="flex:1">
-            <div class="edit-drawer-title" id="edit-fu-title">Edit Follow-up</div>
-            <div class="edit-drawer-sub" id="edit-fu-sub">Update follow-up details</div>
-          </div>
-          <button class="edit-drawer-close" onclick="closeEditDrawer('fu')"><i class="fas fa-times"></i></button>
+  <!-- ===== EDIT INVOICE DRAWER ===== -->
+  <div class="edit-drawer-overlay" id="edit-inv-overlay" onclick="if(event.target===this)closeEditDrawer('inv')">
+    <div class="edit-drawer">
+      <div class="edit-drawer-head">
+        <div class="edit-drawer-icon" style="background:#F5F3FF;color:#7C3AED"><i class="fas fa-file-invoice"></i></div>
+        <div style="flex:1">
+          <div class="edit-drawer-title" id="edit-inv-title">Edit Invoice</div>
+          <div class="edit-drawer-sub" id="edit-inv-sub">Update invoice details</div>
         </div>
-        <div class="edit-drawer-body" id="edit-fu-body"></div>
-        <div class="edit-drawer-footer">
-          <button class="btn btn-ghost" onclick="closeEditDrawer('fu')">Cancel</button>
-          <button class="btn btn-primary" style="background:#1E8E3E;border-color:#1E8E3E" onclick="saveEditFollowUp()"><i class="fas fa-save"></i> Save Changes</button>
-        </div>
+        <button class="edit-drawer-close" onclick="closeEditDrawer('inv')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="edit-drawer-body" id="edit-inv-body"></div>
+      <div class="edit-drawer-footer">
+        <button class="btn btn-ghost" onclick="closeEditDrawer('inv')">Cancel</button>
+        <button class="btn btn-primary" style="background:#7C3AED;border-color:#7C3AED" onclick="saveEditInvoice()"><i
+            class="fas fa-save"></i> Save Changes</button>
       </div>
     </div>
+  </div>
+
+  <!-- ===== EDIT PAYMENT DRAWER ===== -->
+  <div class="edit-drawer-overlay" id="edit-pay-overlay" onclick="if(event.target===this)closeEditDrawer('pay')">
+    <div class="edit-drawer">
+      <div class="edit-drawer-head">
+        <div class="edit-drawer-icon" style="background:#E6F4EA;color:#1E8E3E"><i class="fas fa-indian-rupee-sign"></i>
+        </div>
+        <div style="flex:1">
+          <div class="edit-drawer-title" id="edit-pay-title">Edit Payment</div>
+          <div class="edit-drawer-sub" id="edit-pay-sub">Update payment details</div>
+        </div>
+        <button class="edit-drawer-close" onclick="closeEditDrawer('pay')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="edit-drawer-body" id="edit-pay-body"></div>
+      <div class="edit-drawer-footer">
+        <button class="btn btn-ghost" onclick="closeEditDrawer('pay')">Cancel</button>
+        <button class="btn btn-primary" style="background:#1E8E3E;border-color:#1E8E3E" onclick="saveEditPayment()"><i
+            class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EDIT PARTY DRAWER ===== -->
+  <div class="edit-drawer-overlay" id="edit-party-overlay" onclick="if(event.target===this)closeEditDrawer('party')">
+    <div class="edit-drawer">
+      <div class="edit-drawer-head">
+        <div class="edit-drawer-icon" style="background:#E8F0FE;color:#4285F4"><i class="fas fa-building"></i></div>
+        <div style="flex:1">
+          <div class="edit-drawer-title" id="edit-party-title">Edit Party</div>
+          <div class="edit-drawer-sub" id="edit-party-sub">Update party details</div>
+        </div>
+        <button class="edit-drawer-close" onclick="closeEditDrawer('party')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="edit-drawer-body" id="edit-party-body"></div>
+      <div class="edit-drawer-footer">
+        <button class="btn btn-ghost" onclick="closeEditDrawer('party')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEditParty()"><i class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EDIT FOLLOW-UP DRAWER ===== -->
+  <div class="edit-drawer-overlay" id="edit-fu-overlay" onclick="if(event.target===this)closeEditDrawer('fu')">
+    <div class="edit-drawer">
+      <div class="edit-drawer-head">
+        <div class="edit-drawer-icon" style="background:#E6F4EA;color:#1E8E3E"><i class="fas fa-phone-alt"></i></div>
+        <div style="flex:1">
+          <div class="edit-drawer-title" id="edit-fu-title">Edit Follow-up</div>
+          <div class="edit-drawer-sub" id="edit-fu-sub">Update follow-up details</div>
+        </div>
+        <button class="edit-drawer-close" onclick="closeEditDrawer('fu')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="edit-drawer-body" id="edit-fu-body"></div>
+      <div class="edit-drawer-footer">
+        <button class="btn btn-ghost" onclick="closeEditDrawer('fu')">Cancel</button>
+        <button class="btn btn-primary" style="background:#1E8E3E;border-color:#1E8E3E" onclick="saveEditFollowUp()"><i
+            class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RETAIL STATEMENT MODAL ===== -->
+  <div class="modal-overlay" id="retail-stmt-modal" onclick="if(event.target===this)closeRetailStatement()">
+    <div class="modal-box modal-lg">
+      <div class="modal-hd" style="background:var(--dark);border-radius:16px 16px 0 0">
+        <div>
+          <div class="modal-title" id="rstmt-title" style="color:#fff">
+            <i class="fas fa-file-invoice" style="margin-right:8px;color:#7C3AED"></i>Retail Statement
+          </div>
+          <div style="color:#94A3B8;font-size:11px;margin-top:2px" id="rstmt-sub">Customer outstanding</div>
+        </div>
+        <button class="modal-close" onclick="closeRetailStatement()" style="color:#94A3B8"><i
+            class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="rstmt-body" style="max-height:70vh;overflow-y:auto"></div>
+      <div class="modal-ft">
+        <button class="btn btn-secondary" onclick="closeRetailStatement()">Close</button>
+        <button class="btn btn-primary" onclick="_rstmtPay()" style="background:#7C3AED;border-color:#7C3AED"><i
+            class="fas fa-indian-rupee-sign"></i> Record Payment</button>
+        <button class="btn btn-primary" onclick="_rstmtPrint()"><i class="fas fa-print"></i> Print</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
+        navigator.serviceWorker.register('./sw.js', {scope: './'}).catch(function () { });
       });
     }
   </script>
