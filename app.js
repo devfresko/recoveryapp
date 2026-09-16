@@ -1,3 +1,68 @@
+
+
+// app.js ke top pe add karein
+var _debouncedRenderParties = _debounce(renderParties, 250);
+var _debouncedRenderInvoices = _debounce(renderInvoices, 250);
+var _debouncedRenderPayments = _debounce(renderPayments, 250);
+var _debouncedRenderFollowups = _debounce(renderFollowups, 250);
+var _debouncedRenderRetailSales = _debounce(renderRetailSales, 250);
+
+
+// ============================================================
+// IndexedDB cache — full DB stored locally for instant loads
+// ============================================================
+
+var _idb = (function() {
+  var DB_NAME = 'fresko_cache';
+  var STORE = 'db_store';
+  var _db = null;
+
+  function open() {
+    return new Promise(function(resolve, reject) {
+      if (_db) return resolve(_db);
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function(e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE);
+        }
+      };
+      req.onsuccess = function(e) { _db = e.target.result; resolve(_db); };
+      req.onerror = function() { reject('IndexedDB unavailable'); };
+    });
+  }
+
+  return {
+    get: function(key) {
+      return open().then(function(db) {
+        return new Promise(function(resolve) {
+          var tx = db.transaction(STORE, 'readonly');
+          var req = tx.objectStore(STORE).get(key);
+          req.onsuccess = function() { resolve(req.result || null); };
+          req.onerror = function() { resolve(null); };
+        });
+      });
+    },
+    set: function(key, value) {
+      return open().then(function(db) {
+        return new Promise(function(resolve) {
+          var tx = db.transaction(STORE, 'readwrite');
+          tx.objectStore(STORE).put(value, key);
+          tx.oncomplete = function() { resolve(true); };
+          tx.onerror = function() { resolve(false); };
+        });
+      });
+    },
+    remove: function(key) {
+      return open().then(function(db) {
+        var tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(key);
+      });
+    }
+  };
+})();
+
+
 'use strict';
 
       // --- PERFORMANCE UTILS ---
@@ -126,61 +191,216 @@
         _applyPermissions();
       })();
 
-      window.onload = function () {
-        var _fyEl = document.getElementById('footer-year'); if(_fyEl) _fyEl.textContent = new Date().getFullYear();
-        document.getElementById('dash-date').textContent =
-          new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        _setDefaultDates();
-        document.addEventListener('click', e => {
-          if (!e.target.closest('.search-wrap') && !e.target.closest('.ac-drop'))
-            document.querySelectorAll('.ac-drop').forEach(d => d.classList.remove('show'));
-        });
-        // ESC key closes any open modal
-        document.addEventListener('keydown', e => {
-          if (e.key === 'Escape') {
-            closeRPModal();
-            closeFUModal();
-            closePartyModal();
-          }
-        });
-        if (_user && _user.name) {
-          _setUserUI();
-          _applyPermissions();
-          google.script.run
-            .withSuccessHandler(_onDataLoaded)
-            .withFailureHandler(function() {
-              try { localStorage.removeItem('fresko_user'); } catch(e) {}
-              _user = null; location.reload();
-            })
-            .getAllData(_user.name);
-        }
-      };
+window.onload = function () {
+  var _fyEl = document.getElementById('footer-year'); if(_fyEl) _fyEl.textContent = new Date().getFullYear();
+  document.getElementById('dash-date').textContent =
+    new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  _setDefaultDates();
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap') && !e.target.closest('.ac-drop'))
+      document.querySelectorAll('.ac-drop').forEach(d => d.classList.remove('show'));
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeRPModal(); closeFUModal(); closePartyModal();
+    }
+  });
 
-      function _onDataLoaded(data) {
-        if (!data || !data.success) { _onFail({ message: data ? data.error : 'Load failed' }); return; }
-        DB = data;
+  // If user is logged in → try IndexedDB cache first
+  if (_user && _user.name) {
+    _setUserUI();
+    _applyPermissions();
+
+    // INSTANT render from IndexedDB (no network wait)
+    _idb.get('mainDB').then(function(cached) {
+      if (cached && cached.success) {
+        DB = cached;
+        _lastUpdate = cached.lastUpdate || '0';
         document.getElementById('loader').style.display = 'none';
-
-        if (data.userInfo && data.userInfo.foundInDB) {
-          USER = Object.assign(USER, data.userInfo);
-          if (!URL_NAME && USER.name) URL_NAME = USER.name;
-          _setUserUI();
-        }
-
         _applyPermissions();
         _populateFilters();
-        _buildAllPartySS();   // build searchable selects with latest party data
+        _buildAllPartySS();
         _updateBadges();
         _refreshRetailOutstanding();
-
         if (!_loadedOnce) {
           _loadedOnce = true;
           nav('dashboard');
-          setInterval(_silentRefresh, 30000);
-        } else {
-          _reRenderCurrent();
         }
+        // Now silently refresh in background
+        _backgroundSync();
+      } else {
+        // No cache → wait for network
+        _initialNetworkLoad();
       }
+    }).catch(function() {
+      _initialNetworkLoad();
+    });
+  }
+};
+
+function _initialNetworkLoad() {
+  google.script.run
+    .withSuccessHandler(_onDataLoaded)
+    .withFailureHandler(function() {
+      try { localStorage.removeItem('fresko_user'); } catch(e) {}
+      _user = null; location.reload();
+    })
+    .getAllData(_user.name);
+}
+
+function _backgroundSync() {
+  google.script.run
+    .withSuccessHandler(function(data) {
+      if (!data || !data.success) return;
+      if (data.unchanged) return; // Nothing changed
+      DB = data;
+      _lastUpdate = data.lastUpdate || _lastUpdate;
+      _idb.set('mainDB', data);
+      _updateBadges();
+      _populateFilters();
+      _reRenderCurrent();
+      _refreshRetailOutstanding();
+      if (!_loadedOnce) { _loadedOnce = true; nav('dashboard'); }
+    })
+    .withFailureHandler(function() { /* silent fail */ })
+    .getAllData((USER && USER.name) || URL_NAME, _lastUpdate);
+}
+
+
+
+      function getAllData(userName, sinceTs) {
+  try {
+    // ⚡ DELTA SYNC — agar server pe kuch change nahi hua to turant return
+    var lastChange = checkLastUpdate();
+    if (sinceTs && sinceTs !== '0' && sinceTs === lastChange) {
+      return { success: true, unchanged: true, lastUpdate: lastChange };
+    }
+
+    var ss = _ss();
+    var config = {};
+    _rows('AppConfig').forEach(function (r) { if (r[1]) config[r[1]] = r[2] || ''; });
+
+    var userInfo = { name: userName || 'Unknown', dept: '', role: 'User', office: '', email: '', phone: '', designation: '', foundInDB: false };
+    if (userName) {
+      var uSheet = ss.getSheetByName('Users');
+      if (uSheet && uSheet.getLastRow() > 1) {
+        var uRows = uSheet.getRange(2, 1, uSheet.getLastRow() - 1, 13).getValues();
+        var match = uRows.find(function (r) { return r[1] && r[1].toString().trim().toLowerCase() === userName.trim().toLowerCase(); });
+        if (match) userInfo = {
+          userID: match[0].toString().trim(), name: match[1].toString().trim(),
+          dept: match[2].toString().trim().toUpperCase(), office: match[3].toString().trim(),
+          email: match[4].toString().trim(), phone: match[6].toString().trim(),
+          role: match[8].toString().trim(), designation: match[9].toString().trim(),
+          profileImageURL: (match[12] || '').toString().trim(), foundInDB: true
+        };
+      }
+    }
+
+    var rawInvoices = _rows('SalesInvoices');
+    var invByParty = {};
+    rawInvoices.forEach(function (r) {
+      var pID = r[1] || '';
+      if (!invByParty[pID]) invByParty[pID] = [];
+      invByParty[pID].push(r);
+    });
+
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+
+    var parties = _rows('Parties').map(function (r) {
+      var pID = r[0] || '';
+      return {
+        partyID: pID, partyCode: r[1] || '', name: r[2] || '', city: r[3] || '', state: r[4] || '',
+        phone: r[5] || '', phone2: r[6] || '', email: r[7] || '', gstin: r[8] || '', pan: r[9] || '',
+        head: r[10] || '', contact: r[11] || '', address: r[12] || '', creditLimit: parseFloat(r[13]) || 0,
+        days15: r[14] !== '' ? parseInt(r[14]) : null, days1: r[15] !== '' ? parseInt(r[15]) : null, days0: r[16] !== '' ? parseInt(r[16]) : null,
+        payTerms: r[17] || '', category: r[22] || '', tags: r[23] || '', notes: r[24] || '',
+        status: r[25] || 'Active', addedBy: r[26] || '', addedOn: r[27] || '',
+        rating: _calculateRating(invByParty[pID] || [], today, thirtyDaysAgo)
+      };
+    });
+
+    var invoices = rawInvoices.map(function (r) {
+      return {
+        invoiceID: r[0] || '', partyID: r[1] || '', partyCode: r[2] || '', partyName: r[3] || '',
+        invoiceNo: r[4] || '', invoiceDate: r[5] || '', dueDate: r[6] || '',
+        dueDays: parseInt(r[7]) || 0, slabPct: r[8] || '0',
+        billValue: parseFloat(r[9]) || 0, cgst: parseFloat(r[10]) || 0, sgst: parseFloat(r[11]) || 0,
+        igst: parseFloat(r[12]) || 0, tcs: parseFloat(r[13]) || 0, otherDed: parseFloat(r[14]) || 0,
+        netAmount: parseFloat(r[15]) || 0, paidAmount: parseFloat(r[16]) || 0,
+        pendingAmount: parseFloat(r[17]) || 0, discountEarned: parseFloat(r[18]) || 0,
+        vehicleNo: r[19] || '', head: r[20] || '', remarks: r[21] || '', status: r[22] || 'Pending',
+        uploadBatch: r[23] || '', addedBy: r[24] || '', addedOn: r[25] || '', writeOff: parseFloat(r[28]) || 0,
+        difference: parseFloat(r[29]) || 0
+      };
+    });
+
+    var payments = _rows('PaymentReceived').map(function (r) {
+      return {
+        paymentID: r[0] || '', partyID: r[1] || '', partyCode: r[2] || '', partyName: r[3] || '',
+        paymentDate: r[4] || '', amount: parseFloat(r[5]) || 0, mode: r[6] || '', refNo: r[7] || '',
+        bankName: r[8] || '', appliedTo: r[9] || '', appliedAmt: parseFloat(r[10]) || 0,
+        unallocated: parseFloat(r[11]) || 0, chequeDate: r[12] || '', chequeStatus: r[13] || '',
+        tdsDeducted: parseFloat(r[14]) || 0, discountGiven: parseFloat(r[15]) || 0,
+        discountToBeGiven: parseFloat(r[16]) || 0, netCredited: parseFloat(r[17]) || 0,
+        remarks: r[18] || '', recordedBy: r[19] || '', recordedOn: r[20] || '',
+        verifiedBy: r[21] || '', verifiedOn: r[22] || '',
+        paymentType: r[23] || 'Invoice'
+      };
+    });
+
+    var followups = _rows('FollowUps').map(function (r) {
+      return {
+        followUpID: r[0] || '', partyID: r[1] || '', partyCode: r[2] || '', partyName: r[3] || '',
+        datetime: r[4] || '', mode: r[5] || '', contactPerson: r[6] || '',
+        outstandingAmt: parseFloat(r[7]) || 0, invoiceID: r[8] || '', invoiceNo: r[9] || '',
+        notes: r[10] || '', promiseAmt: parseFloat(r[11]) || 0, promiseDate: r[12] || '',
+        promiseKept: r[13] || '', nextAction: r[14] || '', nextActionDate: r[15] || '',
+        priority: r[16] || 'Medium', escalated: r[17] || 'No', escalatedTo: r[18] || '',
+        attachmentURL: r[19] || '', loggedBy: r[20] || '', loggedOn: r[21] || ''
+      };
+    });
+
+    var today2 = new Date(); today2.setHours(0, 0, 0, 0);
+    var todayStr = _fmtDate(today2);
+    var monthStart = new Date(today2.getFullYear(), today2.getMonth(), 1);
+    var totalOutstanding = 0, totalOverdue = 0, totalDueToday = 0, collectedThisMonth = 0, overdueCount = 0, dueTodayCount = 0;
+
+    invoices.forEach(function (inv) {
+      var wo = inv.writeOff || 0;
+      var pending = (inv.billValue || inv.netAmount) - inv.paidAmount - wo;
+      if (pending <= 0 || inv.status === 'Written-Off' || inv.status === 'Paid') return;
+      totalOutstanding += pending;
+      var due = _parseDate(inv.dueDate); if (!due) return;
+      if (due < today2) { totalOverdue += pending; overdueCount++; }
+      else if (_fmtDate(due) === todayStr) { totalDueToday += pending; dueTodayCount++; }
+    });
+
+    var collectedCount = 0;
+    payments.forEach(function (p) {
+      var pdStr = (p.paymentDate || '').toString().trim();
+      var pd = _parseDate(pdStr);
+      if (!pd) {
+        var attempt = new Date(pdStr);
+        if (!isNaN(attempt.getTime())) pd = attempt;
+      }
+      if (pd && pd >= monthStart) {
+        collectedThisMonth += p.amount;
+        collectedCount++;
+      }
+    });
+
+    return {
+      success: true, userInfo, parties, invoices, payments, followups, config,
+      stats: {
+        totalOutstanding, totalOverdue, totalDueToday, collectedThisMonth, collectedCount, overdueCount, dueTodayCount,
+        totalParties: parties.filter(function (p) { return p.status === 'Active'; }).length,
+        totalInvoices: invoices.length, totalFollowups: followups.length
+      },
+      lastUpdate: lastChange
+    };
+  } catch (e) { return { success: false, error: e.toString() }; }
+}
 
       function _onFail(err) {
         document.getElementById('loader').innerHTML =
@@ -277,26 +497,120 @@
         }
       }
 
-      function _silentRefresh() {
-        const uname = (USER && USER.name) || URL_NAME || '';
-        if (!uname) return; // not logged in yet
-        google.script.run
-          .withSuccessHandler(t => {
-            if (t && t > _lastUpdate) {
-              _lastUpdate = t;
-              google.script.run
-                .withSuccessHandler(data => {
-                  if (!data || !data.success) return;
-                  DB = data;
-                  _updateBadges();
-                  _populateFilters();
-                  _reRenderCurrent();
-                })
-                .getAllData(uname);
-            }
-          })
-          .checkLastUpdate();
-      }
+function _silentRefresh() {
+  var uname = (USER && USER.name) || URL_NAME || '';
+  if (!uname) return;
+
+  // Call with current timestamp — backend returns {unchanged:true} if nothing changed
+  google.script.run
+    .withSuccessHandler(function(data) {
+      if (!data || !data.success || data.unchanged) return;
+      DB = data;
+      _lastUpdate = data.lastUpdate || _lastUpdate;
+      _idb.set('mainDB', data);
+      _updateBadges();
+      _populateFilters();
+      _reRenderCurrent();
+      _refreshRetailOutstanding();
+    })
+    .withFailureHandler(function() { /* silent */ })
+    .getAllData(uname, _lastUpdate);
+}
+
+var _pendingGetAll = null;
+function _coalescedGetAll(uname, ts, callback) {
+  if (_pendingGetAll) {
+    _pendingGetAll.push(callback);
+    return;
+  }
+  _pendingGetAll = [callback];
+  google.script.run
+    .withSuccessHandler(function(data) {
+      var cbs = _pendingGetAll || [];
+      _pendingGetAll = null;
+      cbs.forEach(function(cb) { try { cb(data); } catch(e){} });
+    })
+    .withFailureHandler(function(err) {
+      var cbs = _pendingGetAll || [];
+      _pendingGetAll = null;
+      cbs.forEach(function(cb) { try { cb(null, err); } catch(e){} });
+    })
+    .getAllData(uname, ts);
+}
+
+
+function manualRefresh() {
+  var icon = document.getElementById('refresh-icon');
+  if (icon) { icon.classList.add('spinning'); icon.style.pointerEvents = 'none'; }
+  var uname = (USER && USER.name) || URL_NAME || '';
+  _coalescedGetAll(uname, '0', function(data, err) { // ts='0' forces full fetch
+    if (icon) { icon.classList.remove('spinning'); icon.style.pointerEvents = ''; }
+    if (err || !data || !data.success) {
+      Swal.fire('Error', (data && data.error) || (err && err.message) || 'Refresh failed', 'error');
+      return;
+    }
+    DB = data;
+    _lastUpdate = data.lastUpdate || _lastUpdate;
+    _idb.set('mainDB', data);
+    _updateBadges();
+    _populateFilters();
+    _buildAllPartySS();
+    _reRenderCurrent();
+    _refreshRetailOutstanding();
+    var tb = document.getElementById('tb-crumb');
+    if (tb) { var prev = tb.textContent; tb.textContent = '✓ Refreshed'; setTimeout(() => { tb.textContent = prev; }, 1200); }
+  });
+}
+
+
+
+// Example: After submitPayment succeeds, existing flow already refreshes.
+// For OPTIMISTIC feedback, add a small toast IMMEDIATELY on button click:
+
+function _optimisticToast(msg) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1E293B;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:99999;opacity:0;transform:translateY(20px);transition:all .3s';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(function() { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
+  setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 1500);
+}
+
+_optimisticToast('✓ Saving payment...');
+
+// Add to renderParties() row generation:
+'<tr onmouseenter="_prefetchParty(\'' + escQ(p.partyID) + '\')" ...>'
+
+function _prefetchParty(partyID) {
+  // No-op if already cached in memory
+  if (window._prefetchedParties && window._prefetchedParties[partyID]) return;
+  // Existing data is already in DB — nothing to fetch. Just mark as warm.
+  window._prefetchedParties = window._prefetchedParties || {};
+  window._prefetchedParties[partyID] = true;
+}
+
+
+// Add to app.js — helper for incremental rendering
+function _renderIncremental(tbody, allRows, renderRowFn, batchSize) {
+  var bs = batchSize || 50;
+  var rendered = 0;
+  tbody.innerHTML = '';
+  function renderMore() {
+    var frag = document.createDocumentFragment();
+    var end = Math.min(rendered + bs, allRows.length);
+    for (var i = rendered; i < end; i++) {
+      var tr = renderRowFn(allRows[i], i);
+      frag.appendChild(tr);
+    }
+    tbody.appendChild(frag);
+    rendered = end;
+    if (rendered < allRows.length) {
+      setTimeout(renderMore, 30); // non-blocking
+    }
+  }
+  renderMore();
+}
+
 
       function manualRefresh() {
         const icon = document.getElementById('refresh-icon');
@@ -358,46 +672,187 @@
         discountTBG: 'Discount to be Given', writeoffs: 'Write-Offs', reports: 'Reports'
       };
 
-      function nav(v) {
-        if (window.innerWidth <= 768) {
-          document.getElementById('sb').classList.remove('mobile-show');
-          var bd = document.getElementById('sb-backdrop');
-          if (bd) bd.classList.remove('show');
-        }
+     // ============================================================
+// NAV — Master view router (updated: retail + cache + guards)
+// ============================================================
 
-        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-        const el = document.getElementById('view-' + v);
-        if (el) el.classList.add('active');
+// Cache: tracks view → lastUpdate hash, skips redundant re-renders
+var _tabRenderCache = {};
 
-        document.querySelectorAll('.sb-nav-item').forEach(n => n.classList.remove('active'));
-        const nb = document.getElementById('nav-' + v);
-        if (nb) nb.classList.add('active');
+function nav(v) {
+  // ── Mobile: close the sidebar drawer automatically ───────
+  if (window.innerWidth <= 768) {
+    var sbEl = document.getElementById('sb');
+    if (sbEl) sbEl.classList.remove('mobile-show');
+    var bd = document.getElementById('sb-backdrop');
+    if (bd) bd.classList.remove('show');
+  }
 
-        document.getElementById('tb-crumb').textContent = VIEW_TITLES[v] || v;
-        _activeView = v;
+  // ── Switch active view (hide all, show target) ───────────
+  document.querySelectorAll('.view').forEach(function(el) { el.classList.remove('active'); });
+  var viewEl = document.getElementById('view-' + v);
+  if (viewEl) viewEl.classList.add('active');
 
-        if (v === 'dashboard') renderDashboard();
-        if (v === 'todayDue') renderTodayDue();
-        if (v === 'overdue') renderOverdue();
-        if (v === 'parties') { _populateFilters(); renderParties(); }
-        if (v === 'invoices') { _populateFilters(); renderInvoices(); }
-        if (v === 'pending') renderPendingSummary();
-        if (v === 'slab15due') renderSlabDue('15');
-        if (v === 'slab1due') renderSlabDue('1');
-        if (v === 'slabNildue') renderSlabDue('Nil');
-        if (v === 'shortpay') renderShortPay();
-        if (v === 'latepay') renderLatePay();
-        if (v === 'payments') renderPayments();
-        if (v === 'followups') renderFollowups();
-        if (v === 'promises') renderPromises();
-        if (v === 'escalations') renderEscalations();
-        if (v === 'discountTBG') { if (!window._canViewDTBG) { Swal.fire('Access Denied','Discount TBG is available for Admin only.','error'); return; } renderDiscountTBG(); }
-        if (v === 'writeoffs') renderWriteOffs();
-        if (v === 'reports') { if (!window._canViewAnalytics) { Swal.fire('Access Denied','Analytics is available for Admin only.','error'); return; } loadReports(); }
-        if (v === 'addInvoice') { _setDefaultDates(); resetInvoiceForm(); _buildAllPartySS(); }
-        if (v === 'recPayment') { _setDefaultDates(); resetPaymentForm(); _buildAllPartySS(); }
-        if (v === 'addParty') resetPartyForm();
+  // ── Highlight sidebar item ──────────────────────────────
+  document.querySelectorAll('.sb-nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var navBtn = document.getElementById('nav-' + v);
+  if (navBtn) navBtn.classList.add('active');
+
+  // ── Breadcrumb + state ──────────────────────────────────
+  document.getElementById('tb-crumb').textContent = VIEW_TITLES[v] || v;
+  _activeView = v;
+
+  // ── Cache check: skip re-render if same view + data unchanged ─
+  // (Form views are exempt — they need fresh state every time)
+  var _isFormView = (v === 'addInvoice' || v === 'addParty' || v === 'recPayment');
+  var cacheKey = v + '_' + (_lastUpdate || '0');
+  if (!_isFormView && _tabRenderCache[v] === cacheKey && v !== 'dashboard') {
+    return; // instant — no re-render needed
+  }
+  _tabRenderCache[v] = cacheKey;
+
+  // ── Role-based access guards ────────────────────────────
+  if (v === 'discountTBG' && !window._canViewDTBG) {
+    Swal.fire('Access Denied', 'Discount TBG is available for Admin only.', 'error');
+    return;
+  }
+  if (v === 'reports' && !window._canViewAnalytics) {
+    Swal.fire('Access Denied', 'Analytics is available for Admin only.', 'error');
+    return;
+  }
+  if (v === 'escalations' && !window._isAdmin) {
+    // Escalations is admin-only in sidebar; safe guard
+    // (If you want it accessible to all roles, remove this guard)
+  }
+
+  // ── Render the target view ──────────────────────────────
+  switch (v) {
+
+    // ── Overview ──────────────────────────────────────────
+    case 'dashboard':
+      renderDashboard();
+      if (typeof _refreshRetailOutstanding === 'function') _refreshRetailOutstanding();
+      break;
+
+    case 'todayDue':
+      renderTodayDue();
+      break;
+
+    case 'overdue':
+      renderOverdue();
+      break;
+
+    // ── Parties ───────────────────────────────────────────
+    case 'parties':
+      _populateFilters();
+      renderParties();
+      break;
+
+    // ── Invoices ──────────────────────────────────────────
+    case 'invoices':
+      _populateFilters();
+      renderInvoices();
+      break;
+
+    case 'pending':
+      renderPendingSummary();
+      break;
+
+    case 'addInvoice':
+      _setDefaultDates();
+      resetInvoiceForm();
+      _buildAllPartySS();
+      break;
+
+    case 'upload':
+      // CSV/Invoice upload view has no dynamic render — static
+      break;
+
+    // ── Slab views ────────────────────────────────────────
+    case 'slab15due':
+      renderSlabDue('15');
+      break;
+
+    case 'slab1due':
+      renderSlabDue('1');
+      break;
+
+    case 'slabNildue':
+      renderSlabDue('Nil');
+      break;
+
+    // ── Collections ───────────────────────────────────────
+    case 'shortpay':
+      renderShortPay();
+      break;
+
+    case 'latepay':
+      renderLatePay();
+      break;
+
+    case 'payments':
+      renderPayments();
+      break;
+
+    case 'recPayment':
+      _setDefaultDates();
+      resetPaymentForm();
+      _buildAllPartySS();
+      break;
+
+    // ── Follow-ups ────────────────────────────────────────
+    case 'followups':
+      renderFollowups();
+      break;
+
+    case 'promises':
+      renderPromises();
+      break;
+
+    case 'escalations':
+      renderEscalations();
+      break;
+
+    // ── Adjustments (admin) ───────────────────────────────
+    case 'discountTBG':
+      renderDiscountTBG();
+      break;
+
+    case 'writeoffs':
+      renderWriteOffs();
+      break;
+
+    // ── Reports (admin) ───────────────────────────────────
+    case 'reports':
+      loadReports();
+      break;
+
+    // ── Retail section (NEW) ──────────────────────────────
+    case 'retailUpload':
+      _retailStep = 1;
+      if (_retailData) {
+        _retailData.parsed = null;
+        _retailData.result = null;
       }
+      if (typeof _renderRetailUpload === 'function') _renderRetailUpload();
+      break;
+
+    case 'retailSales':
+      if (typeof renderRetailSales === 'function') renderRetailSales();
+      if (typeof _refreshRetailOutstanding === 'function') _refreshRetailOutstanding();
+      break;
+
+    // ── Add Party form ────────────────────────────────────
+    case 'addParty':
+      resetPartyForm();
+      break;
+
+    // ── Fallback — unknown view ───────────────────────────
+    default:
+      // silent — no action
+      break;
+  }
+}
 
       function toggleSB() {
         const sb = document.getElementById('sb');
@@ -4531,13 +4986,13 @@ var _retailData = { parsed: null, result: null, allRows: [], allLog: [] };
 var _retailPage = 1;
 var _ruParsing = false;
 
-// ---- NAV additions ----
-var _origNav = nav;
-nav = function(v) {
-  _origNav(v);
-  if (v === 'retailUpload') { _retailStep = 1; _retailData.parsed = null; _retailData.result = null; _renderRetailUpload(); }
-  if (v === 'retailSales') renderRetailSales();
-};
+// // ---- NAV additions ----
+// var _origNav = nav;
+// nav = function(v) {
+//   _origNav(v);
+//   if (v === 'retailUpload') { _retailStep = 1; _retailData.parsed = null; _retailData.result = null; _renderRetailUpload(); }
+//   if (v === 'retailSales') renderRetailSales();
+// };
 
 // ---- STEP 1: Upload ----
 function _renderRetailUpload() {
@@ -5905,12 +6360,12 @@ function _rstmtPrint() {
   setTimeout(function() { w.print(); }, 300);
 }
 
-// Hook into renderRetailSales — also refresh outstanding card
-var _origRenderRetailSales2 = renderRetailSales;
-renderRetailSales = function() {
-  _origRenderRetailSales2.apply(this, arguments);
-  _refreshRetailOutstanding();
-};
+// // Hook into renderRetailSales — also refresh outstanding card
+// var _origRenderRetailSales2 = renderRetailSales;
+// renderRetailSales = function() {
+//   _origRenderRetailSales2.apply(this, arguments);
+//   _refreshRetailOutstanding();
+// };
 
 
 
