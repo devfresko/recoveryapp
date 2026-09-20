@@ -5,7 +5,9 @@ var _debouncedRenderParties = _debounce(renderParties, 250);
 var _debouncedRenderInvoices = _debounce(renderInvoices, 250);
 var _debouncedRenderPayments = _debounce(renderPayments, 250);
 var _debouncedRenderFollowups = _debounce(renderFollowups, 250);
-var _debouncedRenderRetailSales = _debounce(renderRetailSales, 250);
+var _debouncedRenderRetailSales = _debounce(function() {
+  if (typeof renderRetailSales === 'function') renderRetailSales();
+}, 250);
 
 
 // ============================================================
@@ -191,7 +193,7 @@ var _idb = (function() {
         _applyPermissions();
       })();
 
-      
+
 window.onload = function () {
   var _fyEl = document.getElementById('footer-year');
   if (_fyEl) _fyEl.textContent = new Date().getFullYear();
@@ -246,17 +248,8 @@ window.onload = function () {
   }
 };
 
-};
 
-// function _initialNetworkLoad() {
-//   google.script.run
-//     .withSuccessHandler(_onDataLoaded)
-//     .withFailureHandler(function() {
-//       try { localStorage.removeItem('fresko_user'); } catch(e) {}
-//       _user = null; location.reload();
-//     })
-//     .getAllData(_user.name);
-// }
+
 function _initialNetworkLoad() {
   var uname = (_user && _user.name) || URL_NAME || '';
   if (!uname) {
@@ -5452,8 +5445,9 @@ var _retailExpanded = {}; // For customer-wise expand/collapse
 var _retailGrouped = true; // Default: grouped view
 
 // Override the existing renderRetailSales with grouped version
-var _origRenderRetailSales = renderRetailSales;
+// var _origRenderRetailSales = renderRetailSales;
 renderRetailSales = function() {
+
   var tbody = document.getElementById('rs-tbody');
   if (!tbody) return;
   tbody.innerHTML = emptyRow(8, 'Loading...');
@@ -5470,7 +5464,7 @@ renderRetailSales = function() {
       tbody.innerHTML = emptyRow(8, 'Error: ' + (e && e.message));
     })
     .getRetailData();
-};
+}
 
 function _renderRetailSalesTable() {
   var q = ((document.getElementById('rs-search') || {}).value || '').toLowerCase();
