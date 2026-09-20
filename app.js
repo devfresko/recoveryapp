@@ -236,17 +236,68 @@ window.onload = function () {
       _initialNetworkLoad();
     });
   }
+
+  if (_user && _user.name) {
+    _setUserUI();
+    _applyPermissions();
+
+    _idb.get('mainDB').then(function(cached) {
+      if (cached && cached.success) {
+        DB = cached;
+        _lastUpdate = cached.lastUpdate || '0';
+        document.getElementById('loader').style.display = 'none';
+        _applyPermissions();
+        _populateFilters();
+        _buildAllPartySS();
+        _updateBadges();
+        _refreshRetailOutstanding();
+        if (!_loadedOnce) {
+          _loadedOnce = true;
+          nav('dashboard');
+        }
+        _backgroundSync();
+      } else {
+        _initialNetworkLoad();
+      }
+    }).catch(function() {
+      _initialNetworkLoad();
+    });
+  } else {
+    // ✅ NAYA — no user → login screen show karein, loader hide
+    var ldr = document.getElementById('loader');
+    if (ldr) ldr.style.display = 'none';
+  }
 };
 
+};
+
+// function _initialNetworkLoad() {
+//   google.script.run
+//     .withSuccessHandler(_onDataLoaded)
+//     .withFailureHandler(function() {
+//       try { localStorage.removeItem('fresko_user'); } catch(e) {}
+//       _user = null; location.reload();
+//     })
+//     .getAllData(_user.name);
+// }
 function _initialNetworkLoad() {
+  var uname = (_user && _user.name) || URL_NAME || '';
+  if (!uname) {
+    // No user → show login
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('app-wrapper').style.display = 'none';
+    document.getElementById('login-wrapper').style.display = 'flex';
+    return;
+  }
   google.script.run
     .withSuccessHandler(_onDataLoaded)
     .withFailureHandler(function() {
       try { localStorage.removeItem('fresko_user'); } catch(e) {}
       _user = null; location.reload();
     })
-    .getAllData(_user.name);
+    .getAllData(uname);
 }
+
 
 function _backgroundSync() {
   google.script.run
@@ -266,7 +317,30 @@ function _backgroundSync() {
     .getAllData((USER && USER.name) || URL_NAME, _lastUpdate);
 }
 
+function _onDataLoaded(data) {
+  if (!data || !data.success) { _onFail({ message: data ? data.error : 'Load failed' }); return; }
+  DB = data;
+  document.getElementById('loader').style.display = 'none';
 
+  if (data.userInfo && data.userInfo.foundInDB) {
+    USER = Object.assign(USER, data.userInfo);
+    if (!URL_NAME && USER.name) URL_NAME = USER.name;
+    _setUserUI();
+  }
+
+  _applyPermissions();
+  _populateFilters();
+  _buildAllPartySS();
+  _updateBadges();
+
+  if (!_loadedOnce) {
+    _loadedOnce = true;
+    nav('dashboard');
+    setInterval(_silentRefresh, 30000);
+  } else {
+    _reRenderCurrent();
+  }
+}
 
      
       function _onFail(err) {
@@ -443,10 +517,12 @@ function _optimisticToast(msg) {
   setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 1500);
 }
 
-_optimisticToast('✓ Saving payment...');
 
-// Add to renderParties() row generation:
-'<tr onmouseenter="_prefetchParty(\'' + escQ(p.partyID) + '\')" ...>'
+// _optimisticToast('✓ Saving payment...');
+
+// // Add to renderParties() row generation:
+// '<tr onmouseenter="_prefetchParty(\'' + escQ(p.partyID) + '\')" ...>'
+
 
 function _prefetchParty(partyID) {
   // No-op if already cached in memory
@@ -479,31 +555,6 @@ function _renderIncremental(tbody, allRows, renderRowFn, batchSize) {
 }
 
 
-      function manualRefresh() {
-        const icon = document.getElementById('refresh-icon');
-        if (icon) { icon.classList.add('spinning'); icon.style.pointerEvents = 'none'; }
-        const uname = (USER && USER.name) || URL_NAME || '';
-        google.script.run
-          .withSuccessHandler(data => {
-            if (icon) { icon.classList.remove('spinning'); icon.style.pointerEvents = ''; }
-            if (!data || !data.success) { Swal.fire('Error', (data && data.error) || 'Refresh failed', 'error'); return; }
-            // Full replace - this clears deleted rows from UI
-            DB = data;
-            _lastUpdate = data.lastUpdate || _lastUpdate;
-            _updateBadges();
-            _populateFilters();
-            _buildAllPartySS();
-            _reRenderCurrent();
-            // Brief visual confirmation
-            const tb = document.getElementById('tb-crumb');
-            if (tb) { const prev = tb.textContent; tb.textContent = '✓ Refreshed'; setTimeout(() => { tb.textContent = prev; }, 1200); }
-          })
-          .withFailureHandler(e => {
-            if (icon) { icon.classList.remove('spinning'); icon.style.pointerEvents = ''; }
-            Swal.fire('Error', e.message || 'Refresh failed', 'error');
-          })
-          .getAllData(uname);
-      }
 
       function _reRenderCurrent() {
         const v = _activeView;
@@ -4853,13 +4904,7 @@ var _retailData = { parsed: null, result: null, allRows: [], allLog: [] };
 var _retailPage = 1;
 var _ruParsing = false;
 
-// // ---- NAV additions ----
-// var _origNav = nav;
-// nav = function(v) {
-//   _origNav(v);
-//   if (v === 'retailUpload') { _retailStep = 1; _retailData.parsed = null; _retailData.result = null; _renderRetailUpload(); }
-//   if (v === 'retailSales') renderRetailSales();
-// };
+
 
 // ---- STEP 1: Upload ----
 function _renderRetailUpload() {
@@ -5189,24 +5234,24 @@ function _ruReset() {
 }
 
 // ---- RETAIL SALES VIEW ----
-function renderRetailSales() {
-  var tbody = document.getElementById('rs-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = emptyRow(8, 'Loading...');
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (!r || !r.success) { tbody.innerHTML = emptyRow(8, 'Failed to load'); return; }
-      _retailData.allRows = r.rows || [];
-      _retailData.allLog = r.log || [];
-      _renderRetailSalesTable();
-      _renderRetailLog();
-      _renderRetailStats();
-    })
-    .withFailureHandler(function(e) {
-      tbody.innerHTML = emptyRow(8, 'Error: ' + (e && e.message));
-    })
-    .getRetailData();
-}
+// function renderRetailSales() {
+//   var tbody = document.getElementById('rs-tbody');
+//   if (!tbody) return;
+//   tbody.innerHTML = emptyRow(8, 'Loading...');
+//   google.script.run
+//     .withSuccessHandler(function(r) {
+//       if (!r || !r.success) { tbody.innerHTML = emptyRow(8, 'Failed to load'); return; }
+//       _retailData.allRows = r.rows || [];
+//       _retailData.allLog = r.log || [];
+//       _renderRetailSalesTable();
+//       _renderRetailLog();
+//       _renderRetailStats();
+//     })
+//     .withFailureHandler(function(e) {
+//       tbody.innerHTML = emptyRow(8, 'Error: ' + (e && e.message));
+//     })
+//     .getRetailData();
+// }
 
 function _renderRetailStats() {
   var rows = _retailData.allRows || [];
