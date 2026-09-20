@@ -191,52 +191,28 @@ var _idb = (function() {
         _applyPermissions();
       })();
 
+      
 window.onload = function () {
-  var _fyEl = document.getElementById('footer-year'); if(_fyEl) _fyEl.textContent = new Date().getFullYear();
+  var _fyEl = document.getElementById('footer-year');
+  if (_fyEl) _fyEl.textContent = new Date().getFullYear();
+
   document.getElementById('dash-date').textContent =
     new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
   _setDefaultDates();
+
   document.addEventListener('click', e => {
     if (!e.target.closest('.search-wrap') && !e.target.closest('.ac-drop'))
       document.querySelectorAll('.ac-drop').forEach(d => d.classList.remove('show'));
   });
+
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeRPModal(); closeFUModal(); closePartyModal();
     }
   });
 
-  // If user is logged in → try IndexedDB cache first
-  if (_user && _user.name) {
-    _setUserUI();
-    _applyPermissions();
-
-    // INSTANT render from IndexedDB (no network wait)
-    _idb.get('mainDB').then(function(cached) {
-      if (cached && cached.success) {
-        DB = cached;
-        _lastUpdate = cached.lastUpdate || '0';
-        document.getElementById('loader').style.display = 'none';
-        _applyPermissions();
-        _populateFilters();
-        _buildAllPartySS();
-        _updateBadges();
-        _refreshRetailOutstanding();
-        if (!_loadedOnce) {
-          _loadedOnce = true;
-          nav('dashboard');
-        }
-        // Now silently refresh in background
-        _backgroundSync();
-      } else {
-        // No cache → wait for network
-        _initialNetworkLoad();
-      }
-    }).catch(function() {
-      _initialNetworkLoad();
-    });
-  }
-
+  // If user is logged in → try IndexedDB cache first (INSTANT render)
   if (_user && _user.name) {
     _setUserUI();
     _applyPermissions();
@@ -255,6 +231,7 @@ window.onload = function () {
           _loadedOnce = true;
           nav('dashboard');
         }
+        // Background sync (silent refresh)
         _backgroundSync();
       } else {
         _initialNetworkLoad();
@@ -263,7 +240,7 @@ window.onload = function () {
       _initialNetworkLoad();
     });
   } else {
-    // ✅ NAYA — no user → login screen show karein, loader hide
+    // No logged-in user → login screen dikhao, loader hide karo
     var ldr = document.getElementById('loader');
     if (ldr) ldr.style.display = 'none';
   }
