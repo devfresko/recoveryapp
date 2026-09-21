@@ -16,7 +16,7 @@
 // Web App URL (Sheet menu → "Payment Follow-up" → "Show API URL (for app.js)").
 // ============================================================
 
-var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxmDBKQSKJp_fQVWQHa_nkDq9R_Dz9Qav58wn0AfKvw2eW_qCAUHpC5rsKkF7qeJs1O/exec';
+var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxglrm_MqQHgqUne3wNfhrwOJhr1mbjxd0MRDhGtvuGGOMofl7AmDu_fzDPL7hSKww/exec';
 
 (function () {
   var _cbIdx = 0;
