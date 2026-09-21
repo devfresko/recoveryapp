@@ -219,28 +219,33 @@ window.onload = function () {
     _setUserUI();
     _applyPermissions();
 
-    _idb.get('mainDB').then(function(cached) {
-      if (cached && cached.success) {
-        DB = cached;
-        _lastUpdate = cached.lastUpdate || '0';
-        document.getElementById('loader').style.display = 'none';
-        _applyPermissions();
-        _populateFilters();
-        _buildAllPartySS();
-        _updateBadges();
-        _refreshRetailOutstanding();
-        if (!_loadedOnce) {
-          _loadedOnce = true;
-          nav('dashboard');
-        }
-        // Background sync (silent refresh)
-        _backgroundSync();
-      } else {
-        _initialNetworkLoad();
-      }
-    }).catch(function() {
-      _initialNetworkLoad();
-    });
+  _idb.get('mainDB').then(function(cached) {
+  // Only trust cache if it has real data — empty cache is a red flag
+  var hasRealData = cached && cached.success && (
+    (cached.invoices && cached.invoices.length > 0) ||
+    (cached.parties && cached.parties.length > 0)
+  );
+  if (hasRealData) {
+    DB = cached;
+    _lastUpdate = cached.lastUpdate || '0';
+    document.getElementById('loader').style.display = 'none';
+    _applyPermissions();
+    _populateFilters();
+    _buildAllPartySS();
+    _updateBadges();
+    _refreshRetailOutstanding();
+    if (!_loadedOnce) {
+      _loadedOnce = true;
+      nav('dashboard');
+    }
+    _backgroundSync();
+  } else {
+    // Empty/stale cache → always fetch fresh from backend
+    _initialNetworkLoad();
+  }
+}).catch(function() {
+  _initialNetworkLoad();
+});
   } else {
     // No logged-in user → login screen dikhao, loader hide karo
     var ldr = document.getElementById('loader');
@@ -273,7 +278,24 @@ function _backgroundSync() {
   google.script.run
     .withSuccessHandler(function(data) {
       if (!data || !data.success) return;
-      if (data.unchanged) return; // Nothing changed
+      // If unchanged BUT our DB is empty → force full fetch
+      if (data.unchanged) {
+        var isEmpty = !DB || !DB.invoices || DB.invoices.length === 0;
+        if (!isEmpty) return;
+        google.script.run
+          .withSuccessHandler(function(full) {
+            if (!full || !full.success) return;
+            DB = full;
+            _lastUpdate = full.lastUpdate || _lastUpdate;
+            _idb.set('mainDB', full);
+            _updateBadges();
+            _populateFilters();
+            _reRenderCurrent();
+            _refreshRetailOutstanding();
+          })
+          .getAllData((USER && USER.name) || URL_NAME, '0');
+        return;
+      }
       DB = data;
       _lastUpdate = data.lastUpdate || _lastUpdate;
       _idb.set('mainDB', data);
@@ -281,7 +303,6 @@ function _backgroundSync() {
       _populateFilters();
       _reRenderCurrent();
       _refreshRetailOutstanding();
-      if (!_loadedOnce) { _loadedOnce = true; nav('dashboard'); }
     })
     .withFailureHandler(function() { /* silent fail */ })
     .getAllData((USER && USER.name) || URL_NAME, _lastUpdate);
@@ -5316,12 +5337,17 @@ function onFIFOToggle() {
   var hint = document.getElementById('rp-fifo-hint');
   if (hint) hint.style.display = isOn ? 'block' : 'none';
 
-  if (isOn) {
-    // Step 1: Sab pending invoices auto-select karo
-    document.querySelectorAll('.rp-inv-check').forEach(function(c) { c.checked = true; });
-    // Step 2: FIFO allocation karo
-    _applyFIFOAllocation();
-  } else {
+if (isOn) {
+  // Ensure party's invoices are loaded first
+  var visibleChecks = document.querySelectorAll('.rp-inv-check');
+  if (visibleChecks.length === 0) {
+    Swal.fire('Info', 'Pehle party select karein', 'info');
+    tgl.checked = false;
+    return;
+  }
+  document.querySelectorAll('.rp-inv-check').forEach(function(c) { c.checked = true; });
+  _applyFIFOAllocation();
+} else {
     // FIFO OFF: sab deselect + breakdown clear
     document.querySelectorAll('.rp-inv-check').forEach(function(c) { c.checked = false; });
     _clearFIFOBreakdown();
@@ -5361,6 +5387,10 @@ function _applyFIFOAllocation() {
 
 function _showFIFOSummary(totalAvail) {
   var summary = document.getElementById('rp-selection-summary');
+
+ // Ensure summary box is visible
+  summary.style.display = 'block';
+
   if (!summary) return;
 
   var checks = Array.from(document.querySelectorAll('.rp-inv-check:checked'));
