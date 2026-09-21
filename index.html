@@ -5303,20 +5303,22 @@
               class="fas fa-times"></i></button>
         </div>
 
-        <!-- Tab Switcher -->
-        <div style="display:flex;gap:6px;margin-bottom:16px;background:#F1F5F9;padding:4px;border-radius:10px">
-          <button id="rp-tab-invoice-btn" onclick="_switchRPTab('invoice')"
-            style="flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:700;background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.08)">
-            <i class="fas fa-file-invoice" style="margin-right:6px"></i>Invoice Payment
-          </button>
-          <button id="rp-tab-retail-btn" onclick="_switchRPTab('retail')"
-            style="flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:600;background:transparent;color:var(--muted)">
-            <i class="fas fa-store" style="margin-right:6px"></i>Retail Payment
-          </button>
+             <!-- Tab Switcher — padded to match modal-body -->
+        <div style="padding:16px 24px 0">
+          <div style="display:flex;gap:6px;background:#F1F5F9;padding:4px;border-radius:10px">
+            <button id="rp-tab-invoice-btn" onclick="_switchRPTab('invoice')"
+              style="flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:700;background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.08)">
+              <i class="fas fa-file-invoice" style="margin-right:6px"></i>Invoice Payment
+            </button>
+            <button id="rp-tab-retail-btn" onclick="_switchRPTab('retail')"
+              style="flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:600;background:transparent;color:var(--muted)">
+              <i class="fas fa-store" style="margin-right:6px"></i>Retail Payment
+            </button>
+          </div>
         </div>
 
         <div id="rp-tab-invoice-content">
-          <div class="modal-body" style="max-height:72vh;overflow-y:auto">
+          <div class="modal-body" style="max-height:60vh;overflow-y:auto">
 
             <div class="form-group" style="margin-bottom:12px">
               <label class="form-label">Select Party <span class="req">*</span></label>
@@ -5409,8 +5411,9 @@
           </div>
         </div>
 
-        <!-- RETAIL PAYMENT TAB -->
+         <!-- RETAIL PAYMENT TAB -->
         <div id="rp-tab-retail-content" style="display:none">
+          <div class="modal-body" style="max-height:60vh;overflow-y:auto">
 
           <div class="info-box blue" style="margin-bottom:14px">
             <i class="fas fa-info-circle"></i>
@@ -5471,10 +5474,11 @@
               <input class="form-input" id="rpt-ref" placeholder="Optional">
             </div>
           </div>
-          <div class="form-group"><label class="form-label">Remarks</label>
+                  <div class="form-group"><label class="form-label">Remarks</label>
             <input class="form-input" id="rpt-remarks" placeholder="Optional">
           </div>
 
+          </div>  <!-- close modal-body -->
         </div>
 
 
