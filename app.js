@@ -954,7 +954,7 @@ function nav(v) {
       function _setDefaultDates() {
         const today = new Date().toISOString().split('T')[0];
         const now = new Date().toISOString().slice(0, 16);
-        ['ai-invdate', 'rp-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = today; });
+        ['ai-invdate', 'rp-date', 'rpt-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = today; });
         const fdt = document.getElementById('fu-dt'); if (fdt) fdt.value = now;
       }
 
@@ -5211,7 +5211,7 @@ function _renderRU2(sc) {
     return;
   }
 
-  // Preview table — aggregated rows (customer + date)
+  // Build preview table — aggregated (customer + date level)
   var tb = '';
   nr.forEach(function(r, i) {
     tb += '<tr>' +
@@ -5220,7 +5220,7 @@ function _renderRU2(sc) {
       '<td style="font-weight:600">' + escHTML(r.Customer_Name) + '</td>' +
       '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Qty_Summary || '--') + '</td>' +
       '<td class="num" style="font-weight:700;color:#7C3AED">₹' + _ruFmt(r.Total_Amount || 0) + '</td>' +
-      '</tr>';
+    '</tr>';
   });
 
   sc.innerHTML = chips +
@@ -5238,58 +5238,7 @@ function _renderRU2(sc) {
       '<button class="btn btn-secondary" onclick="_ruReset()"><i class="fas fa-arrow-left"></i> Wapas</button>' +
       '<button class="btn btn-primary" id="ru-commitBtn" onclick="_ruCommit()"><i class="fas fa-cloud-upload-alt"></i> Confirm & Save</button>' +
     '</div>';
-
-
-  if (nr.length === 0) {
-    sc.innerHTML = chips +
-      '<div class="card card-p" style="text-align:center;padding:48px">' +
-      '<div style="width:64px;height:64px;border-radius:50%;background:#FEF7E0;border:2px solid #F9AB00;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;color:#F9AB00"><i class="fas fa-check-double"></i></div>' +
-      '<div style="font-size:18px;font-weight:800;margin-bottom:7px">Sab entries pehle se exist karti hain</div>' +
-      '<p style="color:var(--muted);font-size:13px;margin-bottom:22px">Is PDF ka data pehle se Google Sheet mein save hai.</p>' +
-      '<button class="btn btn-secondary" onclick="_ruReset()"><i class="fas fa-rotate-left"></i> Doosri PDF Upload Karein</button>' +
-      '</div>';
-    return;
-  }
-
-  var cG = {}, cO = [];
-  nr.forEach(function(r) {
-    var c = r.Customer_Name || 'Unknown';
-    if (!cG[c]) { cG[c] = []; cO.push(c); }
-    cG[c].push(r);
-  });
-  var tb = '', idx = 1;
-  cO.forEach(function(c) {
-    tb += '<tr style="background:#E8F0FE"><td colspan="8" style="font-weight:700;color:var(--primary);font-size:11px"><i class="fas fa-user" style="margin-right:6px"></i>' + escHTML(c) + ' <span style="font-weight:500;color:var(--muted)">(' + cG[c].length + ' items)</span></td></tr>';
-    cG[c].forEach(function(r) {
-      tb += '<tr>' +
-        '<td style="color:var(--sub);font-weight:600;font-size:11px">' + (idx++) + '</td>' +
-        '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Sale_Date) + '</td>' +
-        '<td style="font-weight:600">' + escHTML(r.Item_Name) + '</td>' +
-        '<td class="num">' + r.Qty + '</td>' +
-        '<td><span style="background:#F1F5F9;border:1px solid var(--border);padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escHTML(r.Unit) + '</span></td>' +
-        '<td class="num" style="color:var(--muted)">₹' + r.Rate + '</td>' +
-        '<td class="num" style="font-weight:700;color:var(--primary)">₹' + r.Amount + '</td>' +
-        '</tr>';
-    });
-  });
-
-  sc.innerHTML = chips +
-    '<div class="card">' +
-    '<div style="padding:13px 18px;background:#F8FAFC;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-weight:700;font-size:13px">' +
-      '<span><i class="fas fa-table-list" style="color:var(--primary);margin-right:6px"></i>Sale Preview — ' + nr.length + ' new entries</span>' +
-      '<span style="font-size:11px;color:var(--muted);font-weight:500">' + dr.length + ' duplicates skip honge</span>' +
-    '</div>' +
-    '<div class="tbl-wrap" style="border:none;border-radius:0;max-height:400px;overflow-y:auto">' +
-      '<table class="tbl"><thead><tr>' +
-      '<th>#</th><th>Date</th><th>Item Name</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th class="num">Amount</th>' +
-      '</tr></thead><tbody>' + tb + '</tbody></table>' +
-    '</div></div>' +
-    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">' +
-      '<button class="btn btn-secondary" onclick="_ruReset()"><i class="fas fa-arrow-left"></i> Wapas</button>' +
-      '<button class="btn btn-primary" id="ru-commitBtn" onclick="_ruCommit()"><i class="fas fa-cloud-upload-alt"></i> Confirm & Save</button>' +
-    '</div>';
 }
-
 
 function _ruCommit() {
   var btn = document.getElementById('ru-commitBtn');
