@@ -130,7 +130,7 @@ var _idb = (function() {
         document.getElementById('form-area').style.display = 'none';
         document.getElementById('wc').style.display = 'block';
       }
-      function enterApp() {
+      function enterApp(mode) {
         if (!_user) return;
         USER = _user;
         URL_NAME = _user.name || '';
@@ -138,14 +138,37 @@ var _idb = (function() {
         URL_ROLE = _user.role || '';
         window.__ISE_USER = _user;
         try { localStorage.setItem('fresko_user', JSON.stringify(_user)); } catch(e) {}
+
+        // ── Mode setup (fallback to saved preference or 'supply') ──
+        if (mode === 'supply' || mode === 'retail') {
+          _activeMode = mode;
+          try { localStorage.setItem('fresko_mode', mode); } catch(e) {}
+        } else {
+          try {
+            var savedMode = localStorage.getItem('fresko_mode');
+            if (savedMode === 'retail' || savedMode === 'supply') _activeMode = savedMode;
+          } catch(e) {}
+        }
+        _modeInitialized = true;
+
         document.getElementById('login-wrapper').style.display = 'none';
         document.getElementById('app-wrapper').style.display = 'flex';
         _setUserUI();
         _applyPermissions();
+        _applyModeUI();
+
         google.script.run
           .withSuccessHandler(_onDataLoaded)
           .withFailureHandler(_onFail)
           .getAllData(URL_NAME);
+      }
+
+      // Called from welcome screen mode buttons
+      function selectMode(mode) {
+        if (mode !== 'supply' && mode !== 'retail') return;
+        _activeMode = mode;
+        try { localStorage.setItem('fresko_mode', mode); } catch(e) {}
+        enterApp(mode);
       }
 
 
@@ -153,7 +176,7 @@ var _idb = (function() {
 
       (function(){try{var s=localStorage.getItem('fresko_user');if(s){var u=JSON.parse(s);if(u&&u.name)_user=u;}}catch(e){}})();
 
-      let DB = { parties: [], invoices: [], payments: [], followups: [], config: {}, stats: {}, userInfo: {} };
+         let DB = { parties: [], invoices: [], payments: [], followups: [], retailCustomers: [], config: {}, stats: {}, userInfo: {} };
       let USER = {};          // logged-in user
       let _loadedOnce = false;
       let _lastUpdate = '0';
@@ -161,6 +184,31 @@ var _idb = (function() {
       let _sbCollapsed = true; // start collapsed -- matches screenshot (icon-only mode)
       let _charts = {};       // Chart.js instances
       let _fuTab = 'today';   // dashboard followup tab
+
+      // ── Mode System (Supply vs Retail) ──────────────────────
+      var _activeMode = 'supply';   // 'supply' | 'retail'
+      var _modeInitialized = false;
+
+      // Nav items — supply mode
+      var SUPPLY_NAV_ITEMS = [
+        'nav-dashboard', 'nav-todayDue', 'nav-overdue',
+        'nav-parties', 'nav-addParty',
+        'nav-invoices', 'nav-pending', 'nav-addInvoice', 'nav-upload',
+        'nav-slab15due', 'nav-slab1due', 'nav-slabNildue', 'nav-shortpay',
+        'nav-payments', 'nav-latepay', 'nav-recPayment',
+        'nav-followups', 'nav-promises', 'nav-escalations',
+        'nav-reports', 'nav-discountTBG', 'nav-writeoffs'
+      ];
+
+      // Nav items — retail mode
+      var RETAIL_NAV_ITEMS = [
+        'nav-retailDashboard', 'nav-retailUpload', 'nav-retailSales',
+        'nav-retailCustomers', 'nav-retailPayments'
+      ];
+
+      // Default view after mode selection
+      var SUPPLY_HOME_VIEW = 'dashboard';
+      var RETAIL_HOME_VIEW = 'retailDashboard';
 
       const PER = 25;
       let _pState = { parties: 1, invoices: 1, payments: 1, followups: 1, promises: 1, escalations: 1, shortpay: 1, latepay: 1, discountTBG: 1, writeoffs: 1 };
@@ -198,8 +246,14 @@ window.onload = function () {
   var _fyEl = document.getElementById('footer-year');
   if (_fyEl) _fyEl.textContent = new Date().getFullYear();
 
-  document.getElementById('dash-date').textContent =
-    new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  // ── Load saved mode preference ────────────────────────────
+  _loadModePreference();
+
+  var dashDateEl = document.getElementById('dash-date');
+  if (dashDateEl) {
+    dashDateEl.textContent =
+      new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
 
   _setDefaultDates();
 
@@ -427,6 +481,9 @@ function _onDataLoaded(data) {
             `<span style="color:#475569;font-size:10px">${dept}</span>` +
             `<span class="sb-role-badge" style="background:${color};color:#fff">${label}</span>`;
         }
+
+        // ── Mode UI (called after permissions so admin-only works) ──
+        if (typeof _applyModeUI === 'function') _applyModeUI();
       }
 
 function _silentRefresh() {
@@ -549,6 +606,7 @@ function _renderIncremental(tbody, allRows, renderRowFn, batchSize) {
 
       function _reRenderCurrent() {
         const v = _activeView;
+        // ── Supply views ──────────────────────────────────────
         if (v === 'dashboard') renderDashboard();
         if (v === 'todayDue') renderTodayDue();
         if (v === 'overdue') renderOverdue();
@@ -567,6 +625,13 @@ function _renderIncremental(tbody, allRows, renderRowFn, batchSize) {
         if (v === 'discountTBG') { if (!window._canViewDTBG) { Swal.fire('Access Denied','Discount TBG is available for Admin only.','error'); return; } renderDiscountTBG(); }
         if (v === 'writeoffs') renderWriteOffs();
         if (v === 'reports') { if (!window._canViewAnalytics) { Swal.fire('Access Denied','Analytics is available for Admin only.','error'); return; } loadReports(); }
+
+        // ── Retail views ──────────────────────────────────────
+        if (v === 'retailDashboard') { if (typeof renderRetailDashboard === 'function') renderRetailDashboard(); }
+        if (v === 'retailSales')     { if (typeof renderRetailSales === 'function') renderRetailSales(); }
+        if (v === 'retailCustomers') { if (typeof renderRetailCustomers === 'function') renderRetailCustomers(); }
+        if (v === 'retailPayments')  { if (typeof renderRetailPayments === 'function') renderRetailPayments(); }
+        if (v === 'retailUpload')    { if (typeof _renderRetailUpload === 'function') _renderRetailUpload(); }
       }
 
       const VIEW_TITLES = {
@@ -578,7 +643,13 @@ function _renderIncremental(tbody, allRows, renderRowFn, batchSize) {
         shortpay: 'Short Payments', latepay: 'Late Payments',
         payments: 'Payments', recPayment: 'Record Payment', followups: 'Follow-ups',
         promises: 'Promise Tracker', escalations: 'Escalations',
-        discountTBG: 'Discount to be Given', writeoffs: 'Write-Offs', reports: 'Reports'
+        discountTBG: 'Discount to be Given', writeoffs: 'Write-Offs', reports: 'Reports',
+        // ── Retail views ──────────────────────────────────
+        retailDashboard: 'Retail Dashboard',
+        retailUpload: 'Retail Upload',
+        retailSales: 'Retail Sales',
+        retailCustomers: 'Retail Customers',
+        retailPayments: 'Retail Payments'
       };
 
      // ============================================================
@@ -736,7 +807,11 @@ function nav(v) {
       loadReports();
       break;
 
-    // ── Retail section (NEW) ──────────────────────────────
+    // ── Retail section ────────────────────────────────────
+    case 'retailDashboard':
+      if (typeof renderRetailDashboard === 'function') renderRetailDashboard();
+      break;
+
     case 'retailUpload':
       _retailStep = 1;
       if (_retailData) {
@@ -748,7 +823,14 @@ function nav(v) {
 
     case 'retailSales':
       if (typeof renderRetailSales === 'function') renderRetailSales();
-      if (typeof _refreshRetailOutstanding === 'function') _refreshRetailOutstanding();
+      break;
+
+    case 'retailCustomers':
+      if (typeof renderRetailCustomers === 'function') renderRetailCustomers();
+      break;
+
+    case 'retailPayments':
+      if (typeof renderRetailPayments === 'function') renderRetailPayments();
       break;
 
     // ── Add Party form ────────────────────────────────────
@@ -5106,16 +5188,57 @@ async function _ruProcessPDF(buf, fileName) {
 
 // ---- STEP 2: Preview ----
 function _ruFmt(n) { return (Math.round(n * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
 function _renderRU2(sc) {
   var d = _retailData.parsed || {}, nr = d.newRows || [], dr = d.dupRows || [], s = d.summary || {};
   _updateRetailSteps();
 
   var chips = '<div class="g4" style="margin-bottom:16px">' +
     '<div class="stat-card sc-blue"><div class="stat-label">New Entries</div><div class="stat-val">' + (s.newCount || 0) + '</div></div>' +
-    '<div class="stat-card sc-green"><div class="stat-label">Total Qty</div><div class="stat-val">' + _ruFmt(s.totalQty || 0) + '</div></div>' +
+    '<div class="stat-card sc-green"><div class="stat-label">Aggregated From</div><div class="stat-val">' + (s.totalParsed || 0) + ' items</div></div>' +
     '<div class="stat-card sc-amber"><div class="stat-label">Skipped (Dup)</div><div class="stat-val">' + (s.dupCount || 0) + '</div></div>' +
     '<div class="stat-card sc-slate"><div class="stat-label">Total Amount</div><div class="stat-val">₹' + _ruFmt(s.totalAmount || 0) + '</div></div>' +
     '</div>';
+
+  if (nr.length === 0) {
+    sc.innerHTML = chips +
+      '<div class="card card-p" style="text-align:center;padding:48px">' +
+      '<div style="width:64px;height:64px;border-radius:50%;background:#FEF7E0;border:2px solid #F9AB00;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;color:#F9AB00"><i class="fas fa-check-double"></i></div>' +
+      '<div style="font-size:18px;font-weight:800;margin-bottom:7px">Sab entries pehle se exist karti hain</div>' +
+      '<p style="color:var(--muted);font-size:13px;margin-bottom:22px">Is PDF ka data pehle se Google Sheet mein save hai.</p>' +
+      '<button class="btn btn-secondary" onclick="_ruReset()"><i class="fas fa-rotate-left"></i> Doosri PDF Upload Karein</button>' +
+      '</div>';
+    return;
+  }
+
+  // Preview table — aggregated rows (customer + date)
+  var tb = '';
+  nr.forEach(function(r, i) {
+    tb += '<tr>' +
+      '<td style="color:var(--sub);font-weight:600;font-size:11px">' + (i + 1) + '</td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Sale_Date) + '</td>' +
+      '<td style="font-weight:600">' + escHTML(r.Customer_Name) + '</td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Qty_Summary || '--') + '</td>' +
+      '<td class="num" style="font-weight:700;color:#7C3AED">₹' + _ruFmt(r.Total_Amount || 0) + '</td>' +
+      '</tr>';
+  });
+
+  sc.innerHTML = chips +
+    '<div class="card">' +
+    '<div style="padding:13px 18px;background:#F8FAFC;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-weight:700;font-size:13px">' +
+      '<span><i class="fas fa-table-list" style="color:#7C3AED;margin-right:6px"></i>Preview — ' + nr.length + ' aggregated entries</span>' +
+      '<span style="font-size:11px;color:var(--muted);font-weight:500">' + dr.length + ' duplicates skip honge</span>' +
+    '</div>' +
+    '<div class="tbl-wrap" style="border:none;border-radius:0;max-height:400px;overflow-y:auto">' +
+      '<table class="tbl"><thead><tr>' +
+      '<th>#</th><th>Date</th><th>Customer</th><th>Qty Summary</th><th class="num">Amount</th>' +
+      '</tr></thead><tbody>' + tb + '</tbody></table>' +
+    '</div></div>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="btn btn-secondary" onclick="_ruReset()"><i class="fas fa-arrow-left"></i> Wapas</button>' +
+      '<button class="btn btn-primary" id="ru-commitBtn" onclick="_ruCommit()"><i class="fas fa-cloud-upload-alt"></i> Confirm & Save</button>' +
+    '</div>';
+
 
   if (nr.length === 0) {
     sc.innerHTML = chips +
@@ -5167,6 +5290,7 @@ function _renderRU2(sc) {
     '</div>';
 }
 
+
 function _ruCommit() {
   var btn = document.getElementById('ru-commitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Save ho raha hai...'; }
@@ -5176,7 +5300,6 @@ function _ruCommit() {
     dateRange: d.dateRange || '',
     totalParsed: (d.summary && d.summary.totalParsed) || 0,
     dupCount: (d.summary && d.summary.dupCount) || 0,
-    totalQty: (d.summary && d.summary.totalQty) || 0,
     totalAmount: (d.summary && d.summary.totalAmount) || 0
   };
   google.script.run
@@ -5197,6 +5320,7 @@ function _ruCommit() {
     })
     .commitRetailData(d.newRows || [], meta);
 }
+
 
 function _renderRU3(sc) {
   var res = _retailData.result || {};
@@ -5220,103 +5344,45 @@ function _renderRU3(sc) {
 
 function _ruReset() {
   _retailStep = 1;
-  _retailData = { parsed: null, result: null, allRows: _retailData.allRows, allLog: _retailData.allLog };
+  _retailData = { parsed: null, result: null, allRows: _retailData.allRows };
   _renderRetailUpload();
 }
 
 // ---- RETAIL SALES VIEW ----
-// function renderRetailSales() {
-//   var tbody = document.getElementById('rs-tbody');
-//   if (!tbody) return;
-//   tbody.innerHTML = emptyRow(8, 'Loading...');
-//   google.script.run
-//     .withSuccessHandler(function(r) {
-//       if (!r || !r.success) { tbody.innerHTML = emptyRow(8, 'Failed to load'); return; }
-//       _retailData.allRows = r.rows || [];
-//       _retailData.allLog = r.log || [];
-//       _renderRetailSalesTable();
-//       _renderRetailLog();
-//       _renderRetailStats();
-//     })
-//     .withFailureHandler(function(e) {
-//       tbody.innerHTML = emptyRow(8, 'Error: ' + (e && e.message));
-//     })
-//     .getRetailData();
-// }
+renderRetailSales = function() {
+  var tbody = document.getElementById('rs-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = emptyRow(5, 'Loading...');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) { tbody.innerHTML = emptyRow(5, 'Failed to load'); return; }
+      _retailData.allRows = r.rows || [];
+      _renderRetailSalesTable();
+      _renderRetailStats();
+      _renderTopRetailers();
+    })
+    .withFailureHandler(function(e) {
+      tbody.innerHTML = emptyRow(5, 'Error: ' + (e && e.message));
+    })
+    .getRetailData();
+}
+
+
 
 function _renderRetailStats() {
   var rows = _retailData.allRows || [];
-  var log = _retailData.allLog || [];
   txt('rs-total', rows.length);
-  txt('rs-qty', _ruFmt(rows.reduce(function(s, r) { return s + (r.qty || 0); }, 0)));
-  txt('rs-amt', '₹' + _ruFmt(rows.reduce(function(s, r) { return s + (r.amount || 0); }, 0)));
-  txt('rs-uploads', log.length);
+  txt('rs-amt', '₹' + _ruFmt(rows.reduce(function(s, r) { return s + (r.totalAmount || 0); }, 0)));
+  // Customers with pending (unique)
+  var uniqueCustomers = {};
+  rows.forEach(function(r) { if (r.pending > 0.01) uniqueCustomers[r.customer] = true; });
+  txt('rs-pending-cust', Object.keys(uniqueCustomers).length);
+  // Total pending
+  txt('rs-pending', '₹' + _ruFmt(rows.reduce(function(s, r) { return s + (r.pending || 0); }, 0)));
 }
 
-function _renderRetailSalesTable() {
-  var q = ((document.getElementById('rs-search') || {}).value || '').toLowerCase();
-  var from = (document.getElementById('rs-from') || {}).value || '';
-  var to = (document.getElementById('rs-to') || {}).value || '';
 
-  var list = (_retailData.allRows || []).filter(function(r) {
-    if (q && !(r.customer || '').toLowerCase().includes(q) && !(r.item || '').toLowerCase().includes(q)) return false;
-    if (from || to) {
-      var d = parseIST(r.saleDate);
-      if (from && d && d < new Date(from)) return false;
-      if (to && d && d > new Date(to + 'T23:59:59')) return false;
-    }
-    return true;
-  });
 
-  var total = list.length;
-  var page = list.slice((_retailPage - 1) * PER, _retailPage * PER);
-  txt('rs-sub', total + ' entries');
-  txt('rs-info', total > 0 ? (((_retailPage - 1) * PER + 1) + '-' + Math.min(_retailPage * PER, total) + ' of ' + total) : '0 entries');
-  var totalPages = Math.max(1, Math.ceil(total / PER));
-  var prev = document.getElementById('rs-prev'), next = document.getElementById('rs-next'), pg = document.getElementById('rs-page');
-  if (prev) prev.disabled = _retailPage <= 1;
-  if (next) next.disabled = _retailPage >= totalPages;
-  if (pg) pg.textContent = _retailPage + ' / ' + totalPages;
-
-  var tbody = document.getElementById('rs-tbody');
-  tbody.innerHTML = page.length === 0
-    ? emptyRow(8, 'No entries found. Pehle upload karein.')
-    : page.map(function(r) {
-      return '<tr>' +
-        '<td style="font-size:11px">' + escHTML(r.saleDate) + '</td>' +
-        '<td style="font-weight:600">' + escHTML(r.customer) + '</td>' +
-        '<td>' + escHTML(r.item) + '</td>' +
-        '<td class="num">' + r.qty + '</td>' +
-        '<td><span style="background:#F1F5F9;border:1px solid var(--border);padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escHTML(r.unit) + '</span></td>' +
-        '<td class="num" style="color:var(--muted)">₹' + r.rate + '</td>' +
-        '<td class="num" style="font-weight:700;color:var(--primary)">₹' + r.amount + '</td>' +
-        '<td style="font-size:10px;color:var(--muted)">' + escHTML(r.uploadedBy || '--') + '</td>' +
-        '</tr>';
-    }).join('');
-}
-
-function _renderRetailLog() {
-  var tbody = document.getElementById('rs-log-tbody');
-  if (!tbody) return;
-  var log = _retailData.allLog || [];
-  tbody.innerHTML = log.length === 0
-    ? emptyRow(8, 'No uploads yet')
-    : log.slice(0, 20).map(function(l) {
-      var badge = (l.status || '').toLowerCase().indexOf('success') !== -1
-        ? '<span class="badge badge-paid">Success</span>'
-        : '<span class="badge badge-overdue">' + escHTML(l.status || '--') + '</span>';
-      return '<tr>' +
-        '<td style="font-size:11px">' + escHTML(l.date) + '</td>' +
-        '<td style="font-size:11px">' + escHTML(l.filename || '--') + '</td>' +
-        '<td style="font-size:11px;color:var(--muted)">' + escHTML(l.dateRange || '--') + '</td>' +
-        '<td class="num">' + (l.items || 0) + '</td>' +
-        '<td class="num">' + _ruFmt(l.qty || 0) + '</td>' +
-        '<td class="num" style="font-weight:700">₹' + _ruFmt(l.amount || 0) + '</td>' +
-        '<td style="font-size:10px;color:var(--muted)">' + escHTML(l.by || '--') + '</td>' +
-        '<td>' + badge + '</td>' +
-        '</tr>';
-    }).join('');
-}
 
 function retailPage(d) {
   var list = _retailData.allRows || [];
@@ -5477,24 +5543,22 @@ var _retailGrouped = true; // Default: grouped view
 // Override the existing renderRetailSales with grouped version
 // var _origRenderRetailSales = renderRetailSales;
 renderRetailSales = function() {
-
   var tbody = document.getElementById('rs-tbody');
   if (!tbody) return;
-  tbody.innerHTML = emptyRow(8, 'Loading...');
+  tbody.innerHTML = emptyRow(5, 'Loading...');
   google.script.run
     .withSuccessHandler(function(r) {
-      if (!r || !r.success) { tbody.innerHTML = emptyRow(8, 'Failed to load'); return; }
+      if (!r || !r.success) { tbody.innerHTML = emptyRow(5, 'Failed to load'); return; }
       _retailData.allRows = r.rows || [];
-      _retailData.allLog = r.log || [];
       _renderRetailSalesTable();
-      _renderRetailLog();
       _renderRetailStats();
     })
     .withFailureHandler(function(e) {
-      tbody.innerHTML = emptyRow(8, 'Error: ' + (e && e.message));
+      tbody.innerHTML = emptyRow(5, 'Error: ' + (e && e.message));
     })
     .getRetailData();
 }
+
 
 function _renderRetailSalesTable() {
   var q = ((document.getElementById('rs-search') || {}).value || '').toLowerCase();
@@ -5502,7 +5566,7 @@ function _renderRetailSalesTable() {
   var to = (document.getElementById('rs-to') || {}).value || '';
 
   var list = (_retailData.allRows || []).filter(function(r) {
-    if (q && !(r.customer || '').toLowerCase().includes(q) && !(r.item || '').toLowerCase().includes(q)) return false;
+    if (q && !(r.customer || '').toLowerCase().includes(q)) return false;
     if (from || to) {
       var d = parseIST(r.saleDate);
       if (from && d && d < new Date(from)) return false;
@@ -5513,32 +5577,41 @@ function _renderRetailSalesTable() {
 
   var total = list.length;
   txt('rs-sub', total + ' entries');
-  txt('rs-info', total + ' entries · ' + _retailGrouped ? 'Grouped by customer' : 'Flat view');
 
-  // Toggle button render
+  // Toggle button — inject once
   var toggleBtn = document.getElementById('rs-view-toggle');
   if (!toggleBtn) {
-    // Inject toggle button into page-hd area
     var hd = document.querySelector('#view-retailSales .page-hd > div:last-child');
     if (hd) {
       var btn = document.createElement('button');
       btn.id = 'rs-view-toggle';
       btn.className = 'btn btn-secondary';
-      btn.innerHTML = '<i class="fas fa-layer-group"></i> Group by Customer';
+      btn.innerHTML = _retailGrouped
+        ? '<i class="fas fa-list"></i> Flat View'
+        : '<i class="fas fa-layer-group"></i> Group by Customer';
       btn.onclick = function() {
         _retailGrouped = !_retailGrouped;
         btn.innerHTML = _retailGrouped
-          ? '<i class="fas fa-layer-group"></i> Group by Customer'
-          : '<i class="fas fa-list"></i> Flat View';
+          ? '<i class="fas fa-list"></i> Flat View'
+          : '<i class="fas fa-layer-group"></i> Group by Customer';
         _retailExpanded = {};
         _renderRetailSalesTable();
       };
       hd.insertBefore(btn, hd.firstChild);
     }
+  } else {
+    // Keep toggle button text in sync
+    toggleBtn.innerHTML = _retailGrouped
+      ? '<i class="fas fa-list"></i> Flat View'
+      : '<i class="fas fa-layer-group"></i> Group by Customer';
   }
 
   var tbody = document.getElementById('rs-tbody');
-  if (!total) { tbody.innerHTML = emptyRow(8, 'No entries found.'); return; }
+  if (!total) {
+    tbody.innerHTML = emptyRow(5, 'No entries found. Pehle upload karein.');
+    txt('rs-info', '0 entries');
+    return;
+  }
 
   if (_retailGrouped) {
     _renderRetailGrouped(tbody, list);
@@ -5547,60 +5620,87 @@ function _renderRetailSalesTable() {
   }
 }
 
+
 function _renderRetailGrouped(tbody, list) {
   // Group by customer
   var groups = {};
   list.forEach(function(r) {
     var c = r.customer || 'Unknown';
-    if (!groups[c]) groups[c] = { name: c, items: [], totalQty: 0, totalAmt: 0, lastDate: null };
-    groups[c].items.push(r);
-    groups[c].totalQty += r.qty || 0;
-    groups[c].totalAmt += r.amount || 0;
+    if (!groups[c]) {
+      groups[c] = {
+        name: c,
+        entries: [],
+        totalAmt: 0,
+        totalPending: 0,
+        totalPaid: 0,
+        lastDate: null,
+        oldestDate: null
+      };
+    }
+    var g = groups[c];
+    g.entries.push(r);
+    g.totalAmt += r.totalAmount || 0;
+    g.totalPending += r.pending || 0;
+    g.totalPaid += r.paid || 0;
     var d = parseIST(r.saleDate);
-    if (!groups[c].lastDate || (d && d > groups[c].lastDate)) groups[c].lastDate = d;
+    if (d) {
+      if (!g.lastDate || d > g.lastDate) g.lastDate = d;
+      if (!g.oldestDate || d < g.oldestDate) g.oldestDate = d;
+    }
   });
 
+  // Sort customers by pending (highest first), then by name
   var keys = Object.keys(groups).sort(function(a, b) {
-    return groups[b].totalAmt - groups[a].totalAmt; // Highest amount first
+    var pa = groups[a].totalPending, pb = groups[b].totalPending;
+    if (pb !== pa) return pb - pa;
+    return groups[a].name.localeCompare(groups[b].name);
   });
 
   var html = '';
   keys.forEach(function(cname, gIdx) {
     var g = groups[cname];
     var isOpen = _retailExpanded[gIdx] === true; // default closed
-    var lastDateStr = g.lastDate
-      ? String(g.lastDate.getDate()).padStart(2,'0') + '/' + String(g.lastDate.getMonth()+1).padStart(2,'0') + '/' + g.lastDate.getFullYear()
-      : '--';
+
+    // Sort entries within group by date DESC (latest first) for display
+    g.entries.sort(function(a, b) {
+      var da = parseIST(a.saleDate), db = parseIST(b.saleDate);
+      return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+    });
+
+    var lastDateStr = g.lastDate ? _fmtDateShort(g.lastDate) : '--';
+    var pendingColor = g.totalPending > 0.01 ? 'var(--red)' : 'var(--green)';
+    var pendingLabel = g.totalPending > 0.01
+      ? '₹' + _ruFmt(g.totalPending) + ' pending'
+      : 'Fully settled';
 
     // Customer header row
     html += '<tr style="background:#F8FAFC;cursor:pointer;border-top:2px solid #E2E8F0" onclick="_toggleRetailGroup(' + gIdx + ')">' +
-      '<td colspan="4" style="font-weight:700;padding:10px 12px">' +
+      '<td colspan="2" style="font-weight:700;padding:10px 12px">' +
         '<i class="fas fa-chevron-' + (isOpen?'down':'right') + '" style="font-size:10px;color:var(--muted);margin-right:8px"></i>' +
-        '<i class="fas fa-user" style="color:var(--primary);margin-right:6px"></i>' +
+        '<i class="fas fa-user" style="color:#7C3AED;margin-right:6px"></i>' +
         escHTML(g.name) +
-        ' <span style="font-weight:400;color:var(--muted);font-size:11px">(' + g.items.length + ' items · Last: ' + lastDateStr + ')</span>' +
+        ' <span style="font-weight:400;color:var(--muted);font-size:11px">(' + g.entries.length + ' entries · Last: ' + lastDateStr + ')</span>' +
       '</td>' +
-      '<td class="num" style="font-weight:700;color:var(--green)">' + _ruFmt(g.totalQty) + '</td>' +
-      '<td></td>' +
-      '<td class="num" style="font-weight:800;color:var(--primary);font-size:13px">₹' + _ruFmt(g.totalAmt) + '</td>' +
-      '<td style="white-space:nowrap" onclick="event.stopPropagation()">' +
+      '<td style="text-align:right;padding:10px 8px">' +
+        '<span style="font-size:11px;font-weight:700;color:' + pendingColor + '">' + pendingLabel + '</span>' +
+      '</td>' +
+      '<td class="num" style="font-weight:800;color:#7C3AED;font-size:13px;padding:10px 12px">₹' + _ruFmt(g.totalAmt) + '</td>' +
+      '<td style="white-space:nowrap;padding:10px 8px" onclick="event.stopPropagation()">' +
         '<button class="act-btn ab-wa" onclick="_retailWhatsApp(\'' + escQ(g.name) + '\')" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>' +
-        '<button class="act-btn ab-fu" onclick="_retailMakeInvoice(\'' + escQ(g.name) + '\')" title="Make Invoice"><i class="fas fa-file-invoice"></i></button>' +
-        '<button class="act-btn ab-view" onclick="_retailCustomerSummary(\'' + escQ(g.name) + '\')" title="View Summary"><i class="fas fa-eye"></i></button>' +
+        '<button class="act-btn ab-fu" style="margin-left:2px" onclick="_retailMakeInvoice(\'' + escQ(g.name) + '\')" title="Make Invoice"><i class="fas fa-file-invoice"></i></button>' +
+        '<button class="act-btn ab-view" style="margin-left:2px" onclick="_retailCustomerSummary(\'' + escQ(g.name) + '\')" title="View Summary"><i class="fas fa-eye"></i></button>' +
       '</td>' +
     '</tr>';
 
     // Detail rows (only when expanded)
     if (isOpen) {
-      g.items.forEach(function(r) {
-        html += '<tr style="background:#FAFAFA;opacity:.92">' +
+      g.entries.forEach(function(r) {
+        var pendColor = (r.pending > 0.01) ? 'var(--red)' : 'var(--green)';
+        html += '<tr style="background:#FAFAFA">' +
           '<td style="font-size:11px;padding-left:32px;color:var(--muted)">' + escHTML(r.saleDate) + '</td>' +
-          '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.customer) + '</td>' +
-          '<td style="font-weight:600">' + escHTML(r.item) + '</td>' +
-          '<td class="num">' + r.qty + '</td>' +
-          '<td><span style="background:#F1F5F9;border:1px solid var(--border);padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escHTML(r.unit) + '</span></td>' +
-          '<td class="num" style="color:var(--muted)">₹' + r.rate + '</td>' +
-          '<td class="num" style="font-weight:600">₹' + r.amount + '</td>' +
+          '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.qtySummary || '--') + '</td>' +
+          '<td class="num" style="font-weight:600;color:var(--text)">₹' + _ruFmt(r.totalAmount || 0) + '</td>' +
+          '<td class="num" style="font-weight:600;color:' + pendColor + '">₹' + _ruFmt(r.pending || 0) + '</td>' +
           '<td style="font-size:10px;color:var(--muted)">' + escHTML(r.uploadedBy || '--') + '</td>' +
         '</tr>';
       });
@@ -5608,6 +5708,14 @@ function _renderRetailGrouped(tbody, list) {
   });
 
   tbody.innerHTML = html;
+}
+
+// Helper: short date format from a Date object
+function _fmtDateShort(d) {
+  if (!d) return '--';
+  return String(d.getDate()).padStart(2,'0') + '/' +
+         String(d.getMonth()+1).padStart(2,'0') + '/' +
+         d.getFullYear();
 }
 
 function _renderRetailFlat(tbody, list) {
@@ -5618,17 +5726,22 @@ function _renderRetailFlat(tbody, list) {
   if (prev) prev.disabled = _retailPage <= 1;
   if (next) next.disabled = _retailPage >= totalPages;
   if (pg) pg.textContent = _retailPage + ' / ' + totalPages;
+  txt('rs-info', ((_retailPage - 1) * PER + 1) + '-' + Math.min(_retailPage * PER, total) + ' of ' + total);
+
+  // Sort by date DESC
+  page.sort(function(a, b) {
+    var da = parseIST(a.saleDate), db = parseIST(b.saleDate);
+    return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+  });
 
   tbody.innerHTML = page.map(function(r) {
+    var pendColor = (r.pending > 0.01) ? 'var(--red)' : 'var(--green)';
     return '<tr>' +
       '<td style="font-size:11px">' + escHTML(r.saleDate) + '</td>' +
       '<td style="font-weight:600">' + escHTML(r.customer) + '</td>' +
-      '<td>' + escHTML(r.item) + '</td>' +
-      '<td class="num">' + r.qty + '</td>' +
-      '<td><span style="background:#F1F5F9;border:1px solid var(--border);padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escHTML(r.unit) + '</span></td>' +
-      '<td class="num" style="color:var(--muted)">₹' + r.rate + '</td>' +
-      '<td class="num" style="font-weight:700;color:var(--primary)">₹' + r.amount + '</td>' +
-      '<td style="font-size:10px;color:var(--muted)">' + escHTML(r.uploadedBy || '--') + '</td>' +
+      '<td style="font-size:12px">' + escHTML(r.qtySummary || '--') + '</td>' +
+      '<td class="num" style="font-weight:700;color:var(--primary)">₹' + _ruFmt(r.totalAmount || 0) + '</td>' +
+      '<td class="num" style="font-weight:600;color:' + pendColor + '">₹' + _ruFmt(r.pending || 0) + '</td>' +
     '</tr>';
   }).join('');
 }
@@ -5668,55 +5781,54 @@ function _retailCustomerSummary(customerName) {
   var rows = (_retailData.allRows || []).filter(function(r) { return r.customer === customerName; });
   if (!rows.length) { Swal.fire('No data', 'Customer entries not found', 'info'); return; }
 
-  var totalQty = rows.reduce(function(s, r) { return s + (r.qty || 0); }, 0);
-  var totalAmt = rows.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
-
-  var byItem = {};
-  rows.forEach(function(r) {
-    if (!byItem[r.item]) byItem[r.item] = { qty: 0, amt: 0, count: 0 };
-    byItem[r.item].qty += r.qty || 0;
-    byItem[r.item].amt += r.amount || 0;
-    byItem[r.item].count++;
+  // Sort by date DESC
+  rows.sort(function(a, b) {
+    var da = parseIST(a.saleDate), db = parseIST(b.saleDate);
+    return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
   });
 
-  var itemRows = Object.keys(byItem).map(function(k) {
-    var i = byItem[k];
+  var totalAmt = rows.reduce(function(s, r) { return s + (r.totalAmount || 0); }, 0);
+  var totalPaid = rows.reduce(function(s, r) { return s + (r.paid || 0); }, 0);
+  var totalPending = rows.reduce(function(s, r) { return s + (r.pending || 0); }, 0);
+
+  var rowsHtml = rows.map(function(r) {
+    var pendColor = (r.pending > 0.01) ? '#C5221F' : '#137333';
     return '<tr style="font-size:11px">' +
-      '<td style="padding:4px 8px">' + escHTML(k) + '</td>' +
-      '<td style="padding:4px 8px;text-align:right">' + _ruFmt(i.qty) + '</td>' +
-      '<td style="padding:4px 8px;text-align:right">₹' + _ruFmt(i.amt) + '</td>' +
-      '<td style="padding:4px 8px;text-align:right;color:var(--muted)">' + i.count + 'x</td>' +
+      '<td style="padding:5px 8px">' + escHTML(r.saleDate) + '</td>' +
+      '<td style="padding:5px 8px;color:#64748B">' + escHTML(r.qtySummary || '--') + '</td>' +
+      '<td style="padding:5px 8px;text-align:right">₹' + _ruFmt(r.totalAmount || 0) + '</td>' +
+      '<td style="padding:5px 8px;text-align:right;color:' + pendColor + ';font-weight:600">₹' + _ruFmt(r.pending || 0) + '</td>' +
     '</tr>';
   }).join('');
 
   Swal.fire({
     title: escHTML(customerName),
     html:
-      '<div style="display:flex;gap:12px;justify-content:center;margin-bottom:14px">' +
-        '<div style="background:#E8F0FE;border-radius:8px;padding:10px 16px">' +
+      '<div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px">' +
+        '<div style="background:#E8F0FE;border-radius:8px;padding:10px 14px;min-width:90px">' +
           '<div style="font-size:10px;color:#1967D2;font-weight:700;text-transform:uppercase">Entries</div>' +
-          '<div style="font-size:20px;font-weight:800;color:#1967D2">' + rows.length + '</div>' +
+          '<div style="font-size:18px;font-weight:800;color:#1967D2">' + rows.length + '</div>' +
         '</div>' +
-        '<div style="background:#E6F4EA;border-radius:8px;padding:10px 16px">' +
-          '<div style="font-size:10px;color:#137333;font-weight:700;text-transform:uppercase">Total Qty</div>' +
-          '<div style="font-size:20px;font-weight:800;color:#137333">' + _ruFmt(totalQty) + '</div>' +
+        '<div style="background:#E6F4EA;border-radius:8px;padding:10px 14px;min-width:90px">' +
+          '<div style="font-size:10px;color:#137333;font-weight:700;text-transform:uppercase">Total Paid</div>' +
+          '<div style="font-size:18px;font-weight:800;color:#137333">₹' + _ruFmt(totalPaid) + '</div>' +
         '</div>' +
-        '<div style="background:#FEF7E0;border-radius:8px;padding:10px 16px">' +
-          '<div style="font-size:10px;color:#8a4200;font-weight:700;text-transform:uppercase">Total ₹</div>' +
-          '<div style="font-size:20px;font-weight:800;color:#8a4200">₹' + _ruFmt(totalAmt) + '</div>' +
+        '<div style="background:#FCE8E6;border-radius:8px;padding:10px 14px;min-width:90px">' +
+          '<div style="font-size:10px;color:#C5221F;font-weight:700;text-transform:uppercase">Pending</div>' +
+          '<div style="font-size:18px;font-weight:800;color:#C5221F">₹' + _ruFmt(totalPending) + '</div>' +
         '</div>' +
       '</div>' +
       '<div style="max-height:280px;overflow-y:auto;border:1px solid #E2E8F0;border-radius:8px">' +
         '<table style="width:100%;border-collapse:collapse">' +
           '<thead style="background:#F8FAFC;position:sticky;top:0">' +
             '<tr style="font-size:10px;color:#64748B;text-transform:uppercase">' +
-              '<th style="padding:6px 8px;text-align:left">Item</th>' +
-              '<th style="padding:6px 8px;text-align:right">Qty</th>' +
+              '<th style="padding:6px 8px;text-align:left">Date</th>' +
+              '<th style="padding:6px 8px;text-align:left">Qty Summary</th>' +
               '<th style="padding:6px 8px;text-align:right">Amount</th>' +
-              '<th style="padding:6px 8px;text-align:right">Count</th>' +
+              '<th style="padding:6px 8px;text-align:right">Pending</th>' +
             '</tr>' +
           '</thead>' +
-          '<tbody>' + itemRows + '</tbody>' +
+          '<tbody>' + rowsHtml + '</tbody>' +
         '</table>' +
       '</div>',
     width: 620,
@@ -5724,7 +5836,7 @@ function _retailCustomerSummary(customerName) {
     showConfirmButton: true,
     confirmButtonText: '<i class="fas fa-file-invoice"></i> Make Invoice',
     cancelButtonText: 'Close',
-    confirmButtonColor: '#4285F4'
+    confirmButtonColor: '#7C3AED'
   }).then(function(r) {
     if (r.isConfirmed) _retailMakeInvoice(customerName);
   });
@@ -5732,16 +5844,23 @@ function _retailCustomerSummary(customerName) {
 
 // ---- Retail Action: Make Invoice from retail data ----
 function _retailMakeInvoice(customerName) {
-  // Find or prompt to create party
-  var party = (DB.parties || []).find(function(p) {
+  // Retail customer ko RetailCustomers master se match karo
+  var retailCust = (DB.retailCustomers || []).find(function(c) {
+    return c.name && c.name.toLowerCase().trim() === customerName.toLowerCase().trim();
+  });
+
+  // Supply party bhi check karo (agar dono mein hai toh usse use karo)
+  var supplyParty = (DB.parties || []).find(function(p) {
     return p.name && p.name.toLowerCase().trim() === customerName.toLowerCase().trim();
   });
 
-  if (!party) {
+  // Agar supply party nahi hai toh add party view pe bhejo
+  if (!supplyParty) {
     Swal.fire({
       icon: 'question',
-      title: 'Party not found',
-      html: '<b>' + escHTML(customerName) + '</b> Parties list me nahi hai.<br><br>Pehle party create karein?',
+      title: 'Supply Party not found',
+      html: '<b>' + escHTML(customerName) + '</b> supply Parties list mein nahi hai.<br><br>' +
+            'Invoice banane ke liye pehle ise supply party ke roop mein add karein.',
       showCancelButton: true,
       confirmButtonText: 'Go to Add Party',
       cancelButtonText: 'Cancel',
@@ -5765,48 +5884,43 @@ function _retailMakeInvoice(customerName) {
     return;
   }
 
-  // Party exists — sum total retail amount for this customer (recent entries)
+  // Get pending retail amount for this customer
   var rows = (_retailData.allRows || []).filter(function(r) { return r.customer === customerName; });
-  var totalAmt = rows.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
-  var itemList = rows.map(function(r) { return r.item; }).filter(function(v, i, a) { return a.indexOf(v) === i; }).slice(0, 5).join(', ');
+  var totalPending = rows.reduce(function(s, r) { return s + (r.pending || 0); }, 0);
+  var totalAmt = rows.reduce(function(s, r) { return s + (r.totalAmount || 0); }, 0);
 
   Swal.fire({
     icon: 'question',
     title: 'Create Invoice from Retail?',
-    html: 'Party: <b>' + escHTML(party.name) + '</b><br>' +
+    html: 'Supply Party: <b>' + escHTML(supplyParty.name) + '</b><br>' +
+          'Retail entries: <b>' + rows.length + '</b><br>' +
           'Total retail amount: <b style="color:#137333">₹' + _ruFmt(totalAmt) + '</b><br>' +
-          'Items: ' + escHTML(itemList) + (rows.length > 5 ? ' (+ more)' : '') + '<br><br>' +
+          'Pending amount: <b style="color:#C5221F">₹' + _ruFmt(totalPending) + '</b><br><br>' +
           '<div style="font-size:11px;color:#64748B;text-align:left;background:#F8FAFC;padding:10px;border-radius:6px">' +
-            '<b>Note:</b> Ye ek naya invoice create karega us party ke liye, jisme aap ' +
-            'bill amount aur details edit kar sakte hain. Retail entries waise hi rahenge.' +
+            '<b>Note:</b> Ye ek naya invoice create karega us party ke liye. Amount editable hoga. Retail entries waise hi rahenge.' +
           '</div>',
     showCancelButton: true,
     confirmButtonText: '<i class="fas fa-arrow-right"></i> Proceed to New Invoice',
     cancelButtonText: 'Cancel',
-    confirmButtonColor: '#4285F4'
+    confirmButtonColor: '#7C3AED'
   }).then(function(r) {
     if (!r.isConfirmed) return;
     nav('addInvoice');
     setTimeout(function() {
-      // Pre-select party in the searchable select
       var inp = document.getElementById('ai-ss-inp');
-      if (inp) inp.value = party.name;
+      if (inp) inp.value = supplyParty.name;
       if (_ssState['ai-ss']) {
-        _ssState['ai-ss'].value = party.partyID;
-        _ssState['ai-ss'].text = party.name;
+        _ssState['ai-ss'].value = supplyParty.partyID;
+        _ssState['ai-ss'].text = supplyParty.name;
       }
-      // Fill hidden
-      var idEl = document.getElementById('ai-party-id'); if (idEl) idEl.value = party.partyID;
-      var codeEl = document.getElementById('ai-party-code'); if (codeEl) codeEl.value = party.partyCode || '';
-      var nameEl = document.getElementById('ai-party-name'); if (nameEl) nameEl.value = party.name;
-      // Pre-fill gross amount
+      var idEl = document.getElementById('ai-party-id'); if (idEl) idEl.value = supplyParty.partyID;
+      var codeEl = document.getElementById('ai-party-code'); if (codeEl) codeEl.value = supplyParty.partyCode || '';
+      var nameEl = document.getElementById('ai-party-name'); if (nameEl) nameEl.value = supplyParty.name;
       var grossEl = document.getElementById('ai-gross');
       if (grossEl) grossEl.value = Math.round(totalAmt);
-      // Pre-fill head
       var headEl = document.getElementById('ai-head');
-      if (headEl) headEl.value = party.head || '';
-      // Trigger slab auto-calc
-      if (typeof onAIParty === 'function') onAIParty(party.partyID);
+      if (headEl) headEl.value = supplyParty.head || '';
+      if (typeof onAIParty === 'function') onAIParty(supplyParty.partyID);
       if (typeof calcNet === 'function') calcNet();
       Swal.fire({
         icon: 'success',
@@ -5819,28 +5933,38 @@ function _retailMakeInvoice(customerName) {
   });
 }
 
-// Top retail customers — highest amount
-(function _renderTopRetailers() {
+// Top retail customers — highest pending (called from renderRetailSales)
+function _renderTopRetailers() {
   var rows = _retailData.allRows || [];
-  if (!rows.length) return;
+  var el = document.getElementById('rs-top-customers');
+  if (!el) return;
+  if (!rows.length) {
+    el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px">' +
+      '<i class="fas fa-inbox" style="display:block;font-size:20px;margin-bottom:6px;opacity:.4"></i>' +
+      'No data yet — upload PDF first</div>';
+    return;
+  }
   var byCust = {};
   rows.forEach(function(r) {
     var c = r.customer || 'Unknown';
-    if (!byCust[c]) byCust[c] = { amt: 0, count: 0 };
-    byCust[c].amt += r.amount || 0;
+    if (!byCust[c]) byCust[c] = { amt: 0, pending: 0, count: 0 };
+    byCust[c].amt += r.totalAmount || 0;
+    byCust[c].pending += r.pending || 0;
     byCust[c].count++;
   });
-  var top = Object.keys(byCust).sort(function(a, b) { return byCust[b].amt - byCust[a].amt; }).slice(0, 5);
-  var el = document.getElementById('rs-top-customers');
-  if (!el) return;
+  var top = Object.keys(byCust).sort(function(a, b) { return byCust[b].pending - byCust[a].pending; }).slice(0, 5);
   el.innerHTML = top.map(function(c, i) {
-    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:12px">' +
-      '<span><span style="color:var(--muted);font-size:10px;font-weight:700;margin-right:6px">#' + (i+1) + '</span>' +
-      '<span style="font-weight:600">' + escHTML(c) + '</span> <span style="color:var(--muted);font-size:10px">(' + byCust[c].count + ' entries)</span></span>' +
-      '<span style="font-weight:700;color:var(--primary)">₹' + _ruFmt(byCust[c].amt) + '</span>' +
+    var p = byCust[c].pending;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #F1F5F9;font-size:12px">' +
+      '<span style="display:flex;align-items:center;gap:6px;min-width:0">' +
+        '<span style="color:var(--muted);font-size:10px;font-weight:700">#' + (i+1) + '</span>' +
+        '<span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHTML(c) + '</span>' +
+        '<span style="color:var(--muted);font-size:10px;flex-shrink:0">(' + byCust[c].count + ')</span>' +
+      '</span>' +
+      '<span style="font-weight:700;color:' + (p > 0.01 ? '#7C3AED' : 'var(--green)') + ';flex-shrink:0">₹' + _ruFmt(p) + '</span>' +
     '</div>';
   }).join('');
-})();
+}
 
 
 // ============================================================
@@ -6273,14 +6397,567 @@ function _rstmtPrint() {
   setTimeout(function() { w.print(); }, 300);
 }
 
-// // Hook into renderRetailSales — also refresh outstanding card
-// var _origRenderRetailSales2 = renderRetailSales;
-// renderRetailSales = function() {
-//   _origRenderRetailSales2.apply(this, arguments);
-//   _refreshRetailOutstanding();
-// };
 
 
+// ============================================================
+// MODE SYSTEM — Supply vs Retail
+// ============================================================
+// - Login ke baad welcome screen pe mode choose karta hai
+// - Topbar pe switch button se kabhi bhi mode change
+// - localStorage mein save — refresh ke baad yaad rehta hai
+// - Nav items, sections, aur default view mode ke hisaab se badalte hain
+// ============================================================
 
+/**
+ * Switch mode without logout (called from topbar dropdown)
+ */
+function switchMode(mode) {
+  if (mode !== 'supply' && mode !== 'retail') return;
+  if (mode === _activeMode) {
+    _closeModeDropdown();
+    return;
+  }
+  _activeMode = mode;
+  try { localStorage.setItem('fresko_mode', mode); } catch(e) {}
+  _applyModeUI();
+  _navigateToDefaultView();
+  _closeModeDropdown();
 
+  // ── Toast confirmation ────────────────────────────────────
+  var label = (mode === 'retail') ? 'Retail' : 'Supply';
+  var icon = (mode === 'retail') ? 'store' : 'building';
+  _optimisticToast('Switched to ' + label + ' mode');
+}
+
+/**
+ * Toggle mode dropdown in topbar
+ */
+function _toggleModeDropdown() {
+  var dd = document.getElementById('mode-dropdown');
+  if (!dd) return;
+  dd.classList.toggle('show');
+  // Close on outside click
+  setTimeout(function() {
+    document.addEventListener('click', _closeModeDropdownOnOutside, { once: true });
+  }, 10);
+}
+
+function _closeModeDropdownOnOutside(e) {
+  if (!e.target.closest('#mode-switch-btn') && !e.target.closest('#mode-dropdown')) {
+    _closeModeDropdown();
+  } else {
+    // Clicked inside — re-attach listener
+    setTimeout(function() {
+      document.addEventListener('click', _closeModeDropdownOnOutside, { once: true });
+    }, 10);
+  }
+}
+
+function _closeModeDropdown() {
+  var dd = document.getElementById('mode-dropdown');
+  if (dd) dd.classList.remove('show');
+}
+
+/**
+ * Navigate to the correct default view for current mode
+ */
+function _navigateToDefaultView() {
+  var home = (_activeMode === 'retail') ? RETAIL_HOME_VIEW : SUPPLY_HOME_VIEW;
+  _activeView = home;
+  nav(home);
+}
+
+/**
+ * Apply mode-based UI (show/hide nav items + sections + topbar badge)
+ */
+function _applyModeUI() {
+  var isRetail = (_activeMode === 'retail');
+
+  // ── 1. Nav items visibility ───────────────────────────────
+  // First hide ALL mode-specific nav items
+  SUPPLY_NAV_ITEMS.concat(RETAIL_NAV_ITEMS).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  // Then show items for current mode
+  var itemsToShow = isRetail ? RETAIL_NAV_ITEMS : SUPPLY_NAV_ITEMS;
+  itemsToShow.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      // Respect admin-only visibility (handled by _applyPermissions)
+      // Only override display if this isn't an admin-only element
+      var isAdminOnly = el.classList.contains('nav-admin-only');
+      if (!isAdminOnly) {
+        el.style.display = 'flex';
+      } else {
+        // Let _applyPermissions decide
+        el.style.display = window._isAdmin ? 'flex' : 'none';
+      }
+    }
+  });
+
+  // ── 2. Section labels + dividers visibility ───────────────
+  // Elements with data-mode attribute: show only if matches current mode
+  // Elements with data-mode="all": always show
+  document.querySelectorAll('[data-mode]').forEach(function(el) {
+    var m = el.getAttribute('data-mode');
+    if (m === 'all') {
+      el.style.display = '';
+    } else if (m === 'supply') {
+      el.style.display = isRetail ? 'none' : '';
+    } else if (m === 'retail') {
+      el.style.display = isRetail ? '' : 'none';
+    }
+  });
+
+  // ── 3. Topbar mode indicator ──────────────────────────────
+  var modeLabel = document.getElementById('mode-current-label');
+  if (modeLabel) {
+    modeLabel.textContent = isRetail ? 'Retail' : 'Supply';
+  }
+  var modeIcon = document.getElementById('mode-current-icon');
+  if (modeIcon) {
+    modeIcon.className = isRetail ? 'fas fa-store' : 'fas fa-building';
+  }
+  var modeBtn = document.getElementById('mode-switch-btn');
+  if (modeBtn) {
+    if (isRetail) {
+      modeBtn.style.background = '#F5F3FF';
+      modeBtn.style.color = '#7C3AED';
+      modeBtn.style.borderColor = '#DDD6FE';
+    } else {
+      modeBtn.style.background = '#E8F0FE';
+      modeBtn.style.color = '#1967D2';
+      modeBtn.style.borderColor = '#BFDBFE';
+    }
+  }
+
+  // ── 4. Highlight active item in dropdown ──────────────────
+  document.querySelectorAll('.mode-option').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-mode-option') === _activeMode);
+  });
+
+  // ── 5. Body class for CSS targeting ───────────────────────
+  document.body.classList.toggle('mode-retail', isRetail);
+  document.body.classList.toggle('mode-supply', !isRetail);
+}
+
+/**
+ * Read saved mode preference (called on app load)
+ */
+function _loadModePreference() {
+  try {
+    var saved = localStorage.getItem('fresko_mode');
+    if (saved === 'retail' || saved === 'supply') {
+      _activeMode = saved;
+    }
+  } catch (e) {}
+}
+
+// ============================================================
+// RETAIL DASHBOARD (Part 3)
+// ============================================================
+// Layout: 4 stat cards on top + Customer-wise outstanding table
+//         + Quick Actions / Recent Activity panel on right
+// ============================================================
+
+function renderRetailDashboard() {
+  // Date in header
+  var dateEl = document.getElementById('rd-date');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('en-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+  }
+
+  // Load retail data if not already loaded
+  if (!_retailData.allRows || _retailData.allRows.length === 0) {
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.success) {
+          _retailData.allRows = r.rows || [];
+        }
+        _renderRetailDashboardContent();
+      })
+      .withFailureHandler(function () {
+        _renderRetailDashboardContent(); // render with empty
+      })
+      .getRetailData();
+  } else {
+    _renderRetailDashboardContent();
+  }
+}
+
+function _renderRetailDashboardContent() {
+  var rows = _retailData.allRows || [];
+
+  // ── Stats computation ────────────────────────────────────
+  var totalPending = 0;
+  var pendingCustomers = {};
+  var byCustomer = {};
+
+  rows.forEach(function (r) {
+    var p = r.pending || 0;
+    var c = r.customer || 'Unknown';
+    totalPending += p;
+    if (p > 0.01) {
+      pendingCustomers[c] = true;
+      if (!byCustomer[c]) {
+        byCustomer[c] = { name: c, pending: 0, entries: 0, oldestDate: null };
+      }
+      byCustomer[c].pending += p;
+      byCustomer[c].entries++;
+      var d = parseIST(r.saleDate);
+      if (d && (!byCustomer[c].oldestDate || d < byCustomer[c].oldestDate)) {
+        byCustomer[c].oldestDate = d;
+      }
+    }
+  });
+
+  txt('rd-total-pending', '₹' + _ruFmt(totalPending));
+  txt('rd-pending-cust', Object.keys(pendingCustomers).length);
+  txt('rd-total-entries', rows.length);
+
+  // This month retail collections
+  var monthAmt = 0;
+  var monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  (DB.payments || []).forEach(function (p) {
+    if (p.paymentType !== 'Retail') return;
+    var pd = parseIST(p.paymentDate);
+    if (pd && pd >= monthStart) monthAmt += p.amount || 0;
+  });
+  txt('rd-this-month', '₹' + _ruFmt(monthAmt));
+
+  // ── Customer-wise outstanding table ──────────────────────
+  var custList = Object.keys(byCustomer).map(function (k) { return byCustomer[k]; })
+    .sort(function (a, b) { return b.pending - a.pending; });
+
+  var tbody = document.getElementById('rd-cust-tbody');
+  if (tbody) {
+    if (!custList.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="center" style="padding:32px;color:var(--muted);font-size:12px">' +
+        '<i class="fas fa-check-circle" style="color:var(--green);font-size:22px;display:block;margin-bottom:8px"></i>' +
+        'Sab retail customers settled hain!' +
+        '</td></tr>';
+    } else {
+      tbody.innerHTML = custList.slice(0, 15).map(function (c) {
+        var oldestStr = c.oldestDate ? _fmtDateShort(c.oldestDate) : '--';
+        return '<tr style="cursor:pointer" onclick="_openRetailStatement(\'' + escQ(c.name) + '\')">' +
+          '<td style="font-weight:600;font-size:12px">' + escHTML(c.name) + '</td>' +
+          '<td class="num" style="color:var(--red);font-weight:700;font-size:13px">₹' + _ruFmt(c.pending) + '</td>' +
+          '<td class="num" style="color:var(--muted)">' + c.entries + '</td>' +
+          '<td style="font-size:10px;color:var(--muted)">' + oldestStr + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  }
+
+  // ── Recent Activity ──────────────────────────────────────
+  _renderRetailRecentActivity();
+}
+
+function _renderRetailRecentActivity() {
+  var el = document.getElementById('rd-recent-activity');
+  if (!el) return;
+
+  var payments = (DB.payments || []).filter(function (p) { return p.paymentType === 'Retail'; });
+  payments.sort(function (a, b) {
+    var da = parseIST(a.paymentDate), db = parseIST(b.paymentDate);
+    return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+  });
+  var recent = payments.slice(0, 5);
+
+  if (!recent.length) {
+    el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px">' +
+      '<i class="fas fa-inbox" style="display:block;font-size:20px;margin-bottom:6px;opacity:.4"></i>' +
+      'No recent payments</div>';
+    return;
+  }
+
+  el.innerHTML = recent.map(function (p) {
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #F1F5F9;font-size:11px">' +
+      '<div style="min-width:0;flex:1">' +
+        '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHTML(p.partyName || '--') + '</div>' +
+        '<div style="color:var(--muted);font-size:10px;margin-top:1px">' + escHTML(p.paymentDate) + ' · ' + escHTML(p.mode || '--') + '</div>' +
+      '</div>' +
+      '<div style="font-weight:700;color:var(--green);flex-shrink:0">₹' + _ruFmt(p.amount || 0) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Quick Action Handlers ────────────────────────────────────
+function _rdQuickUpload() { nav('retailUpload'); }
+function _rdQuickAddCust() { openAddRetailCustomerModal(); }
+function _rdQuickRecordPay() {
+  openRPModal();
+  setTimeout(function () {
+    if (typeof _switchRPTab === 'function') _switchRPTab('retail');
+  }, 120);
+}
+function _rdQuickCustomers() { nav('retailCustomers'); }
+function _rdQuickPayments() { nav('retailPayments'); }
+
+// ============================================================
+// RETAIL CUSTOMERS VIEW (Part 3)
+// ============================================================
+
+function renderRetailCustomers() {
+  var q = ((document.getElementById('rc-search') || {}).value || '').toLowerCase();
+  var customers = DB.retailCustomers || [];
+
+  var list = customers.filter(function (c) {
+    if (!q) return true;
+    return (c.name || '').toLowerCase().includes(q) ||
+      (c.phone || '').toLowerCase().includes(q) ||
+      (c.city || '').toLowerCase().includes(q) ||
+      (c.customerID || '').toLowerCase().includes(q);
+  });
+
+  txt('rc-sub', list.length + ' customers');
+
+  var tbody = document.getElementById('rc-tbody');
+  if (!tbody) return;
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="center" style="padding:32px;color:var(--muted);font-size:12px">' +
+      (q ? 'No customers match your search' :
+        '<i class="fas fa-users" style="display:block;font-size:22px;margin-bottom:8px;opacity:.4"></i>No retail customers yet. Upload a PDF or add manually.') +
+      '</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(function (c) {
+    var phoneDisplay = c.phone
+      ? '<a href="tel:' + escQ(c.phone) + '" style="color:var(--primary);text-decoration:none">' + escHTML(c.phone) + '</a>'
+      : '<span style="color:var(--muted)">--</span>';
+
+    var waBtn = c.phone
+      ? '<a href="https://wa.me/91' + c.phone.replace(/\D/g, '') + '" target="_blank" class="act-btn ab-wa" title="WhatsApp" style="text-decoration:none"><i class="fab fa-whatsapp"></i></a>'
+      : '';
+
+    var statusBadge = (c.status === 'Inactive')
+      ? '<span class="badge badge-inactive">Inactive</span>'
+      : '<span class="badge badge-active">Active</span>';
+
+    return '<tr>' +
+      '<td style="font-family:monospace;font-size:11px;color:var(--muted)">' + escHTML(c.customerID) + '</td>' +
+      '<td style="font-weight:600;font-size:12px">' + escHTML(c.name) + '</td>' +
+      '<td style="font-size:12px">' + phoneDisplay + '</td>' +
+      '<td style="font-size:12px">' + (c.city ? escHTML(c.city) : '<span style="color:var(--muted)">--</span>') + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td style="white-space:nowrap;text-align:right">' +
+        waBtn +
+        '<button class="act-btn ab-view" style="margin-left:2px" onclick="_openRetailStatement(\'' + escQ(c.name) + '\')" title="Statement"><i class="fas fa-file-invoice"></i></button>' +
+        '<button class="act-btn ab-edit" style="margin-left:2px" onclick="openEditRetailCustomerModal(\'' + escQ(c.customerID) + '\')" title="Edit"><i class="fas fa-edit"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ============================================================
+// RETAIL CUSTOMER ADD / EDIT (Swal form)
+// ============================================================
+
+function openAddRetailCustomerModal() {
+  Swal.fire({
+    title: '<i class="fas fa-user-plus" style="color:#7C3AED"></i> Add Retail Customer',
+    html:
+      '<div style="text-align:left;font-size:13px">' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">Name <span style="color:#EA4335">*</span></label>' +
+        '<input id="rcf-name" class="swal2-input" placeholder="Customer name" style="width:100%;margin:0 0 12px 0;font-size:13px">' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">Phone <span style="font-weight:400;color:#94A3B8">(optional — WhatsApp ke liye)</span></label>' +
+        '<input id="rcf-phone" class="swal2-input" placeholder="10-digit mobile" style="width:100%;margin:0 0 12px 0;font-size:13px">' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">City <span style="font-weight:400;color:#94A3B8">(optional)</span></label>' +
+        '<input id="rcf-city" class="swal2-input" placeholder="City" style="width:100%;margin:0 0 12px 0;font-size:13px">' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">Notes <span style="font-weight:400;color:#94A3B8">(optional)</span></label>' +
+        '<textarea id="rcf-notes" class="swal2-textarea" placeholder="Any notes..." style="width:100%;margin:0;font-size:13px;min-height:60px"></textarea>' +
+      '</div>',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-save"></i> Create Customer',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#7C3AED',
+    cancelButtonColor: '#64748B',
+    width: 460,
+    preConfirm: function () {
+      var name = (document.getElementById('rcf-name').value || '').trim();
+      if (!name) {
+        Swal.showValidationMessage('Customer name is required');
+        return false;
+      }
+      return {
+        name: name,
+        phone: (document.getElementById('rcf-phone').value || '').trim(),
+        city: (document.getElementById('rcf-city').value || '').trim(),
+        notes: (document.getElementById('rcf-notes').value || '').trim(),
+        status: 'Active'
+      };
+    }
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
+    Swal.fire({ title: 'Creating...', didOpen: function () { Swal.showLoading(); }, background: '#0F172A', color: '#fff' });
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r.success) {
+          Swal.fire({ icon: 'success', title: 'Customer Created!', text: r.msg, timer: 1800, showConfirmButton: false });
+          _silentDataRefresh();
+        } else {
+          Swal.fire('Error', r.error || 'Failed', 'error');
+        }
+      })
+      .withFailureHandler(function (e) {
+        Swal.fire('Error', (e && e.message) || 'Network error', 'error');
+      })
+      .createRetailCustomer(result.value, (USER && USER.name) || URL_NAME);
+  });
+}
+
+function openEditRetailCustomerModal(customerID) {
+  var c = (DB.retailCustomers || []).find(function (x) { return x.customerID === customerID; });
+  if (!c) { Swal.fire('Error', 'Customer not found', 'error'); return; }
+
+  Swal.fire({
+    title: '<i class="fas fa-user-edit" style="color:#7C3AED"></i> Edit Retail Customer',
+    html:
+      '<div style="text-align:left;font-size:13px">' +
+        '<div style="background:#F8FAFC;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:#64748B">' +
+          'ID: <b style="font-family:monospace">' + escHTML(c.customerID) + '</b>' +
+        '</div>' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">Name <span style="color:#EA4335">*</span></label>' +
+        '<input id="rcf-name" class="swal2-input" value="' + escHTML(c.name) + '" style="width:100%;margin:0 0 12px 0;font-size:13px">' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">Phone <span style="font-weight:400;color:#94A3B8">(optional)</span></label>' +
+        '<input id="rcf-phone" class="swal2-input" value="' + escHTML(c.phone || '') + '" placeholder="10-digit mobile" style="width:100%;margin:0 0 12px 0;font-size:13px">' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">City <span style="font-weight:400;color:#94A3B8">(optional)</span></label>' +
+        '<input id="rcf-city" class="swal2-input" value="' + escHTML(c.city || '') + '" placeholder="City" style="width:100%;margin:0 0 12px 0;font-size:13px">' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">Status</label>' +
+        '<select id="rcf-status" class="swal2-input" style="width:100%;margin:0 0 12px 0;font-size:13px">' +
+          '<option value="Active"' + (c.status === 'Active' ? ' selected' : '') + '>Active</option>' +
+          '<option value="Inactive"' + (c.status === 'Inactive' ? ' selected' : '') + '>Inactive</option>' +
+        '</select>' +
+        '<label style="font-weight:600;color:#334155;display:block;margin-bottom:4px">Notes <span style="font-weight:400;color:#94A3B8">(optional)</span></label>' +
+        '<textarea id="rcf-notes" class="swal2-textarea" style="width:100%;margin:0;font-size:13px;min-height:60px">' + escHTML(c.notes || '') + '</textarea>' +
+      '</div>',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-save"></i> Save Changes',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#7C3AED',
+    cancelButtonColor: '#64748B',
+    width: 460,
+    preConfirm: function () {
+      var name = (document.getElementById('rcf-name').value || '').trim();
+      if (!name) {
+        Swal.showValidationMessage('Customer name is required');
+        return false;
+      }
+      return {
+        customerID: c.customerID,
+        name: name,
+        phone: (document.getElementById('rcf-phone').value || '').trim(),
+        city: (document.getElementById('rcf-city').value || '').trim(),
+        notes: (document.getElementById('rcf-notes').value || '').trim(),
+        status: document.getElementById('rcf-status').value
+      };
+    }
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
+    Swal.fire({ title: 'Saving...', didOpen: function () { Swal.showLoading(); }, background: '#0F172A', color: '#fff' });
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r.success) {
+          Swal.fire({ icon: 'success', title: 'Saved!', text: r.msg, timer: 1800, showConfirmButton: false });
+          _silentDataRefresh();
+        } else {
+          Swal.fire('Error', r.error || 'Failed', 'error');
+        }
+      })
+      .withFailureHandler(function (e) {
+        Swal.fire('Error', (e && e.message) || 'Network error', 'error');
+      })
+      .updateRetailCustomer(result.value, (USER && USER.name) || URL_NAME);
+  });
+}
+
+// ============================================================
+// RETAIL PAYMENTS VIEW (Part 3)
+// ============================================================
+
+function renderRetailPayments() {
+  var q = ((document.getElementById('rpay-search') || {}).value || '').toLowerCase();
+  var from = (document.getElementById('rpay-from') || {}).value || '';
+  var to = (document.getElementById('rpay-to') || {}).value || '';
+  var modeF = (document.getElementById('rpay-mode-filter') || {}).value || '';
+
+  var list = (DB.payments || []).filter(function (p) {
+    if (p.paymentType !== 'Retail') return false;
+    if (q && !((p.partyName || '').toLowerCase().includes(q) ||
+              (p.refNo || '').toLowerCase().includes(q) ||
+              (p.paymentID || '').toLowerCase().includes(q))) return false;
+    if (modeF && p.mode !== modeF) return false;
+    if (from || to) {
+      var d = parseIST(p.paymentDate);
+      if (from && d && d < new Date(from)) return false;
+      if (to && d && d > new Date(to + 'T23:59:59')) return false;
+    }
+    return true;
+  }).sort(function (a, b) {
+    var da = parseIST(a.paymentDate), db = parseIST(b.paymentDate);
+    return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+  });
+
+  txt('rpay-sub', list.length + ' retail payments');
+  var totalAmt = list.reduce(function (s, p) { return s + (p.amount || 0); }, 0);
+  txt('rpay-total-badge', '₹' + _ruFmt(totalAmt));
+
+  var tbody = document.getElementById('rpay-tbody');
+  if (!tbody) return;
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="center" style="padding:32px;color:var(--muted);font-size:12px">' +
+      '<i class="fas fa-inbox" style="display:block;font-size:22px;margin-bottom:8px;opacity:.4"></i>' +
+      'No retail payments found' +
+      '</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(function (p) {
+    return '<tr>' +
+      '<td style="font-family:monospace;font-size:11px;color:var(--muted)">' + escHTML(p.paymentID) + '</td>' +
+      '<td style="font-weight:600;font-size:12px">' + escHTML(p.partyName || '--') + '</td>' +
+      '<td style="font-size:11px">' + escHTML(p.paymentDate) + '</td>' +
+      '<td><span class="badge badge-pending" style="background:#E8F0FE;font-size:10px">' + escHTML(p.mode || '--') + '</span></td>' +
+      '<td style="font-size:11px;color:var(--muted);font-family:monospace">' + escHTML(p.refNo || '--') + '</td>' +
+      '<td class="num" style="font-weight:700;color:var(--green)">₹' + _ruFmt(p.amount || 0) + '</td>' +
+      '<td style="font-size:10px;color:var(--muted)">' + escHTML(p.recordedBy || '--') + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ============================================================
+// Helper: refresh retail views when data changes
+// ============================================================
+
+function _refreshRetailViews() {
+  if (_activeView === 'retailDashboard') renderRetailDashboard();
+  if (_activeView === 'retailSales') renderRetailSales();
+  if (_activeView === 'retailCustomers') renderRetailCustomers();
+  if (_activeView === 'retailPayments') renderRetailPayments();
+}
+
+// Auto-hook: when _silentDataRefresh runs, also refresh retail views
+(function _hookRetailRefresh() {
+  if (typeof window._silentDataRefresh === 'function' && !window._silentDataRefresh._retailHooked) {
+    var _orig = window._silentDataRefresh;
+    window._silentDataRefresh = function () {
+      var res = _orig.apply(this, arguments);
+      // Retail views refresh after a short delay (data is already updated)
+      setTimeout(function () {
+        try { _refreshRetailViews(); } catch (e) {}
+      }, 150);
+      return res;
+    };
+    window._silentDataRefresh._retailHooked = true;
+  }
+})();
 
