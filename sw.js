@@ -1,4 +1,4 @@
-var CACHE = 'fresko-payments-v4';
+var CACHE = 'fresko-payments-v5';   // ← v4 se v5 bump kiya
 var SHELL = ['./', './index.html', './app.js', './gas-api.js', './manifest.json'];
 
 self.addEventListener('install', function (e) {
