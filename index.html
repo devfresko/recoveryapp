@@ -2858,6 +2858,21 @@
       }
     }
 
+      /* Mode selection welcome screen — stack on mobile */
+      #mode-selection > div:first-child + div {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+      /* Mode switch button — hide label on small mobile, keep icon */
+      @media (max-width: 480px) {
+        #mode-switch-btn span#mode-current-label {
+          display: none;
+        }
+        #mode-switch-btn {
+          padding: 5px 8px !important;
+        }
+      }
+
     /* ══════════════════════════════════════════════════════════
        MOBILE  ≤768px  — hamburger, full drawer sidebar
        ══════════════════════════════════════════════════════════ */
@@ -3248,6 +3263,86 @@
       }
     }
 
+    /* ── Mode Dropdown (Topbar) ─────────────────────────────── */
+    .mode-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .12);
+      padding: 6px;
+      min-width: 240px;
+      z-index: 500;
+      display: none;
+      animation: modeDdIn .15s ease;
+    }
+
+    .mode-dropdown.show {
+      display: block;
+    }
+
+    @keyframes modeDdIn {
+      from {
+        opacity: 0;
+        transform: translateY(-6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .mode-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .12s;
+    }
+
+    .mode-option:hover {
+      background: #F8FAFC;
+    }
+
+    .mode-option.active {
+      background: #F8FAFC;
+      position: relative;
+    }
+
+    .mode-option.active::after {
+      content: '\f00c';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      color: var(--green);
+    }
+
+    .mode-option-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .mode-pick-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .08);
+    }
+
+
     #login-wrapper {
       height: 100vh;
       display: flex;
@@ -3373,10 +3468,33 @@
           Authenticated successfully.<br>
           Welcome to the <strong>Fresko Payment Follow-up System</strong>.
         </div>
-        <div id="wd-btn">
-          <button class="bgo" onclick="enterApp()">
-            <i class="fas fa-arrow-right"></i> Enter Dashboard
-          </button>
+        <div id="mode-selection">
+          <div style="font-size:12px;color:#94A3B8;font-weight:500;margin-bottom:14px;text-align:center">
+            Which business do you want to work on?
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+            <button class="mode-pick-btn" onclick="selectMode('supply')" data-mode-pick="supply"
+              style="border:none;cursor:pointer;padding:16px 12px;border-radius:12px;background:#E8F0FE;border:2px solid #BFDBFE;transition:all .2s;font-family:inherit">
+              <div
+                style="width:38px;height:38px;border-radius:10px;background:#4285F4;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;box-shadow:0 2px 8px rgba(66,133,244,.3)">
+                <i class="fas fa-building" style="color:#fff;font-size:16px"></i>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:#1967D2;margin-bottom:2px">Supply</div>
+              <div style="font-size:10px;color:#64748B;line-height:1.3">Parties · Invoices · Slabs</div>
+            </button>
+            <button class="mode-pick-btn" onclick="selectMode('retail')" data-mode-pick="retail"
+              style="border:none;cursor:pointer;padding:16px 12px;border-radius:12px;background:#F5F3FF;border:2px solid #DDD6FE;transition:all .2s;font-family:inherit">
+              <div
+                style="width:38px;height:38px;border-radius:10px;background:#7C3AED;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;box-shadow:0 2px 8px rgba(124,58,237,.3)">
+                <i class="fas fa-store" style="color:#fff;font-size:16px"></i>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:#7C3AED;margin-bottom:2px">Retail</div>
+              <div style="font-size:10px;color:#64748B;line-height:1.3">Customers · Register · FIFO</div>
+            </button>
+          </div>
+          <div style="font-size:10px;color:#94A3B8;text-align:center">
+            <i class="fas fa-info-circle" style="margin-right:3px"></i>You can switch anytime from the top bar
+          </div>
         </div>
       </div>
 
@@ -3418,7 +3536,8 @@
 
         <nav class="sb-nav scroll">
 
-          <div class="sb-section-label">Overview</div>
+          <!-- ═══ SUPPLY MODE NAV ═══ -->
+          <div class="sb-section-label" data-mode="supply">Overview</div>
           <div class="sb-nav-item" id="nav-dashboard" data-tip="Dashboard" onclick="nav('dashboard')"><i
               class="fas fa-chart-pie"></i><span class="sb-lbl">Dashboard</span></div>
           <div class="sb-nav-item" id="nav-todayDue" data-tip="Today's Due" onclick="nav('todayDue')"><i
@@ -3428,15 +3547,15 @@
               class="fas fa-exclamation-circle"></i><span class="sb-lbl">Overdue</span><span class="sb-badge"
               id="badge-od">0</span></div>
 
-          <div class="sb-nav-divider"></div>
-          <div class="sb-section-label">Parties</div>
+          <div class="sb-nav-divider" data-mode="supply"></div>
+          <div class="sb-section-label" data-mode="supply">Parties</div>
           <div class="sb-nav-item" id="nav-parties" data-tip="Parties" onclick="nav('parties')"><i
               class="fas fa-users"></i><span class="sb-lbl">Parties</span></div>
           <div class="sb-nav-item nav-admin-only" id="nav-addParty" data-tip="Add Party" onclick="nav('addParty')"
             style="display:none"><i class="fas fa-user-plus"></i><span class="sb-lbl">Add Party</span></div>
 
-          <div class="sb-nav-divider"></div>
-          <div class="sb-section-label">Invoices</div>
+          <div class="sb-nav-divider" data-mode="supply"></div>
+          <div class="sb-section-label" data-mode="supply">Invoices</div>
           <div class="sb-nav-item" id="nav-invoices" data-tip="All Invoices" onclick="nav('invoices')"><i
               class="fas fa-file-invoice"></i><span class="sb-lbl">All Invoices</span></div>
           <div class="sb-nav-item" id="nav-pending" data-tip="Pending Invoices" onclick="nav('pending')"><i
@@ -3447,17 +3566,8 @@
           <div class="sb-nav-item" id="nav-upload" data-tip="CSV Upload" onclick="nav('upload')"><i
               class="fas fa-file-upload"></i><span class="sb-lbl">CSV Upload</span></div>
 
-          <div class="sb-nav-divider"></div>
-          <div class="sb-section-label">Retail Sales</div>
-          <div class="sb-nav-item" id="nav-retailUpload" data-tip="Retail Upload" onclick="nav('retailUpload')">
-            <i class="fas fa-store"></i><span class="sb-lbl">Retail Upload</span>
-          </div>
-          <div class="sb-nav-item" id="nav-retailSales" data-tip="Retail Sales" onclick="nav('retailSales')">
-            <i class="fas fa-receipt"></i><span class="sb-lbl">Retail Sales</span>
-          </div>
-
-          <div class="sb-nav-divider"></div>
-          <div class="sb-section-label">s</div>
+          <div class="sb-nav-divider" data-mode="supply"></div>
+          <div class="sb-section-label" data-mode="supply">Slabs &amp; Collections</div>
           <div class="sb-nav-item" id="nav-slab15due" data-tip="1.5% Slab Due" onclick="nav('slab15due')"><i
               class="fas fa-percentage" style="color:#34A853"></i><span class="sb-lbl">1.5% Due</span><span
               class="sb-badge" id="badge-s15" style="background:#34A853">0</span></div>
@@ -3478,8 +3588,8 @@
               class="fas fa-indian-rupee-sign" style="color:#4ADE80"></i><span class="sb-lbl">Record Payment</span>
           </div>
 
-          <div class="sb-nav-divider"></div>
-          <div class="sb-section-label">Follow-ups</div>
+          <div class="sb-nav-divider" data-mode="supply"></div>
+          <div class="sb-section-label" data-mode="supply">Follow-ups</div>
           <div class="sb-nav-item" id="nav-followups" data-tip="All Follow-ups" onclick="nav('followups')"><i
               class="fas fa-phone-alt"></i><span class="sb-lbl">All Follow-ups</span></div>
           <div class="sb-nav-item" id="nav-promises" data-tip="Promise Tracker" onclick="nav('promises')"><i
@@ -3488,12 +3598,12 @@
             onclick="nav('escalations')" style="display:none"><i class="fas fa-arrow-up"></i><span
               class="sb-lbl">Escalations</span></div>
 
-          <div class="sb-nav-divider nav-admin-only" style="display:none"></div>
-          <div class="sb-section-label nav-admin-only" style="display:none">Reports</div>
+          <div class="sb-nav-divider nav-admin-only" data-mode="supply" style="display:none"></div>
+          <div class="sb-section-label nav-admin-only" data-mode="supply" style="display:none">Reports</div>
           <div class="sb-nav-item nav-admin-only" id="nav-reports" data-tip="Reports" onclick="nav('reports')"
             style="display:none"><i class="fas fa-chart-bar"></i><span class="sb-lbl">Reports</span></div>
-          <div class="sb-nav-divider nav-admin-only" style="display:none"></div>
-          <div class="sb-section-label nav-admin-only" style="display:none">Adjustments</div>
+          <div class="sb-nav-divider nav-admin-only" data-mode="supply" style="display:none"></div>
+          <div class="sb-section-label nav-admin-only" data-mode="supply" style="display:none">Adjustments</div>
           <div class="sb-nav-item nav-admin-only" id="nav-discountTBG" data-tip="Discount to be Given"
             onclick="nav('discountTBG')" style="display:none"><i class="fas fa-tag" style="color:#7C3AED"></i><span
               class="sb-lbl">Discount TBG</span></div>
@@ -3501,8 +3611,33 @@
             style="display:none"><i class="fas fa-times-circle" style="color:#F9AB00"></i><span
               class="sb-lbl">Write-Offs</span></div>
 
-        </nav>
+          <!-- ═══ RETAIL MODE NAV ═══ -->
+          <div class="sb-section-label" data-mode="retail" style="display:none">Retail</div>
+          <div class="sb-nav-item" id="nav-retailDashboard" data-tip="Retail Dashboard" onclick="nav('retailDashboard')"
+            style="display:none">
+            <i class="fas fa-chart-pie" style="color:#7C3AED"></i><span class="sb-lbl">Dashboard</span>
+          </div>
+          <div class="sb-nav-item" id="nav-retailUpload" data-tip="Upload Register" onclick="nav('retailUpload')"
+            style="display:none">
+            <i class="fas fa-cloud-upload-alt" style="color:#7C3AED"></i><span class="sb-lbl">Upload Register</span>
+          </div>
+          <div class="sb-nav-item" id="nav-retailSales" data-tip="Sales Register" onclick="nav('retailSales')"
+            style="display:none">
+            <i class="fas fa-receipt" style="color:#7C3AED"></i><span class="sb-lbl">Sales Register</span>
+          </div>
 
+          <div class="sb-nav-divider" data-mode="retail" style="display:none"></div>
+          <div class="sb-section-label" data-mode="retail" style="display:none">Manage</div>
+          <div class="sb-nav-item" id="nav-retailCustomers" data-tip="Customers" onclick="nav('retailCustomers')"
+            style="display:none">
+            <i class="fas fa-users" style="color:#7C3AED"></i><span class="sb-lbl">Customers</span>
+          </div>
+          <div class="sb-nav-item" id="nav-retailPayments" data-tip="Payments" onclick="nav('retailPayments')"
+            style="display:none">
+            <i class="fas fa-hand-holding-usd" style="color:#7C3AED"></i><span class="sb-lbl">Payments</span>
+          </div>
+
+        </nav>
 
         <div class="sb-bottom">
           <div class="sb-user-card">
@@ -3530,6 +3665,34 @@
           <span class="tb-breadcrumb" id="tb-crumb">Dashboard</span>
           <span style="font-size:9px;color:var(--muted);margin-left:8px;font-weight:700;letter-spacing:1px">V2.0</span>
           <div class="tb-right">
+            <div style="position:relative">
+              <button class="tb-btn" id="mode-switch-btn" onclick="_toggleModeDropdown()" title="Switch Mode"
+                style="background:#E8F0FE;color:#1967D2;border-color:#BFDBFE;font-weight:700;padding:5px 10px">
+                <i class="fas fa-building" id="mode-current-icon" style="font-size:11px"></i>
+                <span id="mode-current-label">Supply</span>
+                <i class="fas fa-chevron-down" style="font-size:8px;margin-left:2px;opacity:.6"></i>
+              </button>
+              <div id="mode-dropdown" class="mode-dropdown">
+                <div class="mode-option" data-mode-option="supply" onclick="switchMode('supply')">
+                  <div class="mode-option-icon" style="background:#E8F0FE;color:#1967D2">
+                    <i class="fas fa-building"></i>
+                  </div>
+                  <div>
+                    <div style="font-weight:700;font-size:12px;color:#0F172A">Supply</div>
+                    <div style="font-size:10px;color:#64748B">Parties · Invoices · Slabs</div>
+                  </div>
+                </div>
+                <div class="mode-option" data-mode-option="retail" onclick="switchMode('retail')">
+                  <div class="mode-option-icon" style="background:#F5F3FF;color:#7C3AED">
+                    <i class="fas fa-store"></i>
+                  </div>
+                  <div>
+                    <div style="font-weight:700;font-size:12px;color:#0F172A">Retail</div>
+                    <div style="font-size:10px;color:#64748B">Customers · Register · FIFO</div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <button class="tb-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode">
               <i class="fas fa-moon" id="theme-icon" style="font-size:11px"></i>
             </button>
@@ -3601,7 +3764,7 @@
             </div>
 
 
-            <div class="card" style="margin-bottom:16px;border-left:3px solid #7C3AED">
+            <!-- <div class="card" style="margin-bottom:16px;border-left:3px solid #7C3AED">
               <div
                 style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
                 <span><i class="fas fa-exclamation-circle" style="color:#7C3AED;margin-right:6px"></i>Retail Outstanding
@@ -3612,7 +3775,7 @@
               <div id="rs-outstanding-list" style="padding:8px 14px;max-height:240px;overflow-y:auto">
                 <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading...</div>
               </div>
-            </div>
+            </div> -->
 
             <div class="g3" style="margin-bottom:16px">
               <div class="stat-card" style="border-left:3px solid #34A853">
@@ -5046,6 +5209,217 @@
           </div>
 
 
+                    <!-- ===== RETAIL DASHBOARD VIEW ===== -->
+          <div id="view-retailDashboard" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Dashboard</div>
+                <div class="page-sub" id="rd-date">Loading date...</div>
+              </div>
+              <div class="page-actions">
+                <button class="btn btn-secondary" onclick="_rdQuickUpload()">
+                  <i class="fas fa-cloud-upload-alt"></i> New Upload
+                </button>
+                <button class="btn btn-primary" onclick="_rdQuickRecordPay()"
+                  style="background:#7C3AED;border-color:#7C3AED">
+                  <i class="fas fa-indian-rupee-sign"></i> Record Payment
+                </button>
+              </div>
+            </div>
+
+            <div class="g4" style="margin-bottom:14px">
+              <div class="stat-card sc-red">
+                <i class="fas fa-wallet"
+                  style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06;transform:rotate(-10deg)"></i>
+                <div class="stat-label">Total Pending</div>
+                <div class="stat-val" id="rd-total-pending">₹0</div>
+                <div class="stat-sub">across all customers</div>
+              </div>
+              <div class="stat-card sc-amber">
+                <i class="fas fa-users"
+                  style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06;transform:rotate(5deg)"></i>
+                <div class="stat-label">Pending Customers</div>
+                <div class="stat-val" id="rd-pending-cust">0</div>
+                <div class="stat-sub">with outstanding balance</div>
+              </div>
+              <div class="stat-card sc-blue">
+                <i class="fas fa-receipt"
+                  style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06"></i>
+                <div class="stat-label">Total Entries</div>
+                <div class="stat-val" id="rd-total-entries">0</div>
+                <div class="stat-sub">customer-date records</div>
+              </div>
+              <div class="stat-card sc-green">
+                <i class="fas fa-check-double"
+                  style="position:absolute;right:15px;bottom:10px;font-size:48px;opacity:0.06"></i>
+                <div class="stat-label">This Month ₹</div>
+                <div class="stat-val" id="rd-this-month">₹0</div>
+                <div class="stat-sub">retail collections</div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 340px;gap:16px">
+              <div class="card">
+                <div
+                  style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+                  <span><i class="fas fa-user-tag" style="color:#7C3AED;margin-right:6px"></i>Customer-wise Outstanding</span>
+                  <button class="btn btn-sm btn-ghost" onclick="_rdQuickCustomers()" style="font-size:11px">View All →</button>
+                </div>
+                <div class="tbl-wrap" style="border:none;border-radius:0">
+                  <table class="tbl" style="min-width:auto">
+                    <thead>
+                      <tr>
+                        <th>Customer</th>
+                        <th class="num">Pending (₹)</th>
+                        <th class="num">Entries</th>
+                        <th>Oldest</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rd-cust-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="card">
+                  <div style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
+                    <i class="fas fa-bolt" style="color:#F9AB00;margin-right:6px"></i>Quick Actions
+                  </div>
+                  <div style="padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+                    <button class="btn btn-secondary" onclick="_rdQuickUpload()"
+                      style="justify-content:flex-start;font-size:12px;padding:9px 14px">
+                      <i class="fas fa-cloud-upload-alt" style="color:#7C3AED;width:16px"></i> Upload Register
+                    </button>
+                    <button class="btn btn-secondary" onclick="_rdQuickAddCust()"
+                      style="justify-content:flex-start;font-size:12px;padding:9px 14px">
+                      <i class="fas fa-user-plus" style="color:#4285F4;width:16px"></i> Add Customer
+                    </button>
+                    <button class="btn btn-secondary" onclick="_rdQuickRecordPay()"
+                      style="justify-content:flex-start;font-size:12px;padding:9px 14px">
+                      <i class="fas fa-indian-rupee-sign" style="color:#34A853;width:16px"></i> Record Payment
+                    </button>
+                    <button class="btn btn-secondary" onclick="_rdQuickPayments()"
+                      style="justify-content:flex-start;font-size:12px;padding:9px 14px">
+                      <i class="fas fa-hand-holding-usd" style="color:#F9AB00;width:16px"></i> View Payments
+                    </button>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
+                    <i class="fas fa-clock-rotate-left" style="color:#7C3AED;margin-right:6px"></i>Recent Payments
+                  </div>
+                  <div id="rd-recent-activity" style="padding:6px 14px 10px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== RETAIL CUSTOMERS VIEW ===== -->
+          <div id="view-retailCustomers" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Customers</div>
+                <div class="page-sub" id="rc-sub">0 customers</div>
+              </div>
+              <button class="btn btn-primary" onclick="openAddRetailCustomerModal()"
+                style="background:#7C3AED;border-color:#7C3AED">
+                <i class="fas fa-plus"></i> Add Customer
+              </button>
+            </div>
+
+            <div style="margin-bottom:12px">
+              <div class="search-wrap" style="max-width:400px">
+                <i class="fas fa-search"></i>
+                <input class="form-input" id="rc-search" placeholder="Search by name, phone, city, ID..."
+                  oninput="_debounce(renderRetailCustomers, 250)()">
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="tbl-wrap">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th style="width:90px">ID</th>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>City</th>
+                      <th style="width:100px">Status</th>
+                      <th style="width:180px;text-align:right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rc-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== RETAIL PAYMENTS VIEW ===== -->
+          <div id="view-retailPayments" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Payments</div>
+                <div class="page-sub" id="rpay-sub">0 payments</div>
+              </div>
+              <div class="page-actions">
+                <span id="rpay-total-badge" class="badge"
+                  style="font-size:13px;padding:6px 14px;background:#E6F4EA;color:#137333;border:1px solid #A8DAB5">₹0</span>
+                <button class="btn btn-primary" onclick="_rdQuickRecordPay()"
+                  style="background:#7C3AED;border-color:#7C3AED">
+                  <i class="fas fa-indian-rupee-sign"></i> Record Payment
+                </button>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+              <div class="search-wrap" style="flex:1;min-width:180px">
+                <i class="fas fa-search"></i>
+                <input class="form-input" id="rpay-search" placeholder="Search customer, ref no, ID..."
+                  oninput="_debounce(renderRetailPayments, 250)()">
+              </div>
+              <input class="form-input" type="date" id="rpay-from" onchange="renderRetailPayments()"
+                style="width:130px;padding:7px 10px" title="From date">
+              <input class="form-input" type="date" id="rpay-to" onchange="renderRetailPayments()"
+                style="width:130px;padding:7px 10px" title="To date">
+              <select class="form-input" id="rpay-mode-filter" onchange="renderRetailPayments()"
+                style="width:auto;min-width:120px;padding:7px 10px">
+                <option value="">All Modes</option>
+                <option>Cash</option>
+                <option>UPI</option>
+                <option>RTGS</option>
+                <option>NEFT</option>
+                <option>Cheque</option>
+                <option>IMPS</option>
+              </select>
+              <button class="btn btn-ghost btn-sm"
+                onclick="document.getElementById('rpay-search').value='';document.getElementById('rpay-from').value='';document.getElementById('rpay-to').value='';document.getElementById('rpay-mode-filter').value='';renderRetailPayments()"
+                title="Clear">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div class="card">
+              <div class="tbl-wrap">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th style="width:130px">Payment ID</th>
+                      <th>Customer</th>
+                      <th style="width:100px">Date</th>
+                      <th style="width:100px">Mode</th>
+                      <th style="width:130px">Reference</th>
+                      <th class="num" style="width:120px">Amount (₹)</th>
+                      <th style="width:130px">By</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rpay-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+
           <!-- ===== RETAIL UPLOAD VIEW ===== -->
           <div id="view-retailUpload" class="view">
             <div class="page-hd">
@@ -5089,7 +5463,7 @@
                   Refresh</button>
               </div>
             </div>
-
+            <!-- 
             <div class="card" style="margin-bottom:16px;border-left:3px solid #7C3AED">
               <div
                 style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
@@ -5101,24 +5475,24 @@
               <div id="rs-outstanding-list" style="padding:8px 14px;max-height:240px;overflow-y:auto">
                 <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading...</div>
               </div>
-            </div>
+            </div> -->
 
             <div class="g4" style="margin-bottom:16px">
               <div class="stat-card sc-blue">
                 <div class="stat-label">Total Entries</div>
                 <div class="stat-val" id="rs-total" style="font-size:22px">0</div>
               </div>
-              <div class="stat-card sc-green">
-                <div class="stat-label">Total Qty</div>
-                <div class="stat-val" id="rs-qty" style="font-size:22px">0</div>
+              <div class="stat-card sc-amber">
+                <div class="stat-label">Pending Customers</div>
+                <div class="stat-val" id="rs-pending-cust" style="font-size:22px">0</div>
               </div>
               <div class="stat-card sc-slate">
                 <div class="stat-label">Total Amount</div>
                 <div class="stat-val" id="rs-amt" style="font-size:22px">₹0</div>
               </div>
-              <div class="stat-card sc-amber">
-                <div class="stat-label">Uploads</div>
-                <div class="stat-val" id="rs-uploads" style="font-size:22px">0</div>
+              <div class="stat-card sc-red">
+                <div class="stat-label">Total Pending</div>
+                <div class="stat-val" id="rs-pending" style="font-size:22px;color:var(--red)">₹0</div>
               </div>
             </div>
 
@@ -5144,12 +5518,9 @@
                     <tr>
                       <th>Date</th>
                       <th>Customer</th>
-                      <th>Item</th>
-                      <th class="num">Qty</th>
-                      <th>Unit</th>
-                      <th class="num">Rate</th>
+                      <th>Qty Summary</th>
                       <th class="num">Amount</th>
-                      <th>Uploaded By</th>
+                      <th class="num">Pending</th>
                     </tr>
                   </thead>
                   <tbody id="rs-tbody"></tbody>
@@ -5167,28 +5538,7 @@
               </div>
             </div>
 
-            <div class="card" style="margin-top:16px">
-              <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
-                <i class="fas fa-history" style="color:var(--primary);margin-right:6px"></i>Upload History
-              </div>
-              <div class="tbl-wrap" style="border:none;border-radius:0">
-                <table class="tbl">
-                  <thead>
-                    <tr>
-                      <th>Upload Time</th>
-                      <th>PDF Filename</th>
-                      <th>Date Range</th>
-                      <th class="num">Items</th>
-                      <th class="num">Qty</th>
-                      <th class="num">Amount</th>
-                      <th>By</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody id="rs-log-tbody"></tbody>
-                </table>
-              </div>
-            </div>
+
 
             <div class="card" style="margin-top:16px">
               <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
@@ -5303,7 +5653,7 @@
               class="fas fa-times"></i></button>
         </div>
 
-             <!-- Tab Switcher — padded to match modal-body -->
+        <!-- Tab Switcher — padded to match modal-body -->
         <div style="padding:16px 24px 0">
           <div style="display:flex;gap:6px;background:#F1F5F9;padding:4px;border-radius:10px">
             <button id="rp-tab-invoice-btn" onclick="_switchRPTab('invoice')"
@@ -5411,74 +5761,74 @@
           </div>
         </div>
 
-         <!-- RETAIL PAYMENT TAB -->
+        <!-- RETAIL PAYMENT TAB -->
         <div id="rp-tab-retail-content" style="display:none">
           <div class="modal-body" style="max-height:60vh;overflow-y:auto">
 
-          <div class="info-box blue" style="margin-bottom:14px">
-            <i class="fas fa-info-circle"></i>
-            <div style="font-size:12px">
-              <b>Retail Payment:</b> Chhote customers ke retail entries ke against payment record karein.
-              Amount <b>oldest entry pe pehle</b> apply hoga (FIFO).
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom:12px">
-            <label class="form-label">Select Customer <span class="req">*</span></label>
-            <div id="rpt-retail-cust-ss" style="width:100%"></div>
-          </div>
-
-          <div id="rpt-retail-entries-box" style="display:none;margin-bottom:12px">
-            <div class="form-section-title" style="margin-bottom:8px">Pending Retail Entries (FIFO order)</div>
-            <div id="rpt-retail-entries-list" class="scroll"
-              style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
-
-            <div id="rpt-retail-summary"
-              style="margin-top:10px;padding:12px;background:#F8FAFC;border-radius:8px;border:1px solid var(--border)">
-              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
-                <span style="color:var(--muted)">Total Pending:</span>
-                <span id="rpt-total-pending" style="font-weight:700;color:var(--red)">₹0</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:12px">
-                <span style="color:var(--muted)">Entries:</span>
-                <span id="rpt-entry-count" style="font-weight:600">0</span>
+            <div class="info-box blue" style="margin-bottom:14px">
+              <i class="fas fa-info-circle"></i>
+              <div style="font-size:12px">
+                <b>Retail Payment:</b> Chhote customers ke retail entries ke against payment record karein.
+                Amount <b>oldest entry pe pehle</b> apply hoga (FIFO).
               </div>
             </div>
 
-            <div id="rpt-retail-fifo-breakdown"
-              style="display:none;margin-top:10px;padding:10px;background:#E8F0FE;border-radius:7px;border:1px solid #BFDBFE;max-height:180px;overflow-y:auto">
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label">Select Customer <span class="req">*</span></label>
+              <div id="rpt-retail-cust-ss" style="width:100%"></div>
             </div>
-          </div>
 
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Payment Date <span class="req">*</span></label>
-              <input class="form-input" id="rpt-date" type="date">
-            </div>
-            <div class="form-group"><label class="form-label">Amount (₹) <span class="req">*</span></label>
-              <input class="form-input" id="rpt-amount" type="number" placeholder="Enter amount received">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Mode</label>
-              <select class="form-input" id="rpt-mode">
-                <option>Cash</option>
-                <option>UPI</option>
-                <option>RTGS</option>
-                <option>NEFT</option>
-                <option>Cheque</option>
-                <option>IMPS</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div class="form-group"><label class="form-label">Reference No</label>
-              <input class="form-input" id="rpt-ref" placeholder="Optional">
-            </div>
-          </div>
-                  <div class="form-group"><label class="form-label">Remarks</label>
-            <input class="form-input" id="rpt-remarks" placeholder="Optional">
-          </div>
+            <div id="rpt-retail-entries-box" style="display:none;margin-bottom:12px">
+              <div class="form-section-title" style="margin-bottom:8px">Pending Retail Entries (FIFO order)</div>
+              <div id="rpt-retail-entries-list" class="scroll"
+                style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
 
-          </div>  <!-- close modal-body -->
+              <div id="rpt-retail-summary"
+                style="margin-top:10px;padding:12px;background:#F8FAFC;border-radius:8px;border:1px solid var(--border)">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+                  <span style="color:var(--muted)">Total Pending:</span>
+                  <span id="rpt-total-pending" style="font-weight:700;color:var(--red)">₹0</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px">
+                  <span style="color:var(--muted)">Entries:</span>
+                  <span id="rpt-entry-count" style="font-weight:600">0</span>
+                </div>
+              </div>
+
+              <div id="rpt-retail-fifo-breakdown"
+                style="display:none;margin-top:10px;padding:10px;background:#E8F0FE;border-radius:7px;border:1px solid #BFDBFE;max-height:180px;overflow-y:auto">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Payment Date <span class="req">*</span></label>
+                <input class="form-input" id="rpt-date" type="date">
+              </div>
+              <div class="form-group"><label class="form-label">Amount (₹) <span class="req">*</span></label>
+                <input class="form-input" id="rpt-amount" type="number" placeholder="Enter amount received">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Mode</label>
+                <select class="form-input" id="rpt-mode">
+                  <option>Cash</option>
+                  <option>UPI</option>
+                  <option>RTGS</option>
+                  <option>NEFT</option>
+                  <option>Cheque</option>
+                  <option>IMPS</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div class="form-group"><label class="form-label">Reference No</label>
+                <input class="form-input" id="rpt-ref" placeholder="Optional">
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Remarks</label>
+              <input class="form-input" id="rpt-remarks" placeholder="Optional">
+            </div>
+
+          </div> <!-- close modal-body -->
         </div>
 
 
