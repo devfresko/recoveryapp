@@ -381,7 +381,7 @@ function _onDataLoaded(data) {
   if (!_loadedOnce) {
     _loadedOnce = true;
     nav('dashboard');
-    setInterval(_silentRefresh, 30000);
+    // setInterval(_silentRefresh, 30000);
   } else {
     _reRenderCurrent();
   }
@@ -5308,7 +5308,6 @@ renderRetailSales = function() {
       _retailData.allRows = r.rows || [];
       _renderRetailSalesTable();
       _renderRetailStats();
-      _renderTopRetailers();
     })
     .withFailureHandler(function(e) {
       tbody.innerHTML = emptyRow(5, 'Error: ' + (e && e.message));
@@ -5882,38 +5881,6 @@ function _retailMakeInvoice(customerName) {
   });
 }
 
-// Top retail customers — highest pending (called from renderRetailSales)
-function _renderTopRetailers() {
-  var rows = _retailData.allRows || [];
-  var el = document.getElementById('rs-top-customers');
-  if (!el) return;
-  if (!rows.length) {
-    el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px">' +
-      '<i class="fas fa-inbox" style="display:block;font-size:20px;margin-bottom:6px;opacity:.4"></i>' +
-      'No data yet — upload PDF first</div>';
-    return;
-  }
-  var byCust = {};
-  rows.forEach(function(r) {
-    var c = r.customer || 'Unknown';
-    if (!byCust[c]) byCust[c] = { amt: 0, pending: 0, count: 0 };
-    byCust[c].amt += r.totalAmount || 0;
-    byCust[c].pending += r.pending || 0;
-    byCust[c].count++;
-  });
-  var top = Object.keys(byCust).sort(function(a, b) { return byCust[b].pending - byCust[a].pending; }).slice(0, 5);
-  el.innerHTML = top.map(function(c, i) {
-    var p = byCust[c].pending;
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #F1F5F9;font-size:12px">' +
-      '<span style="display:flex;align-items:center;gap:6px;min-width:0">' +
-        '<span style="color:var(--muted);font-size:10px;font-weight:700">#' + (i+1) + '</span>' +
-        '<span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHTML(c) + '</span>' +
-        '<span style="color:var(--muted);font-size:10px;flex-shrink:0">(' + byCust[c].count + ')</span>' +
-      '</span>' +
-      '<span style="font-weight:700;color:' + (p > 0.01 ? '#7C3AED' : 'var(--green)') + ';flex-shrink:0">₹' + _ruFmt(p) + '</span>' +
-    '</div>';
-  }).join('');
-}
 
 
 // ============================================================
@@ -6910,3 +6877,15 @@ function _refreshRetailViews() {
   }
 })();
 
+// ── Close all open modals (prevents overlay stacking) ────────
+function _closeAllModals() {
+  ['rp-modal', 'fu-modal', 'party-modal', 'retail-stmt-modal',
+   'edit-inv-overlay', 'edit-pay-overlay', 'edit-party-overlay', 'edit-fu-overlay']
+  .forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+  document.body.style.overflow = '';
+}
+
+// Call this at the start of every modal open function
