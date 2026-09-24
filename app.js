@@ -490,7 +490,6 @@ function _silentRefresh() {
   var uname = (USER && USER.name) || URL_NAME || '';
   if (!uname) return;
 
-  // Call with current timestamp — backend returns {unchanged:true} if nothing changed
   google.script.run
     .withSuccessHandler(function(data) {
       if (!data || !data.success || data.unchanged) return;
@@ -500,7 +499,7 @@ function _silentRefresh() {
       _updateBadges();
       _populateFilters();
       _reRenderCurrent();
-      _refreshRetailOutstanding();
+      if (typeof _refreshRetailViews === 'function') _refreshRetailViews();
     })
     .withFailureHandler(function() { /* silent */ })
     .getAllData(uname, _lastUpdate);
@@ -538,7 +537,7 @@ function manualRefresh() {
       Swal.fire('Error', (data && data.error) || (err && err.message) || 'Refresh failed', 'error');
       return;
     }
-    DB = data;
+     DB = data;
     _lastUpdate = data.lastUpdate || _lastUpdate;
     _idb.set('mainDB', data);
     _updateBadges();
@@ -546,6 +545,7 @@ function manualRefresh() {
     _buildAllPartySS();
     _reRenderCurrent();
     _refreshRetailOutstanding();
+    if (typeof _refreshRetailViews === 'function') _refreshRetailViews();
     var tb = document.getElementById('tb-crumb');
     if (tb) { var prev = tb.textContent; tb.textContent = '✓ Refreshed'; setTimeout(() => { tb.textContent = prev; }, 1200); }
   });
@@ -4927,6 +4927,7 @@ function shortPage(d) {
             _populateFilters();
             _buildAllPartySS();
             _reRenderCurrent();
+            if (typeof _refreshRetailViews === 'function') _refreshRetailViews();
           })
           .getAllData((USER && USER.name) || URL_NAME);
       }
