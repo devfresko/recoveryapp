@@ -2858,20 +2858,22 @@
       }
     }
 
-      /* Mode selection welcome screen — stack on mobile */
-      #mode-selection > div:first-child + div {
-        grid-template-columns: 1fr !important;
-        gap: 8px !important;
+    /* Mode selection welcome screen — stack on mobile */
+    #mode-selection>div:first-child+div {
+      grid-template-columns: 1fr !important;
+      gap: 8px !important;
+    }
+
+    /* Mode switch button — hide label on small mobile, keep icon */
+    @media (max-width: 480px) {
+      #mode-switch-btn span#mode-current-label {
+        display: none;
       }
-      /* Mode switch button — hide label on small mobile, keep icon */
-      @media (max-width: 480px) {
-        #mode-switch-btn span#mode-current-label {
-          display: none;
-        }
-        #mode-switch-btn {
-          padding: 5px 8px !important;
-        }
+
+      #mode-switch-btn {
+        padding: 5px 8px !important;
       }
+    }
 
     /* ══════════════════════════════════════════════════════════
        MOBILE  ≤768px  — hamburger, full drawer sidebar
@@ -3342,6 +3344,61 @@
       box-shadow: 0 6px 20px rgba(0, 0, 0, .08);
     }
 
+    /* ── Drawer-mode Modals (FU, Party) ─────────────────────── */
+    .modal-overlay.drawer-mode {
+      align-items: stretch;
+      justify-content: flex-end;
+      padding: 0;
+      background: rgba(15, 23, 42, .45);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+
+    .modal-overlay.drawer-mode .modal-box {
+      width: 480px;
+      max-width: 100vw;
+      height: 100vh;
+      max-height: 100vh;
+      border-radius: 0;
+      box-shadow: -8px 0 32px rgba(0, 0, 0, .15);
+      animation: drawerIn .22s ease;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-overlay.drawer-mode .modal-box.modal-lg {
+      max-width: 480px;
+      width: 480px;
+    }
+
+    .modal-overlay.drawer-mode .modal-hd {
+      border-radius: 0;
+      flex-shrink: 0;
+      padding: 18px 20px 14px;
+    }
+
+    .modal-overlay.drawer-mode .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      max-height: none;
+    }
+
+    .modal-overlay.drawer-mode .modal-ft {
+      flex-shrink: 0;
+      padding: 14px 20px;
+      background: #FAFAFA;
+      border-top: 1px solid #E2E8F0;
+    }
+
+    @media (max-width: 768px) {
+
+      .modal-overlay.drawer-mode .modal-box,
+      .modal-overlay.drawer-mode .modal-box.modal-lg {
+        width: 100vw;
+      }
+    }
 
     #login-wrapper {
       height: 100vh;
@@ -5209,7 +5266,7 @@
           </div>
 
 
-                    <!-- ===== RETAIL DASHBOARD VIEW ===== -->
+          <!-- ===== RETAIL DASHBOARD VIEW ===== -->
           <div id="view-retailDashboard" class="view">
             <div class="page-hd">
               <div>
@@ -5262,8 +5319,10 @@
               <div class="card">
                 <div
                   style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
-                  <span><i class="fas fa-user-tag" style="color:#7C3AED;margin-right:6px"></i>Customer-wise Outstanding</span>
-                  <button class="btn btn-sm btn-ghost" onclick="_rdQuickCustomers()" style="font-size:11px">View All →</button>
+                  <span><i class="fas fa-user-tag" style="color:#7C3AED;margin-right:6px"></i>Customer-wise
+                    Outstanding</span>
+                  <button class="btn btn-sm btn-ghost" onclick="_rdQuickCustomers()" style="font-size:11px">View All
+                    →</button>
                 </div>
                 <div class="tbl-wrap" style="border:none;border-radius:0">
                   <table class="tbl" style="min-width:auto">
@@ -5841,7 +5900,7 @@
     </div>
 
 
-    <div class="modal-overlay" id="fu-modal">
+    <div class="modal-overlay drawer-mode" id="fu-modal" onclick="if(event.target===this)closeFUModal()">
       <div class="modal-box">
         <div class="modal-hd">
           <div class="modal-title"><i class="fas fa-phone-alt" style="margin-right:8px;color:var(--red)"></i>Log
@@ -5939,18 +5998,21 @@
             <input class="form-input" id="fu-attach" placeholder="Paste Drive link to screenshot / doc proof">
           </div>
         </div>
-      </div>
-      <div class="modal-ft">
-        <button class="btn btn-secondary" onclick="closeFUModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="submitFollowUp()"><i class="fas fa-save"></i> Save Follow-up</button>
+
+        <div class="modal-ft">
+          <button class="btn btn-secondary" onclick="closeFUModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="submitFollowUp()"><i class="fas fa-save"></i> Save Follow-up</button>
+        </div>
       </div>
     </div>
+
+
   </div>
 
 
-  <div class="modal-overlay" id="party-modal">
+  <div class="modal-overlay drawer-mode" id="party-modal" onclick="if(event.target===this)closePartyModal()">
     <div class="modal-box modal-lg">
-      <div class="modal-hd" style="background:var(--dark);border-radius:16px 16px 0 0">
+      <div class="modal-hd" style="background:var(--dark)">
         <div>
           <div class="modal-title" id="pm-name" style="color:#fff;font-size:16px">Party</div>
           <div id="pm-sub" style="color:#94A3B8;font-size:11px;margin-top:2px">city head</div>
@@ -6000,15 +6062,17 @@
         <div id="pm-followups" class="scroll"
           style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:5px"></div>
       </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-secondary btn-sm" onclick="closePartyModal()">Close</button>
-      <button class="btn btn-amber btn-sm" onclick="prefillFU()"><i class="fas fa-phone-alt"></i> Log
-        Follow-up</button>
-      <button class="btn btn-green btn-sm" onclick="prefillRP()"><i class="fas fa-indian-rupee-sign"></i> Record
-        Payment</button>
+
+      <div class="modal-ft">
+        <button class="btn btn-secondary btn-sm" onclick="closePartyModal()">Close</button>
+        <button class="btn btn-amber btn-sm" onclick="prefillFU()"><i class="fas fa-phone-alt"></i> Log
+          Follow-up</button>
+        <button class="btn btn-green btn-sm" onclick="prefillRP()"><i class="fas fa-indian-rupee-sign"></i> Record
+          Payment</button>
+      </div>
     </div>
   </div>
+
   </div>
 
   <script src="./app.js"></script>
