@@ -6130,32 +6130,9 @@ function _loadRetailCustomers(preselectName) {
 
 
 function _loadRetailEntries(customerName) {
-  var box = document.getElementById('rpt-retail-entries-box');
-  var list = document.getElementById('rpt-retail-entries-list');
-  var summary = document.getElementById('rpt-retail-summary');
-  if (!box || !list) return;
-
-  list.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)">Loading entries...</div>';
-  box.style.display = 'block';
-
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (!r || !r.success) { list.innerHTML = '<div style="color:var(--red);padding:10px">Failed</div>'; return; }
-      _rptEntries = r.entries || [];
-      if (!_rptEntries.length) {
-        list.innerHTML = '<div style="padding:14px;text-align:center;color:var(--green);font-size:12px">Koi pending entry nahi.</div>';
-        return;
-      }
-      var totalPending = _rptEntries.reduce(function(s, e) { return s + e.pending; }, 0);
-      txt('rpt-total-pending', '₹' + _ruFmt(totalPending));
-      txt('rpt-entry-count', _rptEntries.length);
-      _renderRetailEntriesList();
-    })
-    .withFailureHandler(function(e) {
-      list.innerHTML = '<div style="color:var(--red);padding:10px">Error: ' + (e && e.message) + '</div>';
-    })
-    .getRetailEntriesForCustomer(customerName);
+  _loadRetailEntriesLocalOrRemote(customerName);
 }
+
 
 function _renderRetailEntriesList() {
   var list = document.getElementById('rpt-retail-entries-list');
@@ -6313,15 +6290,20 @@ function _rptResetRetailTab() {
   }, 500);
 })();
 
-// ---- Reset tab on modal open ----
+// ---- Reset tab on modal open (skip if opening for retail prefill) ----
+var _rpOpenAsRetail = false;
 var _origOpenRPModal = openRPModal;
 openRPModal = function() {
   _origOpenRPModal.apply(this, arguments);
-  // Reset to invoice tab by default
   setTimeout(function() {
+    if (_rpOpenAsRetail) {
+      // Retail prefill path owns tab switching — do not reset
+      _rpOpenAsRetail = false;
+      return;
+    }
     _switchRPTab('invoice');
     _rptResetRetailTab();
-  }, 50);
+  }, 40);
 };
 
 // ============================================================
@@ -6370,22 +6352,31 @@ function _refreshRetailOutstanding() {
 }
 
 function _rptQuickPay(customerName) {
-  _rptSelectedCustomer = (customerName || '').trim();
-  // Warm retail cache if empty (non-blocking)
+  var name = (customerName || '').trim();
+  if (!name) return;
+  _rptSelectedCustomer = name;
+  _rpOpenAsRetail = true; // prevent openRPModal from resetting to invoice tab
+
+  // Warm cache if needed (non-blocking)
   if (!_retailData.allRows || !_retailData.allRows.length) {
     google.script.run
       .withSuccessHandler(function(r) {
         if (r && r.success) {
           _retailData.allRows = r.rows || [];
-          if (_rpActiveTab === 'retail' && _rptSelectedCustomer) {
-            _loadRetailCustomers(_rptSelectedCustomer);
+          if (_rpActiveTab === 'retail' && _rptSelectedCustomer === name) {
+            _loadRetailCustomers(name);
+            _loadRetailEntriesLocalOrRemote(name);
           }
         }
       })
       .getRetailData();
   }
+
   openRPModal();
+
+  // After modal paints, switch to retail + prefill (longer than override timeout)
   setTimeout(function() {
+    _rpActiveTab = 'retail';
     var invBtn = document.getElementById('rp-tab-invoice-btn');
     var rtBtn  = document.getElementById('rp-tab-retail-btn');
     var invCont = document.getElementById('rp-tab-invoice-content');
@@ -6396,17 +6387,95 @@ function _rptQuickPay(customerName) {
     if (rtBtn) rtBtn.style.cssText = activeStyle;
     if (invCont) invCont.style.display = 'none';
     if (rtCont) rtCont.style.display = 'block';
-    _rpActiveTab = 'retail';
-    _setDefaultDates();
-    _loadRetailCustomers(_rptSelectedCustomer);
-  }, 50);
+
+    if (typeof _setDefaultDates === 'function') _setDefaultDates();
+
+    // Instant customer list + badge from local data
+    _loadRetailCustomers(name);
+    // Instant pending entries from local data (no wait for API)
+    _loadRetailEntriesLocalOrRemote(name);
+  }, 120);
 }
 
-// ============================================================
-// RETAIL STATEMENT MODAL
-// ============================================================
+/** Build pending entries for a customer from local _retailData (instant) */
+function _retailEntriesFromCache(customerName) {
+  var target = (customerName || '').toLowerCase().trim();
+  var rows = (_retailData.allRows || []).filter(function(r) {
+    return (r.customer || '').toLowerCase().trim() === target && (parseFloat(r.pending) || 0) > 0.01;
+  });
+  rows.sort(function(a, b) {
+    var da = parseIST(a.saleDate), db = parseIST(b.saleDate);
+    return (da ? da.getTime() : 0) - (db ? db.getTime() : 0); // FIFO oldest first
+  });
+  return rows.map(function(r, i) {
+    return {
+      rowIndex: i,
+      uid: r.uid,
+      saleDate: r.saleDate,
+      customer: r.customer,
+      item: r.item || '',
+      qty: r.qty != null ? r.qty : r.qtySummary,
+      unit: r.unit || '',
+      amount: r.amount != null ? r.amount : r.totalAmount,
+      paid: r.paid || 0,
+      pending: r.pending || 0,
+      settledDate: r.settledDate || ''
+    };
+  });
+}
 
-var _rstmtCustomer = '';
+function _loadRetailEntriesLocalOrRemote(customerName) {
+  var box = document.getElementById('rpt-retail-entries-box');
+  var list = document.getElementById('rpt-retail-entries-list');
+  if (!box || !list) return;
+
+  // Instant from cache
+  var local = _retailEntriesFromCache(customerName);
+  if (local.length) {
+    _rptEntries = local;
+    var totalPending = local.reduce(function(s, e) { return s + (e.pending || 0); }, 0);
+    txt('rpt-total-pending', '₹' + _ruFmt(totalPending));
+    txt('rpt-entry-count', local.length);
+    box.style.display = 'block';
+    _renderRetailEntriesList();
+    var amtEl = document.getElementById('rpt-amount');
+    if (amtEl && !amtEl.value) amtEl.value = Math.round(totalPending * 100) / 100;
+  } else {
+    list.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Loading entries...</div>';
+    box.style.display = 'block';
+  }
+
+  // Background confirm from server
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) {
+        if (!local.length) list.innerHTML = '<div style="color:var(--red);padding:10px;font-size:12px">Failed to load entries</div>';
+        return;
+      }
+      _rptEntries = r.entries || [];
+      if (!_rptEntries.length) {
+        list.innerHTML = '<div style="padding:14px;text-align:center;color:var(--green);font-size:12px">Koi pending entry nahi.</div>';
+        return;
+      }
+      var totalPending = _rptEntries.reduce(function(s, e) { return s + e.pending; }, 0);
+      txt('rpt-total-pending', '₹' + _ruFmt(totalPending));
+      txt('rpt-entry-count', _rptEntries.length);
+      box.style.display = 'block';
+      _renderRetailEntriesList();
+      var amtEl = document.getElementById('rpt-amount');
+      if (amtEl && (!amtEl.value || local.length === 0)) {
+        amtEl.value = Math.round(totalPending * 100) / 100;
+      }
+      if (typeof _rptUpdateFIFO === 'function') _rptUpdateFIFO();
+    })
+    .withFailureHandler(function(e) {
+      if (!local.length) {
+        list.innerHTML = '<div style="color:var(--red);padding:10px;font-size:12px">Error: ' + ((e && e.message) || 'Network') + '</div>';
+      }
+    })
+    .getRetailEntriesForCustomer(customerName);
+}
+
 
 function _openRetailStatement(customerName) {
   _rstmtCustomer = customerName;
