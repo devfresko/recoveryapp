@@ -5994,7 +5994,7 @@ function _switchRPTab(tab) {
     invCont.style.display = 'none';
     rtCont.style.display  = 'block';
     _setDefaultDates();
-    _loadRetailCustomers();
+    _loadRetailCustomers(_rptSelectedCustomer || '');
   } else {
     invBtn.style.cssText = activeStyle;
     rtBtn.style.cssText  = inactiveStyle;
@@ -6004,68 +6004,131 @@ function _switchRPTab(tab) {
 }
 
 // ---- Load retail customers with pending ----
+function _buildRetailCustomerOptsFromCache() {
+  var rows = _retailData.allRows || [];
+  var map = {};
+  rows.forEach(function(r) {
+    var name = (r.customer || '').trim();
+    if (!name) return;
+    var pending = parseFloat(r.pending) || 0;
+    if (pending <= 0.01) return;
+    if (!map[name]) map[name] = { name: name, pending: 0, entries: 0, oldestDate: null };
+    map[name].pending += pending;
+    map[name].entries++;
+    var d = parseIST(r.saleDate);
+    if (d && (!map[name].oldestDate || d < map[name].oldestDate)) map[name].oldestDate = d;
+  });
+  return Object.keys(map).map(function(k) {
+    var c = map[k];
+    c.oldestDateStr = c.oldestDate ? _fmtDateShort(c.oldestDate) : '--';
+    return c;
+  }).sort(function(a, b) { return b.pending - a.pending; });
+}
+
+function _paintRetailCustomerSS(customers, prefer) {
+  var el = document.getElementById('rpt-retail-cust-ss');
+  if (!el) return;
+  if (!customers || !customers.length) {
+    el.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:var(--muted)">' +
+      '<i class="fas fa-check-circle" style="color:var(--green);font-size:22px;display:block;margin-bottom:6px"></i>' +
+      'Koi retail outstanding nahi hai.' +
+      '</div>';
+    var badge0 = document.getElementById('rpt-prefill-badge');
+    if (badge0) badge0.remove();
+    return;
+  }
+  var opts = customers.map(function(c) {
+    return {
+      id: c.name, name: c.name,
+      meta: '₹' + _ruFmt(c.pending) + ' · ' + c.entries + ' entries · oldest: ' + (c.oldestDateStr || '--')
+    };
+  });
+  buildSS('rpt-retail-cust-ss', opts, function(custName) {
+    _rptSelectedCustomer = custName;
+    var match = customers.find(function(c) { return c.name === custName; });
+    _showRetailPrefillBadge(match || { name: custName, pending: 0, entries: 0 });
+    _loadRetailEntries(custName);
+  }, 'Search customer...');
+
+  if (prefer) {
+    var match = customers.find(function(c) {
+      return (c.name || '').toLowerCase().trim() === prefer.toLowerCase().trim();
+    });
+    if (match) {
+      _rptSelectedCustomer = match.name;
+      if (_ssState['rpt-retail-cust-ss']) {
+        _ssState['rpt-retail-cust-ss'].value = match.name;
+        _ssState['rpt-retail-cust-ss'].text = match.name;
+      }
+      var inp = document.getElementById('rpt-retail-cust-ss-inp');
+      if (inp) inp.value = match.name;
+      _showRetailPrefillBadge(match);
+      _loadRetailEntries(match.name);
+      // Prefill amount with full pending (user can edit)
+      var amtEl = document.getElementById('rpt-amount');
+      if (amtEl && !amtEl.value) amtEl.value = Math.round(match.pending * 100) / 100;
+    }
+  }
+}
+
+function _showRetailPrefillBadge(c) {
+  if (!c || !c.name) return;
+  var el = document.getElementById('rpt-retail-cust-ss');
+  if (!el || !el.parentNode) return;
+  var badge = document.getElementById('rpt-prefill-badge');
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.id = 'rpt-prefill-badge';
+    el.parentNode.insertBefore(badge, el.nextSibling);
+  }
+  badge.style.cssText = 'margin-top:10px;padding:12px 14px;background:linear-gradient(135deg,#F5F3FF,#EEF2FF);border:1px solid #DDD6FE;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px';
+  badge.innerHTML =
+    '<div style="min-width:0">' +
+      '<div style="font-size:11px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Selected Customer</div>' +
+      '<div style="font-weight:700;font-size:14px;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHTML(c.name) + '</div>' +
+      '<div style="font-size:11px;color:#64748B;margin-top:2px">' + (c.entries || 0) + ' pending entries' +
+        (c.oldestDateStr ? ' · oldest ' + escHTML(c.oldestDateStr) : '') + '</div>' +
+    '</div>' +
+    '<div style="text-align:right;flex-shrink:0">' +
+      '<div style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase">Pending</div>' +
+      '<div style="font-weight:800;font-size:18px;color:#EA4335">₹' + _ruFmt(c.pending || 0) + '</div>' +
+    '</div>';
+}
+
 function _loadRetailCustomers(preselectName) {
   var el = document.getElementById('rpt-retail-cust-ss');
   if (!el) return;
   var prefer = preselectName || _rptSelectedCustomer || '';
-  el.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)">Loading customers...</div>';
 
+  // 1) Instant from local cache
+  var cached = _buildRetailCustomerOptsFromCache();
+  if (cached.length) {
+    _paintRetailCustomerSS(cached, prefer);
+  } else {
+    el.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Loading customers...</div>';
+  }
+
+  // 2) Background refresh from server
   google.script.run
     .withSuccessHandler(function(r) {
-      if (!r || !r.success) { el.innerHTML = '<div style="padding:10px;color:var(--red);font-size:12px">Failed to load</div>'; return; }
-      var customers = r.customers || [];
-      if (!customers.length) {
-        el.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:var(--muted)">' +
-          '<i class="fas fa-check-circle" style="color:var(--green);font-size:22px;display:block;margin-bottom:6px"></i>' +
-          'Koi retail outstanding nahi hai.' +
-          '</div>';
+      if (!r || !r.success) {
+        if (!cached.length) {
+          el.innerHTML = '<div style="padding:10px;color:var(--red);font-size:12px">Failed to load customers</div>';
+        }
         return;
       }
-      var opts = customers.map(function(c) {
-        return {
-          id: c.name, name: c.name,
-          meta: '₹' + _ruFmt(c.pending) + ' · ' + c.entries + ' entries · oldest: ' + (c.oldestDateStr || '--')
-        };
-      });
-      buildSS('rpt-retail-cust-ss', opts, function(custName) {
-        _rptSelectedCustomer = custName;
-        _loadRetailEntries(custName);
-      }, 'Search customer...');
-
-      // Auto-select prefilled customer
-      if (prefer) {
-        var match = customers.find(function(c) {
-          return (c.name || '').toLowerCase().trim() === prefer.toLowerCase().trim();
-        });
-        if (match) {
-          _rptSelectedCustomer = match.name;
-          if (_ssState['rpt-retail-cust-ss']) {
-            _ssState['rpt-retail-cust-ss'].value = match.name;
-            _ssState['rpt-retail-cust-ss'].text = match.name;
-          }
-          var inp = document.getElementById('rpt-retail-cust-ss-inp');
-          if (inp) inp.value = match.name;
-          // Show pending badge under selector
-          var badge = document.getElementById('rpt-prefill-badge');
-          if (!badge) {
-            badge = document.createElement('div');
-            badge.id = 'rpt-prefill-badge';
-            badge.style.cssText = 'margin-top:8px;padding:8px 12px;background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;font-size:12px;color:#5B21B6;font-weight:600';
-            el.parentNode.insertBefore(badge, el.nextSibling);
-          }
-          badge.innerHTML = '<i class="fas fa-user-check" style="margin-right:6px"></i>' +
-            escHTML(match.name) + ' · Pending <b>₹' + _ruFmt(match.pending) + '</b>';
-          _loadRetailEntries(match.name);
-        }
-      }
+      var customers = r.customers || [];
+      _paintRetailCustomerSS(customers, prefer);
     })
     .withFailureHandler(function(e) {
-      el.innerHTML = '<div style="padding:10px;color:var(--red);font-size:12px">Error: ' + (e && e.message) + '</div>';
+      if (!cached.length) {
+        el.innerHTML = '<div style="padding:10px;color:var(--red);font-size:12px">Error: ' + ((e && e.message) || 'Network') + '</div>';
+      }
     })
     .getRetailCustomersWithPending();
 }
 
-// ---- Load entries for selected customer (FIFO sorted) ----
+
 function _loadRetailEntries(customerName) {
   var box = document.getElementById('rpt-retail-entries-box');
   var list = document.getElementById('rpt-retail-entries-list');
@@ -6222,6 +6285,8 @@ function _rptResetRetailTab() {
   var inp = document.getElementById('rpt-retail-cust-ss-inp');
   if (inp) inp.value = '';
   if (_ssState['rpt-retail-cust-ss']) { _ssState['rpt-retail-cust-ss'].value = ''; _ssState['rpt-retail-cust-ss'].text = ''; }
+  var badge = document.getElementById('rpt-prefill-badge');
+  if (badge) badge.remove();
 }
 
 // ---- Hook the submit button — replace the footer button's onclick ----
@@ -6305,15 +6370,36 @@ function _refreshRetailOutstanding() {
 }
 
 function _rptQuickPay(customerName) {
-  // Open RP modal → retail tab with customer pre-selected (no re-pick needed)
-  _rptSelectedCustomer = customerName || '';
+  _rptSelectedCustomer = (customerName || '').trim();
+  // Warm retail cache if empty (non-blocking)
+  if (!_retailData.allRows || !_retailData.allRows.length) {
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (r && r.success) {
+          _retailData.allRows = r.rows || [];
+          if (_rpActiveTab === 'retail' && _rptSelectedCustomer) {
+            _loadRetailCustomers(_rptSelectedCustomer);
+          }
+        }
+      })
+      .getRetailData();
+  }
   openRPModal();
   setTimeout(function() {
-    _switchRPTab('retail');
-    // _switchRPTab calls _loadRetailCustomers() — pass preselect via global
-    // Reload with preselect so SS builds + entries load in one shot
+    var invBtn = document.getElementById('rp-tab-invoice-btn');
+    var rtBtn  = document.getElementById('rp-tab-retail-btn');
+    var invCont = document.getElementById('rp-tab-invoice-content');
+    var rtCont  = document.getElementById('rp-tab-retail-content');
+    var activeStyle = 'flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:700;background:#fff;color:#7C3AED;box-shadow:0 1px 4px rgba(0,0,0,.08)';
+    var inactiveStyle = 'flex:1;padding:9px;border-radius:7px;border:none;cursor:pointer;font-size:12.5px;font-weight:600;background:transparent;color:var(--muted)';
+    if (invBtn) invBtn.style.cssText = inactiveStyle;
+    if (rtBtn) rtBtn.style.cssText = activeStyle;
+    if (invCont) invCont.style.display = 'none';
+    if (rtCont) rtCont.style.display = 'block';
+    _rpActiveTab = 'retail';
+    _setDefaultDates();
     _loadRetailCustomers(_rptSelectedCustomer);
-  }, 80);
+  }, 50);
 }
 
 // ============================================================
