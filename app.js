@@ -5215,7 +5215,7 @@ function _renderRU2(sc) {
     return;
   }
 
-  // Preview table — line items (Sale_Date, Customer, Item, Qty, Amount)
+  // Preview table — aggregated by customer + date
   var tb = '';
   nr.forEach(function(r, i) {
     var qty = (r.Qty != null ? r.Qty : (r.Qty_Summary || 0));
@@ -5224,8 +5224,7 @@ function _renderRU2(sc) {
       '<td style="color:var(--sub);font-weight:600;font-size:11px">' + (i + 1) + '</td>' +
       '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Sale_Date || '') + '</td>' +
       '<td style="font-weight:600">' + escHTML(r.Customer_Name || '') + '</td>' +
-      '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Item_Name || r.Qty_Summary || '--') + '</td>' +
-      '<td class="num" style="font-size:12px">' + _ruFmt(qty) + (r.Unit ? ' ' + escHTML(r.Unit) : '') + '</td>' +
+      '<td class="num" style="font-size:12px;font-weight:600">' + _ruFmt(qty) + '</td>' +
       '<td class="num" style="font-weight:700;color:#7C3AED">₹' + _ruFmt(amt) + '</td>' +
     '</tr>';
   });
@@ -5233,12 +5232,12 @@ function _renderRU2(sc) {
   sc.innerHTML = chips +
     '<div class="card">' +
     '<div style="padding:13px 18px;background:#F8FAFC;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-weight:700;font-size:13px">' +
-      '<span><i class="fas fa-table-list" style="color:#7C3AED;margin-right:6px"></i>Preview — ' + nr.length + ' line items</span>' +
+      '<span><i class="fas fa-table-list" style="color:#7C3AED;margin-right:6px"></i>Preview — ' + nr.length + ' customers (date-wise)</span>' +
       '<span style="font-size:11px;color:var(--muted);font-weight:500">' + dr.length + ' duplicates skip honge</span>' +
     '</div>' +
     '<div class="tbl-wrap" style="border:none;border-radius:0;max-height:400px;overflow-y:auto">' +
       '<table class="tbl"><thead><tr>' +
-      '<th>#</th><th>Date</th><th>Customer</th><th>Item</th><th class="num">Qty</th><th class="num">Amount</th>' +
+      '<th>#</th><th>Date</th><th>Customer</th><th class="num">Total Qty</th><th class="num">Total Amount</th>' +
       '</tr></thead><tbody>' + tb + '</tbody></table>' +
     '</div></div>' +
     '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">' +
