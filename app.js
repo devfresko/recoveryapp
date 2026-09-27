@@ -290,7 +290,11 @@ window.onload = function () {
     _refreshRetailOutstanding();
     if (!_loadedOnce) {
       _loadedOnce = true;
-      nav('dashboard');
+      if (typeof _applyModeUI === 'function') _applyModeUI();
+      var home = (typeof _activeMode !== 'undefined' && _activeMode === 'retail')
+        ? (typeof RETAIL_HOME_VIEW !== 'undefined' ? RETAIL_HOME_VIEW : 'retailDashboard')
+        : (typeof SUPPLY_HOME_VIEW !== 'undefined' ? SUPPLY_HOME_VIEW : 'dashboard');
+      nav(home);
     }
     _backgroundSync();
   } else {
@@ -380,8 +384,12 @@ function _onDataLoaded(data) {
 
   if (!_loadedOnce) {
     _loadedOnce = true;
-    nav('dashboard');
-    // setInterval(_silentRefresh, 30000);
+    // Respect saved mode (retail vs supply) — don't always force supply dashboard
+    if (typeof _applyModeUI === 'function') _applyModeUI();
+    var home = (typeof _activeMode !== 'undefined' && _activeMode === 'retail')
+      ? (typeof RETAIL_HOME_VIEW !== 'undefined' ? RETAIL_HOME_VIEW : 'retailDashboard')
+      : (typeof SUPPLY_HOME_VIEW !== 'undefined' ? SUPPLY_HOME_VIEW : 'dashboard');
+    nav(home);
   } else {
     _reRenderCurrent();
   }
@@ -5319,16 +5327,36 @@ function _ruReset() {
 renderRetailSales = function() {
   var tbody = document.getElementById('rs-tbody');
   if (!tbody) return;
-  tbody.innerHTML = emptyRow(5, 'Loading...');
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (!r || !r.success) { tbody.innerHTML = emptyRow(5, 'Failed to load'); return; }
-      _retailData.allRows = r.rows || [];
+
+  // Cache-first: instant paint if we already have rows
+  var hasCache = _retailData.allRows && _retailData.allRows.length > 0;
+  if (hasCache) {
+    try {
       _renderRetailSalesTable();
       _renderRetailStats();
+    } catch (e) { console.error('retail sales render', e); }
+  } else {
+    tbody.innerHTML = emptyRow(5, 'Loading...');
+  }
+
+  // Background refresh (always)
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) {
+        if (!hasCache) tbody.innerHTML = emptyRow(5, 'Failed to load');
+        return;
+      }
+      _retailData.allRows = r.rows || [];
+      try {
+        _renderRetailSalesTable();
+        _renderRetailStats();
+      } catch (e) {
+        console.error('retail sales render', e);
+        tbody.innerHTML = emptyRow(5, 'Render error');
+      }
     })
     .withFailureHandler(function(e) {
-      tbody.innerHTML = emptyRow(5, 'Error: ' + (e && e.message));
+      if (!hasCache) tbody.innerHTML = emptyRow(5, 'Error: ' + (e && e.message));
     })
     .getRetailData();
 }
@@ -5510,16 +5538,36 @@ var _retailGrouped = true; // Default: grouped view
 renderRetailSales = function() {
   var tbody = document.getElementById('rs-tbody');
   if (!tbody) return;
-  tbody.innerHTML = emptyRow(5, 'Loading...');
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (!r || !r.success) { tbody.innerHTML = emptyRow(5, 'Failed to load'); return; }
-      _retailData.allRows = r.rows || [];
+
+  // Cache-first: instant paint if we already have rows
+  var hasCache = _retailData.allRows && _retailData.allRows.length > 0;
+  if (hasCache) {
+    try {
       _renderRetailSalesTable();
       _renderRetailStats();
+    } catch (e) { console.error('retail sales render', e); }
+  } else {
+    tbody.innerHTML = emptyRow(5, 'Loading...');
+  }
+
+  // Background refresh (always)
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) {
+        if (!hasCache) tbody.innerHTML = emptyRow(5, 'Failed to load');
+        return;
+      }
+      _retailData.allRows = r.rows || [];
+      try {
+        _renderRetailSalesTable();
+        _renderRetailStats();
+      } catch (e) {
+        console.error('retail sales render', e);
+        tbody.innerHTML = emptyRow(5, 'Render error');
+      }
     })
     .withFailureHandler(function(e) {
-      tbody.innerHTML = emptyRow(5, 'Error: ' + (e && e.message));
+      if (!hasCache) tbody.innerHTML = emptyRow(5, 'Error: ' + (e && e.message));
     })
     .getRetailData();
 }
@@ -5638,8 +5686,8 @@ function _renderRetailGrouped(tbody, list) {
       ? '₹' + _ruFmt(g.totalPending) + ' pending'
       : 'Fully settled';
 
-    // Customer header row
-    html += '<tr style="background:#F8FAFC;cursor:pointer;border-top:2px solid #E2E8F0" onclick="_toggleRetailGroup(' + gIdx + ')">' +
+    // Customer header row — expand/collapse
+    html += '<tr class="rs-group-row" data-gidx="' + gIdx + '" style="background:#F8FAFC;cursor:pointer;border-top:2px solid #E2E8F0">' +
       '<td colspan="2" style="font-weight:700;padding:10px 12px">' +
         '<i class="fas fa-chevron-' + (isOpen?'down':'right') + '" style="font-size:10px;color:var(--muted);margin-right:8px"></i>' +
         '<i class="fas fa-user" style="color:#7C3AED;margin-right:6px"></i>' +
@@ -5650,10 +5698,9 @@ function _renderRetailGrouped(tbody, list) {
         '<span style="font-size:11px;font-weight:700;color:' + pendingColor + '">' + pendingLabel + '</span>' +
       '</td>' +
       '<td class="num" style="font-weight:800;color:#7C3AED;font-size:13px;padding:10px 12px">₹' + _ruFmt(g.totalAmt) + '</td>' +
-      '<td style="white-space:nowrap;padding:10px 8px" onclick="event.stopPropagation()">' +
-        '<button class="act-btn ab-wa" onclick="_retailWhatsApp(\'' + escQ(g.name) + '\')" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>' +
-        '<button class="act-btn ab-fu" style="margin-left:2px" onclick="_retailMakeInvoice(\'' + escQ(g.name) + '\')" title="Make Invoice"><i class="fas fa-file-invoice"></i></button>' +
-        '<button class="act-btn ab-view" style="margin-left:2px" onclick="_retailCustomerSummary(\'' + escQ(g.name) + '\')" title="View Summary"><i class="fas fa-eye"></i></button>' +
+      '<td style="white-space:nowrap;padding:10px 8px" class="rs-group-actions">' +
+        '<button type="button" class="act-btn ab-pay" data-pay="' + escQ(g.name) + '" title="Record Payment"><i class="fas fa-indian-rupee-sign"></i></button>' +
+        '<button type="button" class="act-btn ab-view" style="margin-left:2px" data-stmt="' + escQ(g.name) + '" title="Statement"><i class="fas fa-file-invoice"></i></button>' +
       '</td>' +
     '</tr>';
 
@@ -5661,10 +5708,12 @@ function _renderRetailGrouped(tbody, list) {
     if (isOpen) {
       g.entries.forEach(function(r) {
         var pendColor = (r.pending > 0.01) ? 'var(--red)' : 'var(--green)';
+        var qtyVal = (r.qty != null ? r.qty : r.qtySummary);
+        var amtVal = (r.amount != null ? r.amount : r.totalAmount) || 0;
         html += '<tr style="background:#FAFAFA">' +
-          '<td style="font-size:11px;padding-left:32px;color:var(--muted)">' + escHTML(r.saleDate) + '</td>' +
-          '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.qtySummary || '--') + '</td>' +
-          '<td class="num" style="font-weight:600;color:var(--text)">₹' + _ruFmt(r.totalAmount || 0) + '</td>' +
+          '<td style="font-size:11px;padding-left:32px;color:var(--muted)">' + escHTML(r.saleDate || '') + '</td>' +
+          '<td style="font-size:11px;color:var(--muted)">' + (qtyVal != null ? _ruFmt(qtyVal) : '--') + '</td>' +
+          '<td class="num" style="font-weight:600;color:var(--text)">₹' + _ruFmt(amtVal) + '</td>' +
           '<td class="num" style="font-weight:600;color:' + pendColor + '">₹' + _ruFmt(r.pending || 0) + '</td>' +
           '<td style="font-size:10px;color:var(--muted)">' + escHTML(r.uploadedBy || '--') + '</td>' +
         '</tr>';
@@ -5673,6 +5722,22 @@ function _renderRetailGrouped(tbody, list) {
   });
 
   tbody.innerHTML = html;
+
+  // Event delegation — reliable click for expand + action buttons
+  if (!tbody._rsDelegated) {
+    tbody._rsDelegated = true;
+    tbody.addEventListener('click', function(ev) {
+      var payBtn = ev.target.closest('[data-pay]');
+      if (payBtn) { ev.stopPropagation(); _rptQuickPay(payBtn.getAttribute('data-pay')); return; }
+      var stmtBtn = ev.target.closest('[data-stmt]');
+      if (stmtBtn) { ev.stopPropagation(); _openRetailStatement(stmtBtn.getAttribute('data-stmt')); return; }
+      var row = ev.target.closest('tr.rs-group-row');
+      if (row) {
+        var gi = parseInt(row.getAttribute('data-gidx'), 10);
+        if (!isNaN(gi)) _toggleRetailGroup(gi);
+      }
+    });
+  }
 }
 
 // Helper: short date format from a Date object
@@ -5718,6 +5783,7 @@ function _toggleRetailGroup(idx) {
   _retailExpanded[idx] = !_retailExpanded[idx];
   _renderRetailSalesTable();
 }
+window._toggleRetailGroup = _toggleRetailGroup;
 
 // ---- Retail Action: WhatsApp ----
 function _retailWhatsApp(customerName) {
@@ -5938,9 +6004,10 @@ function _switchRPTab(tab) {
 }
 
 // ---- Load retail customers with pending ----
-function _loadRetailCustomers() {
+function _loadRetailCustomers(preselectName) {
   var el = document.getElementById('rpt-retail-cust-ss');
   if (!el) return;
+  var prefer = preselectName || _rptSelectedCustomer || '';
   el.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)">Loading customers...</div>';
 
   google.script.run
@@ -5957,13 +6024,40 @@ function _loadRetailCustomers() {
       var opts = customers.map(function(c) {
         return {
           id: c.name, name: c.name,
-          meta: '₹' + _ruFmt(c.pending) + ' · ' + c.entries + ' entries · oldest: ' + c.oldestDateStr
+          meta: '₹' + _ruFmt(c.pending) + ' · ' + c.entries + ' entries · oldest: ' + (c.oldestDateStr || '--')
         };
       });
       buildSS('rpt-retail-cust-ss', opts, function(custName) {
         _rptSelectedCustomer = custName;
         _loadRetailEntries(custName);
       }, 'Search customer...');
+
+      // Auto-select prefilled customer
+      if (prefer) {
+        var match = customers.find(function(c) {
+          return (c.name || '').toLowerCase().trim() === prefer.toLowerCase().trim();
+        });
+        if (match) {
+          _rptSelectedCustomer = match.name;
+          if (_ssState['rpt-retail-cust-ss']) {
+            _ssState['rpt-retail-cust-ss'].value = match.name;
+            _ssState['rpt-retail-cust-ss'].text = match.name;
+          }
+          var inp = document.getElementById('rpt-retail-cust-ss-inp');
+          if (inp) inp.value = match.name;
+          // Show pending badge under selector
+          var badge = document.getElementById('rpt-prefill-badge');
+          if (!badge) {
+            badge = document.createElement('div');
+            badge.id = 'rpt-prefill-badge';
+            badge.style.cssText = 'margin-top:8px;padding:8px 12px;background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;font-size:12px;color:#5B21B6;font-weight:600';
+            el.parentNode.insertBefore(badge, el.nextSibling);
+          }
+          badge.innerHTML = '<i class="fas fa-user-check" style="margin-right:6px"></i>' +
+            escHTML(match.name) + ' · Pending <b>₹' + _ruFmt(match.pending) + '</b>';
+          _loadRetailEntries(match.name);
+        }
+      }
     })
     .withFailureHandler(function(e) {
       el.innerHTML = '<div style="padding:10px;color:var(--red);font-size:12px">Error: ' + (e && e.message) + '</div>';
@@ -6007,24 +6101,26 @@ function _renderRetailEntriesList() {
     var d = parseIST(e.saleDate);
     var daysOld = d ? Math.floor((new Date() - d) / 86400000) : 0;
     var ageColor = daysOld > 60 ? '#EA4335' : daysOld > 30 ? '#F9AB00' : '#94A3B8';
-    return '<div style="background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;gap:10px;align-items:center">' +
-      '<span style="font-size:10px;font-weight:700;color:var(--muted);min-width:20px">#' + (idx + 1) + '</span>' +
+    var title = (e.item && e.item.trim()) ? e.item : ('Sale · ' + (e.saleDate || ''));
+    var sub = escHTML(e.saleDate || '');
+    if (e.qty) sub += ' · Qty ' + _ruFmt(e.qty);
+    if (e.unit) sub += ' ' + escHTML(e.unit);
+    sub += ' <span style="color:' + ageColor + ';font-weight:600;margin-left:6px">' + daysOld + 'd old</span>';
+    if (e.paid > 0) sub += ' <span style="color:var(--green);margin-left:6px">Paid: ₹' + _ruFmt(e.paid) + '</span>';
+    return '<div style="background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center">' +
+      '<span style="font-size:10px;font-weight:700;color:var(--muted);min-width:22px">#' + (idx + 1) + '</span>' +
       '<div style="flex:1;min-width:0">' +
-        '<div style="display:flex;justify-content:space-between;gap:8px">' +
-          '<span style="font-weight:600;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + escHTML(e.item) + '</span>' +
-          '<span style="font-size:11px;font-weight:700;color:var(--primary)">₹' + _ruFmt(e.pending) + '</span>' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">' +
+          '<span style="font-weight:600;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + escHTML(title) + '</span>' +
+          '<span style="font-size:12px;font-weight:700;color:#7C3AED;flex-shrink:0">₹' + _ruFmt(e.pending) + '</span>' +
         '</div>' +
-        '<div style="font-size:10px;color:var(--muted);margin-top:2px">' +
-          escHTML(e.saleDate) + ' · ' + e.qty + ' ' + escHTML(e.unit) +
-          ' <span style="color:' + ageColor + ';font-weight:600;margin-left:6px">' + daysOld + 'd old</span>' +
-          (e.paid > 0 ? ' <span style="color:var(--green);margin-left:6px">Paid: ₹' + _ruFmt(e.paid) + '</span>' : '') +
-        '</div>' +
+        '<div style="font-size:10px;color:var(--muted);margin-top:3px">' + sub + '</div>' +
       '</div>' +
     '</div>';
   }).join('');
 }
 
-// ---- FIFO preview for retail ----
+
 function _rptUpdateFIFO() {
   var amtEl = document.getElementById('rpt-amount');
   var amount = amtEl ? (parseFloat(amtEl.value) || 0) : 0;
@@ -6209,21 +6305,15 @@ function _refreshRetailOutstanding() {
 }
 
 function _rptQuickPay(customerName) {
-  // Open RP modal, switch to retail tab, pre-select customer
+  // Open RP modal → retail tab with customer pre-selected (no re-pick needed)
+  _rptSelectedCustomer = customerName || '';
   openRPModal();
   setTimeout(function() {
     _switchRPTab('retail');
-    setTimeout(function() {
-      _rptSelectedCustomer = customerName;
-      var inp = document.getElementById('rpt-retail-cust-ss-inp');
-      if (inp) inp.value = customerName;
-      if (_ssState['rpt-retail-cust-ss']) {
-        _ssState['rpt-retail-cust-ss'].value = customerName;
-        _ssState['rpt-retail-cust-ss'].text = customerName;
-      }
-      _loadRetailEntries(customerName);
-    }, 400);
-  }, 200);
+    // _switchRPTab calls _loadRetailCustomers() — pass preselect via global
+    // Reload with preselect so SS builds + entries load in one shot
+    _loadRetailCustomers(_rptSelectedCustomer);
+  }, 80);
 }
 
 // ============================================================
@@ -6307,6 +6397,10 @@ function _rstmtPay() {
   closeRetailStatement();
   setTimeout(function() { _rptQuickPay(_rstmtCustomer); }, 200);
 }
+window._rptQuickPay = _rptQuickPay;
+window._openRetailStatement = _openRetailStatement;
+window._rstmtPay = _rstmtPay;
+
 
 function _rstmtPrint() {
   var body = document.getElementById('rstmt-body').innerHTML;
@@ -6499,7 +6593,6 @@ function _loadModePreference() {
 // ============================================================
 
 function renderRetailDashboard() {
-  // Date in header
   var dateEl = document.getElementById('rd-date');
   if (dateEl) {
     dateEl.textContent = new Date().toLocaleDateString('en-IN', {
@@ -6507,22 +6600,20 @@ function renderRetailDashboard() {
     });
   }
 
-  // Load retail data if not already loaded
-  if (!_retailData.allRows || _retailData.allRows.length === 0) {
-    google.script.run
-      .withSuccessHandler(function (r) {
-        if (r && r.success) {
-          _retailData.allRows = r.rows || [];
-        }
-        _renderRetailDashboardContent();
-      })
-      .withFailureHandler(function () {
-        _renderRetailDashboardContent(); // render with empty
-      })
-      .getRetailData();
-  } else {
+  // Cache-first instant paint
+  if (_retailData.allRows && _retailData.allRows.length > 0) {
     _renderRetailDashboardContent();
   }
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (r && r.success) _retailData.allRows = r.rows || [];
+      _renderRetailDashboardContent();
+    })
+    .withFailureHandler(function () {
+      if (!_retailData.allRows || !_retailData.allRows.length) _renderRetailDashboardContent();
+    })
+    .getRetailData();
 }
 
 function _renderRetailDashboardContent() {
@@ -6581,8 +6672,14 @@ function _renderRetailDashboardContent() {
     } else {
       tbody.innerHTML = custList.slice(0, 15).map(function (c) {
         var oldestStr = c.oldestDate ? _fmtDateShort(c.oldestDate) : '--';
+        var daysOld = c.oldestDate ? Math.floor((new Date() - c.oldestDate) / 86400000) : 0;
+        var ageColor = daysOld > 60 ? '#EA4335' : daysOld > 30 ? '#F9AB00' : '#64748B';
         return '<tr style="cursor:pointer" onclick="_openRetailStatement(\'' + escQ(c.name) + '\')">' +
-          '<td style="font-weight:600;font-size:12px">' + escHTML(c.name) + '</td>' +
+          '<td style="font-weight:600;font-size:12px">' +
+            '<span style="vertical-align:middle">' + escHTML(c.name) + '</span>' +
+            (daysOld > 0 ? ' <span style="font-size:9px;font-weight:700;color:' + ageColor + ';margin-left:4px">' + daysOld + 'd</span>' : '') +
+            ' <button type="button" class="act-btn ab-pay" style="margin-left:6px;vertical-align:middle" onclick="event.stopPropagation();_rptQuickPay(\'' + escQ(c.name) + '\')" title="Record Payment"><i class="fas fa-indian-rupee-sign"></i></button>' +
+          '</td>' +
           '<td class="num" style="color:var(--red);font-weight:700;font-size:13px">₹' + _ruFmt(c.pending) + '</td>' +
           '<td class="num" style="color:var(--muted)">' + c.entries + '</td>' +
           '<td style="font-size:10px;color:var(--muted)">' + oldestStr + '</td>' +
