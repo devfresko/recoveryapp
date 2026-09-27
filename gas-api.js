@@ -16,7 +16,7 @@
 // Web App URL (Sheet menu → "Payment Follow-up" → "Show API URL (for app.js)").
 // ============================================================
 
-var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxq7kf1PkE7EWQwXeXM5pxagcclwK1NtHfjGGobnkC_aoLCDbetuHzrHb33xtjNTeBj/exec';
+var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzsV-7mTI5LpCjaEovjoNlkpyvW_2FkAh0FQ5lZbBRGRFSJ8zWBPOTW3ad47SgtMZPM/exec';
 
 (function () {
   var _cbIdx = 0;
@@ -115,9 +115,113 @@ var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxq7kf1PkE7EWQwXeXM5p
     next();
   }
 
+  // Retail PDF rows can be large — chunk checkRetailDuplicates + commitRetailData
+  var RETAIL_ROWS_PER_CHUNK = 15;
+
+  function _chunkedRetailCheck(args, onSuccess, onFailure) {
+    var rows = args[0] || [];
+    var dateRange = args[1];
+    var fileName = args[2];
+    if (!rows.length) {
+      onSuccess({
+        success: true, newRows: [], dupRows: [],
+        dateRange: dateRange, pdfFilename: fileName || 'RETAIL SALE REGISTER',
+        summary: { totalParsed: 0, newCount: 0, dupCount: 0, totalQty: 0, totalAmount: 0 }
+      });
+      return;
+    }
+    var chunks = [];
+    for (var ci = 0; ci < rows.length; ci += RETAIL_ROWS_PER_CHUNK) {
+      chunks.push(rows.slice(ci, ci + RETAIL_ROWS_PER_CHUNK));
+    }
+    var merged = {
+      success: true, newRows: [], dupRows: [],
+      dateRange: dateRange, pdfFilename: fileName || 'RETAIL SALE REGISTER',
+      userEmail: '',
+      summary: { totalParsed: rows.length, newCount: 0, dupCount: 0, totalQty: 0, totalAmount: 0 }
+    };
+    var i = 0;
+    function next() {
+      if (i >= chunks.length) {
+        onSuccess(merged);
+        return;
+      }
+      _rawJsonpCall('checkRetailDuplicates', [chunks[i], dateRange, fileName], function (res) {
+        if (!res || res.success === false) {
+          onFailure(res || { message: 'Duplicate check failed on batch ' + (i + 1) });
+          return;
+        }
+        if (res.newRows) merged.newRows = merged.newRows.concat(res.newRows);
+        if (res.dupRows) merged.dupRows = merged.dupRows.concat(res.dupRows);
+        if (res.userEmail) merged.userEmail = res.userEmail;
+        if (res.summary) {
+          merged.summary.newCount += res.summary.newCount || 0;
+          merged.summary.dupCount += res.summary.dupCount || 0;
+          merged.summary.totalQty += res.summary.totalQty || 0;
+          merged.summary.totalAmount += res.summary.totalAmount || 0;
+        }
+        i++;
+        next();
+      }, onFailure);
+    }
+    next();
+  }
+
+  function _chunkedRetailCommit(args, onSuccess, onFailure) {
+    var rows = args[0] || [];
+    var meta = args[1] || {};
+    if (!rows.length) {
+      onSuccess({ success: true, written: 0, skipped: meta.dupCount || 0 });
+      return;
+    }
+    var chunks = [];
+    for (var ci = 0; ci < rows.length; ci += RETAIL_ROWS_PER_CHUNK) {
+      chunks.push(rows.slice(ci, ci + RETAIL_ROWS_PER_CHUNK));
+    }
+    var merged = { success: true, written: 0, skipped: meta.dupCount || 0 };
+    var i = 0;
+    function next() {
+      if (i >= chunks.length) {
+        onSuccess(merged);
+        return;
+      }
+      // Only pass full meta on first chunk (log once); later chunks get minimal meta
+      var chunkMeta = (i === 0) ? meta : {
+        pdfFilename: meta.pdfFilename,
+        dateRange: meta.dateRange,
+        totalParsed: 0, totalQty: 0, totalAmount: 0, dupCount: 0,
+        _skipLog: true
+      };
+      _rawJsonpCall('commitRetailData', [chunks[i], chunkMeta], function (res) {
+        if (!res || res.success === false) {
+          onFailure(res || { message: 'Retail save failed on batch ' + (i + 1) + ' of ' + chunks.length });
+          return;
+        }
+        merged.written += res.written || 0;
+        i++;
+        next();
+      }, onFailure);
+    }
+    next();
+  }
+
   function _jsonpCall(fnName, args, onSuccess, onFailure) {
     if (fnName === 'bulkUploadInvoices') {
       _chunkedBulkUpload(args, onSuccess, onFailure);
+    } else if (fnName === 'checkRetailDuplicates') {
+      var argsJson = JSON.stringify(args || []);
+      if (argsJson.length > MAX_ARGS_JSON_LEN) {
+        _chunkedRetailCheck(args, onSuccess, onFailure);
+      } else {
+        _rawJsonpCall(fnName, args, onSuccess, onFailure);
+      }
+    } else if (fnName === 'commitRetailData') {
+      var argsJson2 = JSON.stringify(args || []);
+      if (argsJson2.length > MAX_ARGS_JSON_LEN) {
+        _chunkedRetailCommit(args, onSuccess, onFailure);
+      } else {
+        _rawJsonpCall(fnName, args, onSuccess, onFailure);
+      }
     } else {
       _rawJsonpCall(fnName, args, onSuccess, onFailure);
     }
