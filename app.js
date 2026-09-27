@@ -5194,11 +5194,14 @@ function _renderRU2(sc) {
   var d = _retailData.parsed || {}, nr = d.newRows || [], dr = d.dupRows || [], s = d.summary || {};
   _updateRetailSteps();
 
-  var chips = '<div class="g4" style="margin-bottom:16px">' +
-    '<div class="stat-card sc-blue"><div class="stat-label">New Entries</div><div class="stat-val">' + (s.newCount || 0) + '</div></div>' +
-    '<div class="stat-card sc-green"><div class="stat-label">Aggregated From</div><div class="stat-val">' + (s.totalParsed || 0) + ' items</div></div>' +
-    '<div class="stat-card sc-amber"><div class="stat-label">Skipped (Dup)</div><div class="stat-val">' + (s.dupCount || 0) + '</div></div>' +
+  // Summary chips: Date Range · Total Qty · Total Amount · New / Dup counts
+  var dateLabel = (d.dateRange || '').trim() || '—';
+  var chips = '<div class="g5" style="margin-bottom:16px">' +
+    '<div class="stat-card sc-blue"><div class="stat-label">Date Range</div><div class="stat-val" style="font-size:13px;line-height:1.3">' + escHTML(dateLabel) + '</div></div>' +
+    '<div class="stat-card sc-green"><div class="stat-label">Total Qty</div><div class="stat-val">' + _ruFmt(s.totalQty || 0) + '</div></div>' +
     '<div class="stat-card sc-slate"><div class="stat-label">Total Amount</div><div class="stat-val">₹' + _ruFmt(s.totalAmount || 0) + '</div></div>' +
+    '<div class="stat-card sc-blue"><div class="stat-label">New Entries</div><div class="stat-val">' + (s.newCount || 0) + '</div></div>' +
+    '<div class="stat-card sc-amber"><div class="stat-label">Skipped (Dup)</div><div class="stat-val">' + (s.dupCount || 0) + '</div></div>' +
     '</div>';
 
   if (nr.length === 0) {
@@ -5212,27 +5215,30 @@ function _renderRU2(sc) {
     return;
   }
 
-  // Build preview table — aggregated (customer + date level)
+  // Preview table — line items (Sale_Date, Customer, Item, Qty, Amount)
   var tb = '';
   nr.forEach(function(r, i) {
+    var qty = (r.Qty != null ? r.Qty : (r.Qty_Summary || 0));
+    var amt = (r.Amount != null ? r.Amount : (r.Total_Amount || 0));
     tb += '<tr>' +
       '<td style="color:var(--sub);font-weight:600;font-size:11px">' + (i + 1) + '</td>' +
-      '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Sale_Date) + '</td>' +
-      '<td style="font-weight:600">' + escHTML(r.Customer_Name) + '</td>' +
-      '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Qty_Summary || '--') + '</td>' +
-      '<td class="num" style="font-weight:700;color:#7C3AED">₹' + _ruFmt(r.Total_Amount || 0) + '</td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Sale_Date || '') + '</td>' +
+      '<td style="font-weight:600">' + escHTML(r.Customer_Name || '') + '</td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + escHTML(r.Item_Name || r.Qty_Summary || '--') + '</td>' +
+      '<td class="num" style="font-size:12px">' + _ruFmt(qty) + (r.Unit ? ' ' + escHTML(r.Unit) : '') + '</td>' +
+      '<td class="num" style="font-weight:700;color:#7C3AED">₹' + _ruFmt(amt) + '</td>' +
     '</tr>';
   });
 
   sc.innerHTML = chips +
     '<div class="card">' +
     '<div style="padding:13px 18px;background:#F8FAFC;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-weight:700;font-size:13px">' +
-      '<span><i class="fas fa-table-list" style="color:#7C3AED;margin-right:6px"></i>Preview — ' + nr.length + ' aggregated entries</span>' +
+      '<span><i class="fas fa-table-list" style="color:#7C3AED;margin-right:6px"></i>Preview — ' + nr.length + ' line items</span>' +
       '<span style="font-size:11px;color:var(--muted);font-weight:500">' + dr.length + ' duplicates skip honge</span>' +
     '</div>' +
     '<div class="tbl-wrap" style="border:none;border-radius:0;max-height:400px;overflow-y:auto">' +
       '<table class="tbl"><thead><tr>' +
-      '<th>#</th><th>Date</th><th>Customer</th><th>Qty Summary</th><th class="num">Amount</th>' +
+      '<th>#</th><th>Date</th><th>Customer</th><th>Item</th><th class="num">Qty</th><th class="num">Amount</th>' +
       '</tr></thead><tbody>' + tb + '</tbody></table>' +
     '</div></div>' +
     '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">' +
@@ -5250,16 +5256,28 @@ function _ruCommit() {
     dateRange: d.dateRange || '',
     totalParsed: (d.summary && d.summary.totalParsed) || 0,
     dupCount: (d.summary && d.summary.dupCount) || 0,
+    totalQty: (d.summary && d.summary.totalQty) || 0,
     totalAmount: (d.summary && d.summary.totalAmount) || 0
   };
+  // Attach dateRange onto each row so sheet stores it
+  var rowsToSave = (d.newRows || []).map(function(r) {
+    var copy = {};
+    for (var k in r) if (Object.prototype.hasOwnProperty.call(r, k)) copy[k] = r[k];
+    if (!copy.dateRange) copy.dateRange = meta.dateRange;
+    return copy;
+  });
   google.script.run
     .withSuccessHandler(function(res) {
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Confirm & Save'; }
       if (res && res.success) {
         _retailData.result = res;
         _retailStep = 3;
+        // Force-clear cached rows so next retail view reloads from sheet
+        _retailData.allRows = [];
         _renderRetailUpload();
-        Swal.fire({ icon: 'success', title: 'Uploaded!', text: res.written + ' entries save ho gayi!', timer: 2200, showConfirmButton: false });
+        // Also refresh retailCustomers list
+        if (typeof _loadAllRetailCustomers === 'function') _loadAllRetailCustomers();
+        Swal.fire({ icon: 'success', title: 'Uploaded!', text: (res.written || 0) + ' entries save ho gayi!', timer: 2200, showConfirmButton: false });
       } else {
         Swal.fire('Error', (res && res.error) || 'Save failed', 'error');
       }
@@ -5268,7 +5286,7 @@ function _ruCommit() {
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Confirm & Save'; }
       Swal.fire('Error', (e && e.message) || 'Network error', 'error');
     })
-    .commitRetailData(d.newRows || [], meta);
+    .commitRetailData(rowsToSave, meta);
 }
 
 
@@ -5321,12 +5339,11 @@ renderRetailSales = function() {
 function _renderRetailStats() {
   var rows = _retailData.allRows || [];
   txt('rs-total', rows.length);
-  txt('rs-amt', '₹' + _ruFmt(rows.reduce(function(s, r) { return s + (r.totalAmount || 0); }, 0)));
-  // Customers with pending (unique)
+  // getRetailData returns `amount` (line-item); support both keys
+  txt('rs-amt', '₹' + _ruFmt(rows.reduce(function(s, r) { return s + (r.amount || r.totalAmount || 0); }, 0)));
   var uniqueCustomers = {};
-  rows.forEach(function(r) { if (r.pending > 0.01) uniqueCustomers[r.customer] = true; });
+  rows.forEach(function(r) { if ((r.pending || 0) > 0.01) uniqueCustomers[r.customer] = true; });
   txt('rs-pending-cust', Object.keys(uniqueCustomers).length);
-  // Total pending
   txt('rs-pending', '₹' + _ruFmt(rows.reduce(function(s, r) { return s + (r.pending || 0); }, 0)));
 }
 
@@ -5588,7 +5605,7 @@ function _renderRetailGrouped(tbody, list) {
     }
     var g = groups[c];
     g.entries.push(r);
-    g.totalAmt += r.totalAmount || 0;
+    g.totalAmt += (r.amount || r.totalAmount || 0);
     g.totalPending += r.pending || 0;
     g.totalPaid += r.paid || 0;
     var d = parseIST(r.saleDate);
@@ -5685,11 +5702,14 @@ function _renderRetailFlat(tbody, list) {
 
   tbody.innerHTML = page.map(function(r) {
     var pendColor = (r.pending > 0.01) ? 'var(--red)' : 'var(--green)';
+    var qtyLabel = (r.qty != null ? r.qty : '') + (r.unit ? ' ' + r.unit : '');
+    if (!qtyLabel.trim()) qtyLabel = r.qtySummary || '--';
+    var amt = r.amount != null ? r.amount : (r.totalAmount || 0);
     return '<tr>' +
-      '<td style="font-size:11px">' + escHTML(r.saleDate) + '</td>' +
-      '<td style="font-weight:600">' + escHTML(r.customer) + '</td>' +
-      '<td style="font-size:12px">' + escHTML(r.qtySummary || '--') + '</td>' +
-      '<td class="num" style="font-weight:700;color:var(--primary)">₹' + _ruFmt(r.totalAmount || 0) + '</td>' +
+      '<td style="font-size:11px">' + escHTML(r.saleDate || '') + '</td>' +
+      '<td style="font-weight:600">' + escHTML(r.customer || '') + '</td>' +
+      '<td style="font-size:12px">' + escHTML(r.item || qtyLabel) + '</td>' +
+      '<td class="num" style="font-weight:700;color:var(--primary)">₹' + _ruFmt(amt) + '</td>' +
       '<td class="num" style="font-weight:600;color:' + pendColor + '">₹' + _ruFmt(r.pending || 0) + '</td>' +
     '</tr>';
   }).join('');
@@ -6621,8 +6641,31 @@ function _rdQuickPayments() { nav('retailPayments'); }
 // RETAIL CUSTOMERS VIEW (Part 3)
 // ============================================================
 
+function _loadAllRetailCustomers(cb) {
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.success) DB.retailCustomers = r.customers || [];
+      if (typeof cb === 'function') cb(r);
+    })
+    .withFailureHandler(function() {
+      if (typeof cb === 'function') cb(null);
+    })
+    .getRetailCustomers();
+}
+
 function renderRetailCustomers() {
   var q = ((document.getElementById('rc-search') || {}).value || '').toLowerCase();
+  // If customers not loaded yet, fetch then re-render
+  if (!(DB.retailCustomers && DB.retailCustomers.length) && !renderRetailCustomers._loading) {
+    renderRetailCustomers._loading = true;
+    var tbody0 = document.getElementById('rc-tbody');
+    if (tbody0) tbody0.innerHTML = '<tr><td colspan="6" class="center" style="padding:24px;color:var(--muted)">Loading...</td></tr>';
+    _loadAllRetailCustomers(function() {
+      renderRetailCustomers._loading = false;
+      renderRetailCustomers();
+    });
+    return;
+  }
   var customers = DB.retailCustomers || [];
 
   var list = customers.filter(function (c) {
