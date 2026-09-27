@@ -6047,7 +6047,11 @@ function _paintRetailCustomerSS(customers, prefer) {
     _rptSelectedCustomer = custName;
     var match = customers.find(function(c) { return c.name === custName; });
     _showRetailPrefillBadge(match || { name: custName, pending: 0, entries: 0 });
-    _loadRetailEntries(custName);
+    // Reset amount for NEW customer — avoid stale unallocated from previous
+    var amtEl = document.getElementById('rpt-amount');
+    if (amtEl) { amtEl.value = match ? (Math.round(match.pending * 100) / 100) : ''; delete amtEl.dataset.userEdited; }
+    _rptEntries = [];
+    _loadRetailEntriesLocalOrRemote(custName);
   }, 'Search customer...');
 
   if (prefer) {
@@ -6164,24 +6168,69 @@ function _renderRetailEntriesList() {
 function _rptUpdateFIFO() {
   var amtEl = document.getElementById('rpt-amount');
   var amount = amtEl ? (parseFloat(amtEl.value) || 0) : 0;
+  var totalPending = (_rptEntries || []).reduce(function(s, e) { return s + (parseFloat(e.pending) || 0); }, 0);
+  var allocated = Math.min(amount, totalPending);
+  var afterPay = Math.max(0, totalPending - allocated);
+  var unalloc = Math.max(0, amount - totalPending);
+
+  // Summary cards
+  var elPend = document.getElementById('rpt-total-pending');
+  var elPay = document.getElementById('rpt-paying-now');
+  var elAfter = document.getElementById('rpt-after-pay');
+  if (elPend) elPend.textContent = '₹' + _ruFmt(totalPending);
+  if (elPay) elPay.textContent = '₹' + _ruFmt(allocated);
+  if (elAfter) elAfter.textContent = '₹' + _ruFmt(afterPay);
+
+  var unRow = document.getElementById('rpt-unalloc-row');
+  var unAmt = document.getElementById('rpt-unalloc-amt');
+  if (unRow) {
+    if (unalloc > 0.5) {
+      unRow.style.display = 'block';
+      if (unAmt) unAmt.textContent = '₹' + _ruFmt(unalloc);
+    } else {
+      unRow.style.display = 'none';
+    }
+  }
+
+  var hint = document.getElementById('rpt-amount-hint');
+  if (hint) {
+    if (amount <= 0) {
+      hint.textContent = totalPending > 0 ? ('Full pending: ₹' + _ruFmt(totalPending)) : '';
+      hint.style.color = 'var(--muted)';
+    } else if (unalloc > 0.5) {
+      hint.textContent = '₹' + _ruFmt(unalloc) + ' extra — koi entry nahi bachegi iske liye';
+      hint.style.color = '#8a4200';
+    } else if (afterPay > 0.5) {
+      hint.textContent = 'Baad mein baki rahega: ₹' + _ruFmt(afterPay);
+      hint.style.color = '#64748B';
+    } else {
+      hint.textContent = 'Poora pending clear ho jayega';
+      hint.style.color = '#137333';
+    }
+  }
+
   var box = document.getElementById('rpt-retail-fifo-breakdown');
-  if (!box || !_rptEntries.length) return;
-  if (amount <= 0) { box.style.display = 'none'; return; }
+  if (!box) return;
+  if (!_rptEntries.length || amount <= 0) { box.style.display = 'none'; return; }
 
   var remaining = amount;
   var lines = [];
   var idx = 1;
   _rptEntries.forEach(function(e) {
     if (remaining <= 0) return;
-    var alloc = Math.min(remaining, e.pending);
+    var pend = parseFloat(e.pending) || 0;
+    var alloc = Math.min(remaining, pend);
     remaining -= alloc;
-    var status = alloc >= e.pending ? 'FULL' : 'PARTIAL';
-    var statusColor = alloc >= e.pending ? '#34A853' : '#F9AB00';
+    var status = alloc >= pend - 0.01 ? 'FULL' : 'PARTIAL';
+    var statusColor = status === 'FULL' ? '#34A853' : '#F9AB00';
+    var label = (e.item && String(e.item).trim()) ? e.item : ('Sale ' + (e.saleDate || ''));
     lines.push(
-      '<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px dashed #BFDBFE">' +
-        '<span style="color:#475569;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:60%">' +
-          (idx++) + '. ' + escHTML(e.item) + ' <span style="color:' + statusColor + ';font-size:9px;font-weight:700">[' + status + ']</span></span>' +
-        '<span style="font-weight:700;color:#137333">₹' + _ruFmt(alloc) + '</span>' +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px dashed #BFDBFE;gap:8px">' +
+        '<span style="color:#475569;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0">' +
+          (idx++) + '. ' + escHTML(label) +
+          ' <span style="color:' + statusColor + ';font-size:9px;font-weight:700">[' + status + ']</span>' +
+          ' <span style="color:#94A3B8;font-size:10px">of ₹' + _ruFmt(pend) + '</span></span>' +
+        '<span style="font-weight:700;color:#137333;flex-shrink:0">₹' + _ruFmt(alloc) + '</span>' +
       '</div>'
     );
   });
@@ -6207,7 +6256,10 @@ function _rptUpdateFIFO() {
     var amtEl = document.getElementById('rpt-amount');
     if (amtEl && !amtEl._retailHooked) {
       amtEl._retailHooked = true;
-      amtEl.addEventListener('input', _rptUpdateFIFO);
+      amtEl.addEventListener('input', function() {
+        amtEl.dataset.userEdited = '1';
+        _rptUpdateFIFO();
+      });
     }
   }, 500);
 })();
@@ -6251,7 +6303,7 @@ function _rptSubmit() {
 
 function _rptResetRetailTab() {
   ['rpt-amount', 'rpt-ref', 'rpt-remarks'].forEach(function(id) {
-    var el = document.getElementById(id); if (el) el.value = '';
+    var el = document.getElementById(id); if (el) { el.value = ''; delete el.dataset.userEdited; }
   });
   var box = document.getElementById('rpt-retail-entries-box');
   if (box) box.style.display = 'none';
@@ -6439,7 +6491,9 @@ function _loadRetailEntriesLocalOrRemote(customerName) {
     box.style.display = 'block';
     _renderRetailEntriesList();
     var amtEl = document.getElementById('rpt-amount');
-    if (amtEl && !amtEl.value) amtEl.value = Math.round(totalPending * 100) / 100;
+    // Always bind amount to current customer's pending on load/switch
+    if (amtEl) amtEl.value = Math.round(totalPending * 100) / 100;
+    if (typeof _rptUpdateFIFO === 'function') _rptUpdateFIFO();
   } else {
     list.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Loading entries...</div>';
     box.style.display = 'block';
@@ -6463,8 +6517,12 @@ function _loadRetailEntriesLocalOrRemote(customerName) {
       box.style.display = 'block';
       _renderRetailEntriesList();
       var amtEl = document.getElementById('rpt-amount');
-      if (amtEl && (!amtEl.value || local.length === 0)) {
-        amtEl.value = Math.round(totalPending * 100) / 100;
+      if (amtEl) {
+        // Keep user's typed amount only if they already edited away from previous pending;
+        // on customer switch local path already set the value — refresh to server truth if empty or was auto
+        if (!amtEl.dataset.userEdited) {
+          amtEl.value = Math.round(totalPending * 100) / 100;
+        }
       }
       if (typeof _rptUpdateFIFO === 'function') _rptUpdateFIFO();
     })
