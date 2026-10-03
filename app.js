@@ -203,7 +203,8 @@ var _idb = (function() {
       // Nav items — retail mode
       var RETAIL_NAV_ITEMS = [
         'nav-retailDashboard', 'nav-retailUpload', 'nav-retailSales',
-        'nav-retailCustomers', 'nav-retailPayments'
+        'nav-retailCustomers', 'nav-retailPayments',
+        'nav-retailFollowups', 'nav-retailPromises', 'nav-retailEscalations'
       ];
 
       // Default view after mode selection
@@ -839,6 +840,16 @@ function nav(v) {
 
     case 'retailPayments':
       if (typeof renderRetailPayments === 'function') renderRetailPayments();
+      break;
+
+    case 'retailFollowups':
+      if (typeof renderRetailFollowups === 'function') renderRetailFollowups();
+      break;
+    case 'retailPromises':
+      if (typeof renderRetailPromises === 'function') renderRetailPromises();
+      break;
+    case 'retailEscalations':
+      if (typeof renderRetailEscalations === 'function') renderRetailEscalations();
       break;
 
     // ── Add Party form ────────────────────────────────────
@@ -2933,24 +2944,29 @@ function shortPage(d) {
 
       function submitFollowUp() {
         const partyID = document.getElementById('fu-party-id').value;
+        const partyNameVal = (document.getElementById('fu-party-name').value || '').trim();
         const notes = (document.getElementById('fu-notes').value || '').trim();
-        if (!partyID) { Swal.fire('Required', 'Select a party', 'warning'); return; }
+        const isRetailFU = (window._fuIsRetail === true) || (partyID === 'RETAIL');
+        if (!isRetailFU && !partyID) { Swal.fire('Required', 'Select a party', 'warning'); return; }
+        if (isRetailFU && !partyNameVal) { Swal.fire('Required', 'Select a retail customer', 'warning'); return; }
         if (!notes) { Swal.fire('Required', 'Notes are required', 'warning'); return; }
 
         const invEl = document.getElementById('fu-invoice');
-        const selInvID = invEl.value;
+        const selInvID = invEl ? invEl.value : '';
         const selInv = (DB.invoices || []).find(i => i.invoiceID === selInvID);
-        const outAmt = window._fuOutstandingAmt ||
-          (DB.invoices || []).filter(i => i.partyID === partyID && !isPaid(i)).reduce((s, i) => s + pending(i), 0);
+        let outAmt = window._fuOutstandingAmt || 0;
+        if (!isRetailFU) {
+          outAmt = outAmt || (DB.invoices || []).filter(i => i.partyID === partyID && !isPaid(i)).reduce((s, i) => s + pending(i), 0);
+        }
 
         const dtRaw = document.getElementById('fu-dt').value;
         const fmtDT = dtRaw ? dtRaw.replace('T', ' ') : '';
         const fmtDate = d => d ? (() => { const dt = new Date(d); return String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear(); })() : '';
 
         const data = {
-          partyID,
-          partyCode: document.getElementById('fu-party-code').value,
-          partyName: document.getElementById('fu-party-name').value,
+          partyID: isRetailFU ? 'RETAIL' : partyID,
+          partyCode: isRetailFU ? 'RETAIL' : document.getElementById('fu-party-code').value,
+          partyName: partyNameVal || document.getElementById('fu-party-name').value,
           datetime: fmtDT,
           mode: document.getElementById('fu-mode-inp').value,
           contactPerson: document.getElementById('fu-contact').value,
@@ -4108,6 +4124,7 @@ function shortPage(d) {
         const escTo    = (document.getElementById('esc-to')||{}).value||'';
         const escSearch= ((document.getElementById('esc-search')||{}).value||'').toLowerCase();
         const list = (DB.followups || []).filter(f => {
+          if (f.partyID === 'RETAIL' || f.partyCode === 'RETAIL') return false;
           if (f.escalated !== 'Yes') return false;
           if (escSearch && !f.partyName.toLowerCase().includes(escSearch)) return false;
           if (escFrom || escTo) {
@@ -7466,3 +7483,151 @@ window.renderRetailFollowups = renderRetailFollowups;
 window.setRFUFilter = setRFUFilter;
 window.rfuPage = rfuPage;
 
+
+
+// ── Retail Promise Tracker ──────────────────────────────────
+var _rptFilter = 'ALL';
+
+function setRPTFilter(el, f) {
+  _rptFilter = f;
+  document.querySelectorAll('[data-rpt-filter]').forEach(function(p) {
+    p.classList.toggle('active', p.getAttribute('data-rpt-filter') === f);
+  });
+  renderRetailPromises();
+}
+
+function renderRetailPromises() {
+  var tbody = document.getElementById('rpt-tbody');
+  if (!tbody) return;
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+
+  var list = (DB.followups || []).filter(function(f) {
+    if (!_isRetailFollowUp(f)) return false;
+    if (!f.promiseAmt && !f.promiseDate) return false;
+    if (_rptFilter === 'ALL') return true;
+    if (_rptFilter === 'overdue-promise') {
+      var pd = f.promiseDate ? parseIST(f.promiseDate) : null;
+      return pd && pd < today && (f.promiseKept === 'Pending' || !f.promiseKept);
+    }
+    return (f.promiseKept || 'Pending') === _rptFilter;
+  }).sort(function(a, b) {
+    return String(a.promiseDate || '').localeCompare(String(b.promiseDate || ''));
+  });
+
+  var kept = 0, broken = 0, pending = 0, overdue = 0;
+  list.forEach(function(f) {
+    var k = f.promiseKept || 'Pending';
+    if (k === 'Yes' || k === 'Kept') kept++;
+    else if (k === 'No' || k === 'Broken') broken++;
+    else pending++;
+    var pd = f.promiseDate ? parseIST(f.promiseDate) : null;
+    if (pd && pd < today && (k === 'Pending' || !f.promiseKept)) overdue++;
+  });
+  txt('rpt-kept', kept);
+  txt('rpt-broken', broken);
+  txt('rpt-pending', pending);
+  txt('rpt-overdue', overdue);
+
+  if (!list.length) {
+    tbody.innerHTML = emptyRow(7, 'Koi retail promise nahi. Follow-up mein promise amount/date daalein.');
+    return;
+  }
+
+  tbody.innerHTML = list.map(function(f) {
+    var pd = f.promiseDate ? parseIST(f.promiseDate) : null;
+    var k = f.promiseKept || 'Pending';
+    var isOverdue = pd && pd < today && (k === 'Pending');
+    var pkColor = (k === 'Yes' || k === 'Kept') ? 'var(--green)' : (k === 'No' || k === 'Broken') ? 'var(--red)' : isOverdue ? 'var(--red)' : 'var(--amber)';
+    var notesShort = (f.notes || '').length > 50 ? (f.notes || '').slice(0, 50) + '…' : (f.notes || '—');
+    return '<tr style="' + (isOverdue ? 'background:#FCE8E6' : '') + '">' +
+      '<td style="font-weight:600;font-size:12px">' + escHTML(f.partyName || '') + '</td>' +
+      '<td style="font-size:11px">' + escHTML(String(f.datetime || '').split(' ')[0] || '') + '</td>' +
+      '<td class="num" style="font-weight:700">' + (f.promiseAmt ? ('₹' + _ruFmt(f.promiseAmt)) : '—') + '</td>' +
+      '<td style="font-size:11px">' + escHTML(f.promiseDate || '—') + (isOverdue ? ' <span style="color:var(--red);font-weight:700;font-size:10px">OVERDUE</span>' : '') + '</td>' +
+      '<td style="font-weight:600;color:' + pkColor + ';font-size:11px">' + escHTML(k) + '</td>' +
+      '<td style="font-size:11px;max-width:180px" title="' + escHTML(f.notes || '') + '">' + escHTML(notesShort) + '</td>' +
+      '<td style="white-space:nowrap">' +
+        (k === 'Pending' ? (
+          '<button type="button" class="act-btn" style="background:#E6F4EA;color:var(--green)" onclick="updatePromise(\'' + escQ(f.followUpID) + '\',\'Yes\')" title="Kept"><i class="fas fa-check"></i></button> ' +
+          '<button type="button" class="act-btn" style="background:#FCE8E6;color:var(--red)" onclick="updatePromise(\'' + escQ(f.followUpID) + '\',\'No\')" title="Broken"><i class="fas fa-times"></i></button> '
+        ) : '') +
+        '<button type="button" class="act-btn ab-pay" onclick="_rptQuickPay(\'' + escQ(f.partyName || '') + '\')" title="Pay"><i class="fas fa-indian-rupee-sign"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── Retail Escalations ──────────────────────────────────────
+function renderRetailEscalations() {
+  var tbody = document.getElementById('resc-tbody');
+  if (!tbody) return;
+
+  var list = (DB.followups || []).filter(function(f) {
+    return _isRetailFollowUp(f) && f.escalated === 'Yes';
+  }).sort(function(a, b) {
+    return String(b.datetime || '').localeCompare(String(a.datetime || ''));
+  });
+
+  var resolved = list.filter(function(f) {
+    var k = f.promiseKept || '';
+    return k === 'Yes' || k === 'Kept';
+  }).length;
+  txt('resc-total', list.length);
+  txt('resc-resolved', resolved);
+  txt('resc-open', list.length - resolved);
+
+  if (!list.length) {
+    tbody.innerHTML = emptyRow(8, 'Koi retail escalation nahi.');
+    return;
+  }
+
+  tbody.innerHTML = list.map(function(f) {
+    var priColor = f.priority === 'High' ? '#EA4335' : '#F9AB00';
+    var notesShort = (f.notes || '').length > 50 ? (f.notes || '').slice(0, 50) + '…' : (f.notes || '—');
+    return '<tr>' +
+      '<td style="font-weight:600;font-size:12px">' + escHTML(f.partyName || '') + '</td>' +
+      '<td style="font-size:11px">' + escHTML(f.datetime || f.loggedOn || '') + '</td>' +
+      '<td style="font-size:12px;font-weight:600">' + escHTML(f.escalatedTo || '—') + '</td>' +
+      '<td class="num" style="color:var(--red);font-weight:700">₹' + _ruFmt(f.outstandingAmt || 0) + '</td>' +
+      '<td style="font-size:11px;max-width:180px" title="' + escHTML(f.notes || '') + '">' + escHTML(notesShort) + '</td>' +
+      '<td class="num">' + (f.promiseAmt ? ('₹' + _ruFmt(f.promiseAmt)) : '—') + '</td>' +
+      '<td style="font-size:10px;font-weight:700;color:' + priColor + '">' + escHTML(f.priority || 'Medium') + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button type="button" class="act-btn ab-pay" onclick="_rptQuickPay(\'' + escQ(f.partyName || '') + '\')"><i class="fas fa-indian-rupee-sign"></i></button> ' +
+        '<button type="button" class="act-btn ab-fu" onclick="openRetailFUModal(\'' + escQ(f.partyName || '') + '\')"><i class="fas fa-phone-alt"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+/** Paint recent retail follow-ups on retail dashboard */
+function _paintRetailDashboardFollowups() {
+  var el = document.getElementById('rd-fu-list');
+  if (!el) return;
+  var list = (DB.followups || []).filter(_isRetailFollowUp)
+    .sort(function(a, b) { return String(b.datetime || '').localeCompare(String(a.datetime || '')); })
+    .slice(0, 8);
+
+  if (!list.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Abhi koi follow-up nahi.<br><button class="btn btn-sm btn-amber" style="margin-top:8px" onclick="openRetailFUModal()"><i class="fas fa-phone-alt"></i> Log first</button></div>';
+    return;
+  }
+
+  el.innerHTML = list.map(function(f) {
+    var modeBg = f.mode === 'WhatsApp' ? '#E6F4EA' : f.mode === 'Phone Call' ? '#E8F0FE' : '#F1F5F9';
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 4px;border-bottom:1px solid #F1F5F9">' +
+      '<div style="min-width:0;flex:1">' +
+        '<div style="font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHTML(f.partyName || '') + '</div>' +
+        '<div style="font-size:10px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHTML((f.notes || '').slice(0, 60)) + '</div>' +
+      '</div>' +
+      '<div style="text-align:right;flex-shrink:0">' +
+        '<span style="background:' + modeBg + ';font-size:9px;padding:2px 6px;border-radius:8px;font-weight:600">' + escHTML(f.mode || '') + '</span>' +
+        '<div style="font-size:9px;color:var(--muted);margin-top:3px">' + escHTML(String(f.datetime || '').split(' ')[0] || '') + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+window.renderRetailPromises = renderRetailPromises;
+window.renderRetailEscalations = renderRetailEscalations;
+window.setRPTFilter = setRPTFilter;
