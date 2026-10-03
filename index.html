@@ -3631,6 +3631,10 @@
             style="display:none">
             <i class="fas fa-hand-holding-usd" style="color:#7C3AED"></i><span class="sb-lbl">Payments</span>
           </div>
+          <div class="sb-nav-item" id="nav-retailFollowups" data-tip="Retail Follow-ups" onclick="nav('retailFollowups')"
+            style="display:none">
+            <i class="fas fa-phone-alt" style="color:#7C3AED"></i><span class="sb-lbl">Follow-ups</span>
+          </div>
 
 
           <div class="sb-nav-divider" data-mode="supply"></div>
@@ -5249,6 +5253,72 @@
           </div>
 
           <!-- ===== RETAIL DASHBOARD VIEW ===== -->
+          <div id="view-retailFollowups" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Follow-ups</div>
+                <div class="page-sub" id="rfu-sub">Retail customer interactions</div>
+              </div>
+              <button class="btn btn-amber" onclick="openRetailFUModal()"><i class="fas fa-phone-alt"></i> Log Follow-up</button>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+              <div class="search-wrap" style="flex:1;min-width:180px">
+                <i class="fas fa-search"></i>
+                <input class="form-input" id="rfu-search" placeholder="Search customer, notes..."
+                  oninput="_debounce(renderRetailFollowups,300)()">
+              </div>
+              <input class="form-input" type="date" id="rfu-from" onchange="renderRetailFollowups()"
+                style="width:130px;padding:7px 10px" title="From date">
+              <input class="form-input" type="date" id="rfu-to" onchange="renderRetailFollowups()"
+                style="width:130px;padding:7px 10px" title="To date">
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rfu-from').value='';document.getElementById('rfu-to').value='';renderRetailFollowups()" title="Clear dates"><i class="fas fa-times"></i></button>
+              <select class="form-input" id="rfu-mode-filter" onchange="renderRetailFollowups()"
+                style="width:auto;min-width:140px;padding:7px 10px">
+                <option value="">All Modes</option>
+                <option>Phone Call</option>
+                <option>WhatsApp</option>
+                <option>In Person</option>
+                <option>Email</option>
+              </select>
+              <div class="filter-row" style="margin-bottom:0">
+                <div class="fpill active" data-rfu-filter="ALL" onclick="setRFUFilter(this,'ALL')">All</div>
+                <div class="fpill" data-rfu-filter="High" onclick="setRFUFilter(this,'High')">High Priority</div>
+                <div class="fpill" data-rfu-filter="promise-due" onclick="setRFUFilter(this,'promise-due')">Promise Due</div>
+                <div class="fpill" data-rfu-filter="escalated" onclick="setRFUFilter(this,'escalated')">Escalated</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="tbl-wrap">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Date &amp; Time</th>
+                      <th>Customer</th>
+                      <th>Mode</th>
+                      <th>Contacted</th>
+                      <th>Notes</th>
+                      <th class="num">Promise (₹)</th>
+                      <th>Promise Date</th>
+                      <th>Priority</th>
+                      <th>Kept?</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rfu-tbody"></tbody>
+                </table>
+              </div>
+              <div class="pager">
+                <span class="pager-info" id="rfu-info">0 follow-ups</span>
+                <div class="pager-btns">
+                  <button class="pager-btn" id="rfu-prev" onclick="rfuPage(-1)" title="Previous page"><i class="fas fa-chevron-left"></i></button>
+                  <span class="pager-page" id="rfu-page">1</span>
+                  <button class="pager-btn" id="rfu-next" onclick="rfuPage(1)" title="Next page"><i class="fas fa-chevron-right"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
           <div id="view-retailDashboard" class="view">
             <div class="page-hd">
               <div>
@@ -5327,6 +5397,9 @@
                     </button>
                     <button class="btn btn-secondary" onclick="_rdQuickRecordPay()" style="justify-content:flex-start;font-size:12px;padding:9px 14px">
                       <i class="fas fa-indian-rupee-sign" style="color:#34A853;width:16px"></i> Record Payment
+                    </button>
+                    <button class="btn btn-secondary" onclick="openRetailFUModal()" style="justify-content:flex-start;font-size:12px;padding:9px 14px">
+                      <i class="fas fa-phone-alt" style="color:#EA4335;width:16px"></i> Log Follow-up
                     </button>
                     <button class="btn btn-secondary" onclick="_rdQuickPayments()" style="justify-content:flex-start;font-size:12px;padding:9px 14px">
                       <i class="fas fa-hand-holding-usd" style="color:#F9AB00;width:16px"></i> View Payments
