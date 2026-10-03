@@ -3631,9 +3631,19 @@
             style="display:none">
             <i class="fas fa-hand-holding-usd" style="color:#7C3AED"></i><span class="sb-lbl">Payments</span>
           </div>
-          <div class="sb-nav-item" id="nav-retailFollowups" data-tip="Retail Follow-ups" onclick="nav('retailFollowups')"
+          <div class="sb-nav-divider" data-mode="retail" style="display:none"></div>
+          <div class="sb-section-label" data-mode="retail" style="display:none">Follow-ups</div>
+          <div class="sb-nav-item" id="nav-retailFollowups" data-tip="All Follow-ups" onclick="nav('retailFollowups')"
             style="display:none">
-            <i class="fas fa-phone-alt" style="color:#7C3AED"></i><span class="sb-lbl">Follow-ups</span>
+            <i class="fas fa-phone-alt" style="color:#7C3AED"></i><span class="sb-lbl">All Follow-ups</span>
+          </div>
+          <div class="sb-nav-item" id="nav-retailPromises" data-tip="Promise Tracker" onclick="nav('retailPromises')"
+            style="display:none">
+            <i class="fas fa-handshake" style="color:#7C3AED"></i><span class="sb-lbl">Promise Tracker</span>
+          </div>
+          <div class="sb-nav-item" id="nav-retailEscalations" data-tip="Escalations" onclick="nav('retailEscalations')"
+            style="display:none">
+            <i class="fas fa-exclamation-triangle" style="color:#7C3AED"></i><span class="sb-lbl">Escalations</span>
           </div>
 
 
@@ -5319,6 +5329,85 @@
           </div>
 
 
+
+          <div id="view-retailPromises" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Promise Tracker</div>
+                <div class="page-sub">Payment commitments from retail customers</div>
+              </div>
+              <button class="btn btn-amber" onclick="openRetailFUModal()"><i class="fas fa-phone-alt"></i> Log Follow-up</button>
+            </div>
+            <div class="g4" style="margin-bottom:16px">
+              <div class="stat-card sc-green"><div class="stat-label">Kept</div><div class="stat-val" id="rpt-kept">0</div></div>
+              <div class="stat-card sc-red"><div class="stat-label">Broken</div><div class="stat-val" id="rpt-broken">0</div></div>
+              <div class="stat-card sc-amber"><div class="stat-label">Pending</div><div class="stat-val" id="rpt-pending">0</div></div>
+              <div class="stat-card" style="border-left:3px solid #7C3AED"><div class="stat-label">Overdue Promise</div><div class="stat-val" id="rpt-overdue" style="color:#7C3AED">0</div></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+              <div class="filter-row" style="margin-bottom:0">
+                <div class="fpill active" data-rpt-filter="ALL" onclick="setRPTFilter(this,'ALL')">All</div>
+                <div class="fpill" data-rpt-filter="Pending" onclick="setRPTFilter(this,'Pending')">Pending</div>
+                <div class="fpill" data-rpt-filter="Yes" onclick="setRPTFilter(this,'Yes')">Kept</div>
+                <div class="fpill" data-rpt-filter="No" onclick="setRPTFilter(this,'No')">Broken</div>
+                <div class="fpill" data-rpt-filter="overdue-promise" onclick="setRPTFilter(this,'overdue-promise')">Overdue</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="tbl-wrap">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Logged</th>
+                      <th class="num">Promise (₹)</th>
+                      <th>Promise Date</th>
+                      <th>Status</th>
+                      <th>Notes</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rpt-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="view-retailEscalations" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Escalations</div>
+                <div class="page-sub">Escalated retail follow-ups</div>
+              </div>
+              <button class="btn btn-amber" onclick="openRetailFUModal()"><i class="fas fa-phone-alt"></i> Log Follow-up</button>
+            </div>
+            <div class="g3" style="margin-bottom:16px">
+              <div class="stat-card" style="border-left:3px solid #EA4335"><div class="stat-label">Total Escalated</div><div class="stat-val" id="resc-total" style="color:#EA4335">0</div></div>
+              <div class="stat-card sc-green"><div class="stat-label">Resolved</div><div class="stat-val" id="resc-resolved">0</div></div>
+              <div class="stat-card sc-red"><div class="stat-label">Open</div><div class="stat-val" id="resc-open">0</div></div>
+            </div>
+            <div class="card">
+              <div class="tbl-wrap">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Escalated On</th>
+                      <th>Escalated To</th>
+                      <th class="num">Outstanding</th>
+                      <th>Notes</th>
+                      <th class="num">Promise (₹)</th>
+                      <th>Priority</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="resc-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+
           <div id="view-retailDashboard" class="view">
             <div class="page-hd">
               <div>
@@ -5407,6 +5496,13 @@
                   </div>
                 </div>
 
+                <div class="card">
+                  <div style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+                    <span><i class="fas fa-phone-alt" style="color:#EA4335;margin-right:6px"></i>Recent Follow-ups</span>
+                    <button onclick="nav('retailFollowups')" style="font-size:10px;color:#7C3AED;font-weight:600;background:none;border:none;cursor:pointer">All →</button>
+                  </div>
+                  <div id="rd-fu-list" style="padding:6px 14px 10px;max-height:220px;overflow-y:auto" class="scroll"></div>
+                </div>
                 <div class="card">
                   <div style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
                     <i class="fas fa-clock-rotate-left" style="color:#7C3AED;margin-right:6px"></i>Recent Payments
