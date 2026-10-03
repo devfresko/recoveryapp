@@ -2866,6 +2866,8 @@ function shortPage(d) {
       }
       function closeFUModal() {
         document.getElementById('fu-modal').classList.remove('show');
+        window._fuIsRetail = false;
+        window._fuOutstandingAmt = 0;
         // Reset all FU form fields
         ['fu-notes','fu-contact','fu-promise-amt','fu-attach','fu-party-id','fu-party-code','fu-party-name',
          'fu-promise-date','fu-next-date','fu-next'].forEach(id => { const e = document.getElementById(id); if(e) e.value=''; });
@@ -2876,6 +2878,14 @@ function shortPage(d) {
         const et = document.getElementById('fu-escalated-to'); if(et) et.value='';
         const inp = document.getElementById('fu-ss-inp'); if(inp) inp.value='';
         if(_ssState && _ssState['fu-ss']){ _ssState['fu-ss'].value=''; _ssState['fu-ss'].text=''; }
+        // Restore party label if it was switched for retail
+        var partyLabel = document.querySelector('#fu-modal label.form-label');
+        // Show invoice row again
+        var invGroup = document.getElementById('fu-invoice');
+        if (invGroup && invGroup.closest) {
+          var g = invGroup.closest('.form-group');
+          if (g) g.style.display = '';
+        }
         _setDefaultDates();
       }
 
@@ -2966,6 +2976,9 @@ function shortPage(d) {
               Swal.fire({ icon: 'success', title: 'Follow-up Logged!', text: r.msg, timer: 1800, showConfirmButton: false });
               closeFUModal();
               _silentDataRefresh();
+              if (typeof renderRetailFollowups === 'function' && document.getElementById('view-retailFollowups') && document.getElementById('view-retailFollowups').classList.contains('active')) {
+                setTimeout(function() { renderRetailFollowups(); }, 600);
+              }
             } else Swal.fire('Error', r.error, 'error');
           })
           .withFailureHandler(e => Swal.fire('Error', e.message, 'error'))
@@ -3841,6 +3854,7 @@ function shortPage(d) {
         const modeF = (document.getElementById('fu-mode-filter') || {}).value || '';
 
         let list = (DB.followups || []).filter(f => {
+          if (f.partyID === 'RETAIL' || f.partyCode === 'RETAIL') return false; // retail FUs have own view
           if (q && !((f.partyName||'').toLowerCase().includes(q) || (f.notes||'').toLowerCase().includes(q) || (f.invoiceNo||'').toLowerCase().includes(q))) return false;
           if (modeF && f.mode !== modeF) return false;
           if (from || to) {
@@ -5700,6 +5714,7 @@ function _renderRetailGrouped(tbody, list) {
       '<td class="num" style="font-weight:800;color:#7C3AED;font-size:13px;padding:10px 12px">₹' + _ruFmt(g.totalAmt) + '</td>' +
       '<td style="white-space:nowrap;padding:10px 8px" class="rs-group-actions">' +
         '<button type="button" class="act-btn ab-pay" data-pay="' + escQ(g.name) + '" title="Record Payment"><i class="fas fa-indian-rupee-sign"></i></button>' +
+        '<button type="button" class="act-btn ab-fu" style="margin-left:2px" data-fu="' + escQ(g.name) + '" title="Log Follow-up"><i class="fas fa-phone-alt"></i></button>' +
         '<button type="button" class="act-btn ab-view" style="margin-left:2px" data-stmt="' + escQ(g.name) + '" title="Statement"><i class="fas fa-file-invoice"></i></button>' +
       '</td>' +
     '</tr>';
@@ -5729,6 +5744,8 @@ function _renderRetailGrouped(tbody, list) {
     tbody.addEventListener('click', function(ev) {
       var payBtn = ev.target.closest('[data-pay]');
       if (payBtn) { ev.stopPropagation(); _rptQuickPay(payBtn.getAttribute('data-pay')); return; }
+      var fuBtn = ev.target.closest('[data-fu]');
+      if (fuBtn) { ev.stopPropagation(); openRetailFUModal(fuBtn.getAttribute('data-fu')); return; }
       var stmtBtn = ev.target.closest('[data-stmt]');
       if (stmtBtn) { ev.stopPropagation(); _openRetailStatement(stmtBtn.getAttribute('data-stmt')); return; }
       var row = ev.target.closest('tr.rs-group-row');
@@ -6892,6 +6909,7 @@ function _renderRetailDashboardContent() {
             '<span style="vertical-align:middle">' + escHTML(c.name) + '</span>' +
             (daysOld > 0 ? ' <span style="font-size:9px;font-weight:700;color:' + ageColor + ';margin-left:4px">' + daysOld + 'd</span>' : '') +
             ' <button type="button" class="act-btn ab-pay" style="margin-left:6px;vertical-align:middle" onclick="event.stopPropagation();_rptQuickPay(\'' + escQ(c.name) + '\')" title="Record Payment"><i class="fas fa-indian-rupee-sign"></i></button>' +
+            ' <button type="button" class="act-btn ab-fu" style="margin-left:2px;vertical-align:middle" onclick="event.stopPropagation();openRetailFUModal(\'' + escQ(c.name) + '\')" title="Log Follow-up"><i class="fas fa-phone-alt"></i></button>' +
           '</td>' +
           '<td class="num" style="color:var(--red);font-weight:700;font-size:13px">₹' + _ruFmt(c.pending) + '</td>' +
           '<td class="num" style="color:var(--muted)">' + c.entries + '</td>' +
@@ -7242,3 +7260,209 @@ function _closeAllModals() {
 }
 
 // Call this at the start of every modal open function
+
+
+// ============================================================
+// RETAIL FOLLOW-UPS — reuses FollowUps sheet (partyID/Code = RETAIL)
+// ============================================================
+var _rfuFilter = 'ALL';
+var _rfuPage = 1;
+var RFU_PER = 25;
+
+function _isRetailFollowUp(fu) {
+  if (!fu) return false;
+  return fu.partyID === 'RETAIL' || fu.partyCode === 'RETAIL' ||
+    (fu.partyID && String(fu.partyID).indexOf('RTL-') === 0);
+}
+
+function _retailCustomerPending(name) {
+  var target = (name || '').toLowerCase().trim();
+  var total = 0;
+  (_retailData.allRows || []).forEach(function(r) {
+    if ((r.customer || '').toLowerCase().trim() === target) {
+      total += parseFloat(r.pending) || 0;
+    }
+  });
+  return total;
+}
+
+function _retailCustomerNames() {
+  var map = {};
+  (_retailData.allRows || []).forEach(function(r) {
+    var n = (r.customer || '').trim();
+    if (n) map[n] = true;
+  });
+  // Also from RetailCustomers if in DB
+  if (DB && DB.retailCustomers) {
+    (DB.retailCustomers || []).forEach(function(c) {
+      if (c.name) map[c.name] = true;
+    });
+  }
+  return Object.keys(map).sort(function(a, b) { return a.localeCompare(b); });
+}
+
+/** Open follow-up modal in retail mode (customer search instead of party) */
+function openRetailFUModal(customerName) {
+  window._fuIsRetail = true;
+  openFUModal();
+
+  // Hide invoice picker (not relevant for aggregated retail)
+  var invEl = document.getElementById('fu-invoice');
+  if (invEl && invEl.closest) {
+    var g = invEl.closest('.form-group');
+    if (g) g.style.display = 'none';
+  }
+
+  // Build customer search SS
+  var names = _retailCustomerNames();
+  // If cache empty, try to load retail data first
+  if (!names.length) {
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (r && r.success) _retailData.allRows = r.rows || [];
+        _paintRetailFUCustomerSS(customerName);
+      })
+      .getRetailData();
+  } else {
+    _paintRetailFUCustomerSS(customerName);
+  }
+
+  // Prefill if name given
+  if (customerName) {
+    setTimeout(function() { _selectRetailFUCustomer(customerName); }, 150);
+  }
+}
+
+function _paintRetailFUCustomerSS(prefer) {
+  var opts = _retailCustomerNames().map(function(n) {
+    var pend = _retailCustomerPending(n);
+    return {
+      id: n,
+      name: n,
+      meta: pend > 0 ? ('Pending ₹' + _ruFmt(pend)) : 'Settled'
+    };
+  });
+  buildSS('fu-ss', opts, function(name) {
+    _selectRetailFUCustomer(name);
+  }, 'Search retail customer...');
+  if (prefer) _selectRetailFUCustomer(prefer);
+}
+
+function _selectRetailFUCustomer(name) {
+  if (!name) return;
+  window._fuIsRetail = true;
+  var pend = _retailCustomerPending(name);
+  window._fuOutstandingAmt = pend;
+  var s = function(id) { return document.getElementById(id); };
+  if (s('fu-party-id')) s('fu-party-id').value = 'RETAIL';
+  if (s('fu-party-code')) s('fu-party-code').value = 'RETAIL';
+  if (s('fu-party-name')) s('fu-party-name').value = name;
+  var inp = document.getElementById('fu-ss-inp');
+  if (inp) inp.value = name;
+  if (_ssState['fu-ss']) { _ssState['fu-ss'].value = name; _ssState['fu-ss'].text = name; }
+  // Show pending as hint in notes placeholder or promise default
+  var notes = document.getElementById('fu-notes');
+  if (notes && !notes.value) {
+    notes.placeholder = pend > 0
+      ? ('Pending ₹' + _ruFmt(pend) + ' — What was discussed?')
+      : 'What was discussed? What was the outcome?';
+  }
+}
+
+function setRFUFilter(el, f) {
+  _rfuFilter = f;
+  _rfuPage = 1;
+  document.querySelectorAll('[data-rfu-filter]').forEach(function(p) {
+    p.classList.toggle('active', p.getAttribute('data-rfu-filter') === f);
+  });
+  renderRetailFollowups();
+}
+
+function rfuPage(dir) {
+  _rfuPage = Math.max(1, _rfuPage + dir);
+  renderRetailFollowups();
+}
+
+function renderRetailFollowups() {
+  var tbody = document.getElementById('rfu-tbody');
+  if (!tbody) return;
+
+  var q = ((document.getElementById('rfu-search') || {}).value || '').toLowerCase();
+  var from = (document.getElementById('rfu-from') || {}).value || '';
+  var to = (document.getElementById('rfu-to') || {}).value || '';
+  var modeF = (document.getElementById('rfu-mode-filter') || {}).value || '';
+
+  var list = (DB.followups || []).filter(function(fu) {
+    if (!_isRetailFollowUp(fu)) return false;
+    if (q) {
+      var blob = ((fu.partyName || '') + ' ' + (fu.notes || '') + ' ' + (fu.contactPerson || '')).toLowerCase();
+      if (blob.indexOf(q) < 0) return false;
+    }
+    if (modeF && fu.mode !== modeF) return false;
+    if (from || to) {
+      var d = parseIST(fu.datetime) || parseIST(String(fu.datetime).split(' ')[0]);
+      if (from && d && d < new Date(from)) return false;
+      if (to && d && d > new Date(to + 'T23:59:59')) return false;
+    }
+    if (_rfuFilter === 'High' && fu.priority !== 'High') return false;
+    if (_rfuFilter === 'escalated' && fu.escalated !== 'Yes') return false;
+    if (_rfuFilter === 'promise-due') {
+      if (!fu.promiseDate || fu.promiseKept === 'Yes' || fu.promiseKept === 'Kept') return false;
+      var pd = parseIST(fu.promiseDate);
+      if (!pd || pd > new Date()) return false;
+    }
+    return true;
+  });
+
+  // Newest first
+  list.sort(function(a, b) {
+    var da = parseIST(a.datetime) || parseIST(a.loggedOn) || new Date(0);
+    var db = parseIST(b.datetime) || parseIST(b.loggedOn) || new Date(0);
+    return db - da;
+  });
+
+  var total = list.length;
+  var totalPages = Math.max(1, Math.ceil(total / RFU_PER));
+  if (_rfuPage > totalPages) _rfuPage = totalPages;
+  var page = list.slice((_rfuPage - 1) * RFU_PER, _rfuPage * RFU_PER);
+
+  txt('rfu-sub', total + ' retail follow-ups');
+  txt('rfu-info', total ? (((_rfuPage - 1) * RFU_PER + 1) + '-' + Math.min(_rfuPage * RFU_PER, total) + ' of ' + total) : '0 follow-ups');
+  var prev = document.getElementById('rfu-prev'), next = document.getElementById('rfu-next'), pg = document.getElementById('rfu-page');
+  if (prev) prev.disabled = _rfuPage <= 1;
+  if (next) next.disabled = _rfuPage >= totalPages;
+  if (pg) pg.textContent = _rfuPage + ' / ' + totalPages;
+
+  if (!page.length) {
+    tbody.innerHTML = emptyRow(10, 'Koi retail follow-up nahi. “Log Follow-up” se pehla entry banayein.');
+    return;
+  }
+
+  tbody.innerHTML = page.map(function(fu) {
+    var priColor = fu.priority === 'High' ? '#EA4335' : (fu.priority === 'Low' ? '#94A3B8' : '#F9AB00');
+    var kept = (fu.promiseKept || 'Pending');
+    var keptColor = kept === 'Yes' || kept === 'Kept' ? 'var(--green)' : (kept === 'No' || kept === 'Broken' ? 'var(--red)' : 'var(--muted)');
+    var notesShort = (fu.notes || '').length > 60 ? (fu.notes || '').slice(0, 60) + '…' : (fu.notes || '');
+    return '<tr>' +
+      '<td style="font-size:11px;white-space:nowrap">' + escHTML(fu.datetime || fu.loggedOn || '') + '</td>' +
+      '<td style="font-weight:600;font-size:12px">' + escHTML(fu.partyName || '') + '</td>' +
+      '<td style="font-size:11px">' + escHTML(fu.mode || '') + '</td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + escHTML(fu.contactPerson || '—') + '</td>' +
+      '<td style="font-size:11px;max-width:220px" title="' + escHTML(fu.notes || '') + '">' + escHTML(notesShort) + '</td>' +
+      '<td class="num" style="font-weight:600">' + (fu.promiseAmt ? ('₹' + _ruFmt(fu.promiseAmt)) : '—') + '</td>' +
+      '<td style="font-size:11px">' + escHTML(fu.promiseDate || '—') + '</td>' +
+      '<td><span style="font-size:10px;font-weight:700;color:' + priColor + '">' + escHTML(fu.priority || 'Medium') + '</span></td>' +
+      '<td style="font-size:11px;font-weight:600;color:' + keptColor + '">' + escHTML(kept) + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button type="button" class="act-btn ab-pay" title="Record Payment" onclick="_rptQuickPay(\'' + escQ(fu.partyName || '') + '\')"><i class="fas fa-indian-rupee-sign"></i></button> ' +
+        '<button type="button" class="act-btn ab-fu" title="Log another" onclick="openRetailFUModal(\'' + escQ(fu.partyName || '') + '\')"><i class="fas fa-phone-alt"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+window.openRetailFUModal = openRetailFUModal;
+window.renderRetailFollowups = renderRetailFollowups;
+window.setRFUFilter = setRFUFilter;
+window.rfuPage = rfuPage;
+
