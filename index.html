@@ -3444,7 +3444,42 @@
     body.dark .stat-val {
       color: var(--text);
     }
-  </style>
+  
+/* Global process overlay */
+#global-process {
+  position: fixed; inset: 0; z-index: 99998;
+  background: rgba(15,23,42,.45); backdrop-filter: blur(3px);
+  display: none; align-items: center; justify-content: center;
+}
+#global-process.show { display: flex; }
+.gp-card {
+  background: #0F172A; color: #E2E8F0; border-radius: 16px;
+  padding: 28px 32px; min-width: 280px; max-width: 90vw;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35); text-align: center;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.gp-spinner {
+  width: 42px; height: 42px; margin: 0 auto 14px;
+  border: 3px solid rgba(124,58,237,.25); border-top-color: #7C3AED;
+  border-radius: 50%; animation: gp-spin .7s linear infinite;
+}
+@keyframes gp-spin { to { transform: rotate(360deg); } }
+.gp-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.gp-sub { font-size: 12px; color: #94A3B8; margin-bottom: 14px; min-height: 16px; }
+.gp-bar { height: 3px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; }
+.gp-bar-fill {
+  height: 100%; width: 40%; background: linear-gradient(90deg,#7C3AED,#A78BFA);
+  border-radius: 99px; animation: gp-slide 1.2s ease-in-out infinite;
+}
+@keyframes gp-slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(180%); }
+  100% { transform: translateX(-100%); }
+}
+body.gp-locked { pointer-events: none; overflow: hidden; }
+body.gp-locked #global-process { pointer-events: auto; }
+
+</style>
 </head>
 
 <body>
@@ -3620,6 +3655,10 @@
           <div class="sb-nav-item" id="nav-retailSales" data-tip="Customer Sale Register" onclick="nav('retailSales')"
             style="display:none">
             <i class="fas fa-receipt" style="color:#7C3AED"></i><span class="sb-lbl">Sale Register</span>
+          </div>
+          <div class="sb-nav-item" id="nav-retailAging" data-tip="Outstanding Aging" onclick="nav('retailAging')"
+            style="display:none">
+            <i class="fas fa-hourglass-half" style="color:#7C3AED"></i><span class="sb-lbl">Aging</span>
           </div>
           <div class="sb-nav-divider" data-mode="retail" style="display:none"></div>
           <div class="sb-section-label" data-mode="retail" style="display:none">Manage</div>
@@ -5519,6 +5558,42 @@
                   </div>
                   <div id="rd-recent-activity" style="padding:6px 14px 10px"></div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="view-retailAging" class="view">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Retail Aging</div>
+                <div class="page-sub">Outstanding by age buckets</div>
+              </div>
+              <button class="btn btn-primary" onclick="_rdQuickRecordPay()" style="background:#7C3AED;border-color:#7C3AED">
+                <i class="fas fa-indian-rupee-sign"></i> Record Payment
+              </button>
+            </div>
+            <div class="g4" style="margin-bottom:14px">
+              <div class="stat-card sc-green"><div class="stat-label">0–7 days</div><div class="stat-val" id="ra-b0">₹0</div></div>
+              <div class="stat-card sc-blue"><div class="stat-label">8–15 days</div><div class="stat-val" id="ra-b1">₹0</div></div>
+              <div class="stat-card sc-amber"><div class="stat-label">16–30 days</div><div class="stat-val" id="ra-b2">₹0</div></div>
+              <div class="stat-card sc-red"><div class="stat-label">30+ days</div><div class="stat-val" id="ra-b3">₹0</div></div>
+            </div>
+            <div class="card">
+              <div class="tbl-wrap">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th class="num">0–7d</th>
+                      <th class="num">8–15d</th>
+                      <th class="num">16–30d</th>
+                      <th class="num">30+d</th>
+                      <th class="num">Total</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ra-tbody"></tbody>
+                </table>
               </div>
             </div>
           </div>
