@@ -5418,6 +5418,9 @@
                 <button class="btn btn-secondary" onclick="_rdQuickUpload()">
                   <i class="fas fa-cloud-upload-alt"></i> New Upload
                 </button>
+                <button class="btn btn-amber" onclick="openRetailFUModal()">
+                  <i class="fas fa-phone-alt"></i> Log Follow-up
+                </button>
                 <button class="btn btn-primary" onclick="_rdQuickRecordPay()" style="background:#7C3AED;border-color:#7C3AED">
                   <i class="fas fa-indian-rupee-sign"></i> Record Payment
                 </button>
@@ -5448,6 +5451,28 @@
                 <div class="stat-label">This Month ₹</div>
                 <div class="stat-val" id="rd-this-month">₹0</div>
                 <div class="stat-sub">retail collections</div>
+              </div>
+            </div>
+            <div class="g4" style="margin-bottom:14px">
+              <div class="stat-card" style="border-left:3px solid #EA4335;cursor:pointer" onclick="nav('retailFollowups')">
+                <div class="stat-label">Follow-ups Today</div>
+                <div class="stat-val" id="rd-fu-today" style="color:#EA4335">0</div>
+                <div class="stat-sub">logged today</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #F9AB00;cursor:pointer" onclick="nav('retailPromises')">
+                <div class="stat-label">Open Promises</div>
+                <div class="stat-val" id="rd-fu-promises" style="color:#F9AB00">0</div>
+                <div class="stat-sub">pending commitments</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #EA4335;cursor:pointer" onclick="nav('retailPromises')">
+                <div class="stat-label">Overdue Promises</div>
+                <div class="stat-val" id="rd-fu-overdue" style="color:#EA4335">0</div>
+                <div class="stat-sub">past promise date</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #7C3AED;cursor:pointer" onclick="nav('retailEscalations')">
+                <div class="stat-label">Escalations</div>
+                <div class="stat-val" id="rd-fu-esc" style="color:#7C3AED">0</div>
+                <div class="stat-sub">open escalated cases</div>
               </div>
             </div>
 
