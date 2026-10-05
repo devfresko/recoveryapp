@@ -202,7 +202,7 @@ var _idb = (function() {
 
       // Nav items — retail mode
       var RETAIL_NAV_ITEMS = [
-        'nav-retailDashboard', 'nav-retailUpload', 'nav-retailSales',
+        'nav-retailDashboard', 'nav-retailUpload', 'nav-retailSales', 'nav-retailAging',
         'nav-retailCustomers', 'nav-retailPayments',
         'nav-retailFollowups', 'nav-retailPromises', 'nav-retailEscalations'
       ];
@@ -832,6 +832,9 @@ function nav(v) {
 
     case 'retailSales':
       if (typeof renderRetailSales === 'function') renderRetailSales();
+      break;
+    case 'retailAging':
+      if (typeof renderRetailAging === 'function') renderRetailAging();
       break;
 
     case 'retailCustomers':
@@ -5279,12 +5282,37 @@ async function _ruParseAll(pdf) {
   return { rows: rows, dateRange: dr };
 }
 
-/** Client-side aggregate + duplicate check — instant, no network */
+/** Normalize any date string → dd/MM/yyyy for stable keys */
+function _ruNormDate(str) {
+  if (!str) return '';
+  if (str instanceof Date) {
+    return String(str.getDate()).padStart(2,'0') + '/' +
+      String(str.getMonth()+1).padStart(2,'0') + '/' + str.getFullYear();
+  }
+  var s = String(str).trim();
+  // yyyy-MM-dd
+  var iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    return iso[3].padStart(2,'0') + '/' + iso[2].padStart(2,'0') + '/' + iso[1];
+  }
+  // d/m/yyyy or dd/MM/yyyy
+  var p = s.split(/[\/\-.]/);
+  if (p.length >= 3) {
+    var d = p[0], m = p[1], y = p[2];
+    if (y.length === 2) y = '20' + y;
+    // if first part is year
+    if (d.length === 4) return p[2].padStart(2,'0') + '/' + p[1].padStart(2,'0') + '/' + d;
+    return String(parseInt(d,10)).padStart(2,'0') + '/' +
+      String(parseInt(m,10)).padStart(2,'0') + '/' + y;
+  }
+  return s;
+}
+
+/** Client-side aggregate + duplicate check using normalized keys */
 function _ruLocalDuplicateCheck(rows, dateRange, fileName) {
-  // Aggregate line items → customer+date
   var agg = {};
   (rows || []).forEach(function(row) {
-    var d = String(row.Sale_Date || '').trim();
+    var d = _ruNormDate(row.Sale_Date || '');
     var c = String(row.Customer_Name || '').trim();
     if (!d || !c) return;
     var key = d + '||' + c.toLowerCase();
@@ -5298,13 +5326,16 @@ function _ruLocalDuplicateCheck(rows, dateRange, fileName) {
     agg[key].Amount += parseFloat(row.Amount) || 0;
   });
 
-  // Existing keys from local retail cache
   var existing = {};
   (_retailData.allRows || []).forEach(function(r) {
-    var d = String(r.saleDate || '').trim();
-    var c = String(r.customer || '').trim().toLowerCase();
+    var d = _ruNormDate(r.saleDate || r.Sale_Date || '');
+    var c = String(r.customer || r.Customer_Name || '').trim().toLowerCase();
     if (d && c) existing[d + '||' + c] = true;
   });
+  // Also use compact key index if present
+  if (_retailData.keyIndex) {
+    Object.keys(_retailData.keyIndex).forEach(function(k) { existing[k] = true; });
+  }
 
   var newRows = [], dupRows = [];
   Object.keys(agg).forEach(function(k) {
@@ -5313,8 +5344,7 @@ function _ruLocalDuplicateCheck(rows, dateRange, fileName) {
     a.Amount = Math.round(a.Amount * 100) / 100;
     a.Qty_Summary = a.Qty;
     a.Total_Amount = a.Amount;
-    var key = a.Sale_Date + '||' + a.Customer_Name.toLowerCase();
-    a.isDuplicate = !!existing[key];
+    a.isDuplicate = !!existing[k];
     (a.isDuplicate ? dupRows : newRows).push(a);
   });
 
@@ -5337,53 +5367,75 @@ function _ruLocalDuplicateCheck(rows, dateRange, fileName) {
   };
 }
 
+function _rebuildRetailKeyIndex() {
+  var idx = {};
+  (_retailData.allRows || []).forEach(function(r) {
+    var d = _ruNormDate(r.saleDate || r.Sale_Date || '');
+    var c = String(r.customer || r.Customer_Name || '').trim().toLowerCase();
+    if (d && c) idx[d + '||' + c] = true;
+  });
+  _retailData.keyIndex = idx;
+  try {
+    if (window._idb && _idb.set) _idb.set('retailKeyIndex', idx);
+  } catch (e) {}
+  return idx;
+}
+
 async function _ruProcessPDF(buf, fileName) {
   try {
+    _showProcess('PDF padh rahe hain...', 'Pages extract ho rahi hain');
     var pdf = await pdfjsLib.getDocument(buf).promise;
+    _showProcess('PDF parse ho raha hai...', pdf.numPages + ' pages');
     var res = await _ruParseAll(pdf);
-    _ruSetProgress(85);
+    _ruSetProgress(70);
     var det = document.getElementById('ru-det');
-    if (det) det.textContent = 'Checking duplicates (local)...';
+    if (det) det.textContent = 'Register load ho raha hai (duplicate check)...';
+    _showProcess('Duplicate check...', 'Sheet se latest register mil raha hai');
 
-    // Ensure retail cache is warm (non-blocking if already loaded)
     function finishLocal() {
+      _rebuildRetailKeyIndex();
       var r = _ruLocalDuplicateCheck(res.rows, res.dateRange, fileName);
       _ruParsing = false;
       _ruSetProgress(100);
+      _hideProcess();
       _retailData.parsed = r;
       _retailStep = 2;
-      // Instant UI — no network wait
       _renderRetailUpload();
+      if (r.summary && r.summary.dupCount > 0) {
+        _optimisticToast(r.summary.dupCount + ' duplicates skip hongi');
+      }
     }
 
-    if (_retailData.allRows && _retailData.allRows.length) {
+    // Always refresh register for accurate dups (with timeout fallback)
+    var done = false;
+    var timer = setTimeout(function() {
+      if (done) return;
+      done = true;
       finishLocal();
-    } else {
-      // Quick fetch then local check — with hard timeout so UI never sticks
-      var done = false;
-      var timer = setTimeout(function() {
+    }, 8000);
+
+    google.script.run
+      .withSuccessHandler(function(rd) {
         if (done) return;
         done = true;
-        finishLocal(); // proceed with empty cache
-      }, 4000);
-      google.script.run
-        .withSuccessHandler(function(rd) {
-          if (done) return;
-          done = true;
-          clearTimeout(timer);
-          if (rd && rd.success) _retailData.allRows = rd.rows || [];
-          finishLocal();
-        })
-        .withFailureHandler(function() {
-          if (done) return;
-          done = true;
-          clearTimeout(timer);
-          finishLocal();
-        })
-        .getRetailData();
-    }
+        clearTimeout(timer);
+        if (rd && rd.success) {
+          _retailData.allRows = rd.rows || [];
+          _rebuildRetailKeyIndex();
+        }
+        finishLocal();
+      })
+      .withFailureHandler(function() {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        // Fallback: use whatever cache we have
+        finishLocal();
+      })
+      .getRetailData();
   } catch (err) {
     _ruParsing = false;
+    _hideProcess();
     document.getElementById('ru-status').innerHTML = '<div class="info-box red"><i class="fas fa-exclamation-circle"></i>PDF Error: ' + (err && err.message || 'Unknown') + '</div>';
   }
 }
@@ -5448,8 +5500,11 @@ function _renderRU2(sc) {
 }
 
 function _ruCommit() {
+  if (window._ruCommitting) return; // hard block double-click
+  window._ruCommitting = true;
   var btn = document.getElementById('ru-commitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Save ho raha hai...'; }
+  _showProcess('Sheet mein save ho raha hai...', 'Duplicates server pe bhi skip honge');
   var d = _retailData.parsed || {};
   var meta = {
     pdfFilename: d.pdfFilename || 'RETAIL SALE REGISTER',
@@ -5459,30 +5514,48 @@ function _ruCommit() {
     totalQty: (d.summary && d.summary.totalQty) || 0,
     totalAmount: (d.summary && d.summary.totalAmount) || 0
   };
-  // Attach dateRange onto each row so sheet stores it
   var rowsToSave = (d.newRows || []).map(function(r) {
     var copy = {};
     for (var k in r) if (Object.prototype.hasOwnProperty.call(r, k)) copy[k] = r[k];
     if (!copy.dateRange) copy.dateRange = meta.dateRange;
+    copy.Sale_Date = _ruNormDate(copy.Sale_Date || '');
     return copy;
   });
   google.script.run
     .withSuccessHandler(function(res) {
+      window._ruCommitting = false;
+      _hideProcess();
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Confirm & Save'; }
       if (res && res.success) {
         _retailData.result = res;
         _retailStep = 3;
-        // Force-clear cached rows so next retail view reloads from sheet
-        _retailData.allRows = [];
+        // Merge saved rows into local cache + key index (no empty-cache hole)
+        (d.newRows || []).forEach(function(r) {
+          var norm = _ruNormDate(r.Sale_Date || '');
+          var cust = String(r.Customer_Name || '').trim();
+          _retailData.allRows = _retailData.allRows || [];
+          _retailData.allRows.push({
+            saleDate: norm,
+            customer: cust,
+            qty: r.Qty || r.Qty_Summary || 0,
+            amount: r.Amount || r.Total_Amount || 0,
+            pending: r.Amount || r.Total_Amount || 0,
+            paid: 0
+          });
+          if (!_retailData.keyIndex) _retailData.keyIndex = {};
+          _retailData.keyIndex[norm + '||' + cust.toLowerCase()] = true;
+        });
+        _rebuildRetailKeyIndex();
         _renderRetailUpload();
-        // Also refresh retailCustomers list
         if (typeof _loadAllRetailCustomers === 'function') _loadAllRetailCustomers();
-        Swal.fire({ icon: 'success', title: 'Uploaded!', text: (res.written || 0) + ' entries save ho gayi!', timer: 2200, showConfirmButton: false });
+        _optimisticToast('✓ ' + (res.written || 0) + ' saved' + (res.skipped ? (', ' + res.skipped + ' dup skip') : ''));
       } else {
         Swal.fire('Error', (res && res.error) || 'Save failed', 'error');
       }
     })
     .withFailureHandler(function(e) {
+      window._ruCommitting = false;
+      _hideProcess();
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Confirm & Save'; }
       Swal.fire('Error', (e && e.message) || 'Network error', 'error');
     })
@@ -7877,3 +7950,129 @@ function clearAppCache() {
   });
 }
 window.clearAppCache = clearAppCache;
+
+
+// ============================================================
+// GLOBAL PROCESS OVERLAY — prevents multi-click + shows status
+// ============================================================
+var _processLock = 0;
+
+function _showProcess(title, sub) {
+  _processLock++;
+  var el = document.getElementById('global-process');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'global-process';
+    el.innerHTML =
+      '<div class="gp-card">' +
+        '<div class="gp-spinner"></div>' +
+        '<div class="gp-title" id="gp-title">Working...</div>' +
+        '<div class="gp-sub" id="gp-sub"></div>' +
+        '<div class="gp-bar"><div class="gp-bar-fill"></div></div>' +
+      '</div>';
+    document.body.appendChild(el);
+  }
+  var t = document.getElementById('gp-title');
+  var s = document.getElementById('gp-sub');
+  if (t) t.textContent = title || 'Working...';
+  if (s) s.textContent = sub || '';
+  el.classList.add('show');
+  document.body.classList.add('gp-locked');
+}
+
+function _hideProcess() {
+  _processLock = Math.max(0, _processLock - 1);
+  if (_processLock > 0) return;
+  var el = document.getElementById('global-process');
+  if (el) el.classList.remove('show');
+  document.body.classList.remove('gp-locked');
+}
+
+function _withProcess(title, sub, fn) {
+  _showProcess(title, sub);
+  try {
+    var r = fn();
+    if (r && typeof r.then === 'function') {
+      return r.then(function(v) { _hideProcess(); return v; }, function(e) { _hideProcess(); throw e; });
+    }
+    _hideProcess();
+    return r;
+  } catch (e) {
+    _hideProcess();
+    throw e;
+  }
+}
+
+window._showProcess = _showProcess;
+window._hideProcess = _hideProcess;
+
+
+function renderRetailAging() {
+  var tbody = document.getElementById('ra-tbody');
+  if (!tbody) return;
+
+  function paint(rows) {
+    var today = new Date(); today.setHours(0,0,0,0);
+    var byCust = {};
+    var buckets = [0,0,0,0];
+    (rows || []).forEach(function(r) {
+      var pend = parseFloat(r.pending) || 0;
+      if (pend <= 0.01) return;
+      var d = parseIST(r.saleDate || r.Sale_Date || '');
+      var age = d ? Math.floor((today - d) / 86400000) : 0;
+      if (age < 0) age = 0;
+      var bi = age <= 7 ? 0 : age <= 15 ? 1 : age <= 30 ? 2 : 3;
+      buckets[bi] += pend;
+      var name = (r.customer || r.Customer_Name || '').trim() || 'Unknown';
+      if (!byCust[name]) byCust[name] = [0,0,0,0,0];
+      byCust[name][bi] += pend;
+      byCust[name][4] += pend;
+    });
+    txt('ra-b0', '₹' + _ruFmt(buckets[0]));
+    txt('ra-b1', '₹' + _ruFmt(buckets[1]));
+    txt('ra-b2', '₹' + _ruFmt(buckets[2]));
+    txt('ra-b3', '₹' + _ruFmt(buckets[3]));
+
+    var names = Object.keys(byCust).sort(function(a,b) { return byCust[b][4] - byCust[a][4]; });
+    if (!names.length) {
+      tbody.innerHTML = emptyRow(7, 'Koi pending outstanding nahi.');
+      return;
+    }
+    tbody.innerHTML = names.map(function(n) {
+      var b = byCust[n];
+      return '<tr>' +
+        '<td style="font-weight:600">' + escHTML(n) + '</td>' +
+        '<td class="num">' + (b[0] ? ('₹'+_ruFmt(b[0])) : '—') + '</td>' +
+        '<td class="num">' + (b[1] ? ('₹'+_ruFmt(b[1])) : '—') + '</td>' +
+        '<td class="num">' + (b[2] ? ('₹'+_ruFmt(b[2])) : '—') + '</td>' +
+        '<td class="num" style="color:var(--red);font-weight:700">' + (b[3] ? ('₹'+_ruFmt(b[3])) : '—') + '</td>' +
+        '<td class="num" style="font-weight:800">₹' + _ruFmt(b[4]) + '</td>' +
+        '<td style="white-space:nowrap">' +
+          '<button type="button" class="act-btn ab-pay" onclick="_rptQuickPay(\'' + escQ(n) + '\')"><i class="fas fa-indian-rupee-sign"></i></button> ' +
+          '<button type="button" class="act-btn ab-fu" onclick="openRetailFUModal(\'' + escQ(n) + '\')"><i class="fas fa-phone-alt"></i></button>' +
+        '</td></tr>';
+    }).join('');
+  }
+
+  if (_retailData.allRows && _retailData.allRows.length) {
+    paint(_retailData.allRows);
+  } else {
+    tbody.innerHTML = emptyRow(7, 'Loading...');
+    _showProcess('Aging load ho raha hai...', 'Retail register');
+    google.script.run
+      .withSuccessHandler(function(r) {
+        _hideProcess();
+        if (r && r.success) {
+          _retailData.allRows = r.rows || [];
+          _rebuildRetailKeyIndex();
+        }
+        paint(_retailData.allRows || []);
+      })
+      .withFailureHandler(function() {
+        _hideProcess();
+        tbody.innerHTML = emptyRow(7, 'Load failed');
+      })
+      .getRetailData();
+  }
+}
+window.renderRetailAging = renderRetailAging;
