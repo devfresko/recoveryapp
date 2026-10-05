@@ -5279,30 +5279,109 @@ async function _ruParseAll(pdf) {
   return { rows: rows, dateRange: dr };
 }
 
+/** Client-side aggregate + duplicate check — instant, no network */
+function _ruLocalDuplicateCheck(rows, dateRange, fileName) {
+  // Aggregate line items → customer+date
+  var agg = {};
+  (rows || []).forEach(function(row) {
+    var d = String(row.Sale_Date || '').trim();
+    var c = String(row.Customer_Name || '').trim();
+    if (!d || !c) return;
+    var key = d + '||' + c.toLowerCase();
+    if (!agg[key]) {
+      agg[key] = {
+        Sale_Date: d, Customer_Name: c, Qty: 0, Amount: 0,
+        dateRange: dateRange || '', Qty_Summary: 0, Total_Amount: 0
+      };
+    }
+    agg[key].Qty += parseFloat(row.Qty) || 0;
+    agg[key].Amount += parseFloat(row.Amount) || 0;
+  });
+
+  // Existing keys from local retail cache
+  var existing = {};
+  (_retailData.allRows || []).forEach(function(r) {
+    var d = String(r.saleDate || '').trim();
+    var c = String(r.customer || '').trim().toLowerCase();
+    if (d && c) existing[d + '||' + c] = true;
+  });
+
+  var newRows = [], dupRows = [];
+  Object.keys(agg).forEach(function(k) {
+    var a = agg[k];
+    a.Qty = Math.round(a.Qty * 100) / 100;
+    a.Amount = Math.round(a.Amount * 100) / 100;
+    a.Qty_Summary = a.Qty;
+    a.Total_Amount = a.Amount;
+    var key = a.Sale_Date + '||' + a.Customer_Name.toLowerCase();
+    a.isDuplicate = !!existing[key];
+    (a.isDuplicate ? dupRows : newRows).push(a);
+  });
+
+  var totalQty = newRows.reduce(function(s, r) { return s + (r.Qty || 0); }, 0);
+  var totalAmt = newRows.reduce(function(s, r) { return s + (r.Amount || 0); }, 0);
+
+  return {
+    success: true,
+    newRows: newRows,
+    dupRows: dupRows,
+    dateRange: dateRange,
+    pdfFilename: fileName || 'RETAIL SALE REGISTER',
+    summary: {
+      totalParsed: (rows || []).length,
+      newCount: newRows.length,
+      dupCount: dupRows.length,
+      totalQty: Math.round(totalQty * 100) / 100,
+      totalAmount: Math.round(totalAmt * 100) / 100
+    }
+  };
+}
+
 async function _ruProcessPDF(buf, fileName) {
   try {
     var pdf = await pdfjsLib.getDocument(buf).promise;
     var res = await _ruParseAll(pdf);
-    _ruSetProgress(80);
-    var det = document.getElementById('ru-det'); if (det) det.textContent = 'Duplicate check ho raha hai...';
+    _ruSetProgress(85);
+    var det = document.getElementById('ru-det');
+    if (det) det.textContent = 'Checking duplicates (local)...';
 
-    google.script.run
-      .withSuccessHandler(function(r) {
-        _ruParsing = false;
-        _ruSetProgress(100);
-        if (!r.success) {
-          document.getElementById('ru-status').innerHTML = '<div class="info-box red"><i class="fas fa-exclamation-circle"></i>Backend: ' + (r.error || 'Unknown') + '</div>';
-          return;
-        }
-        _retailData.parsed = r;
-        _retailStep = 2;
-        setTimeout(_renderRetailUpload, 300);
-      })
-      .withFailureHandler(function(err) {
-        _ruParsing = false;
-        document.getElementById('ru-status').innerHTML = '<div class="info-box red"><i class="fas fa-exclamation-circle"></i>Backend Error: ' + (err && err.message || 'Unknown') + '</div>';
-      })
-      .checkRetailDuplicates(res.rows, res.dateRange, fileName);
+    // Ensure retail cache is warm (non-blocking if already loaded)
+    function finishLocal() {
+      var r = _ruLocalDuplicateCheck(res.rows, res.dateRange, fileName);
+      _ruParsing = false;
+      _ruSetProgress(100);
+      _retailData.parsed = r;
+      _retailStep = 2;
+      // Instant UI — no network wait
+      _renderRetailUpload();
+    }
+
+    if (_retailData.allRows && _retailData.allRows.length) {
+      finishLocal();
+    } else {
+      // Quick fetch then local check — with hard timeout so UI never sticks
+      var done = false;
+      var timer = setTimeout(function() {
+        if (done) return;
+        done = true;
+        finishLocal(); // proceed with empty cache
+      }, 4000);
+      google.script.run
+        .withSuccessHandler(function(rd) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          if (rd && rd.success) _retailData.allRows = rd.rows || [];
+          finishLocal();
+        })
+        .withFailureHandler(function() {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          finishLocal();
+        })
+        .getRetailData();
+    }
   } catch (err) {
     _ruParsing = false;
     document.getElementById('ru-status').innerHTML = '<div class="info-box red"><i class="fas fa-exclamation-circle"></i>PDF Error: ' + (err && err.message || 'Unknown') + '</div>';
@@ -7744,3 +7823,57 @@ function _paintRetailDashboardFollowups() {
 window.renderRetailPromises = renderRetailPromises;
 window.renderRetailEscalations = renderRetailEscalations;
 window.setRPTFilter = setRPTFilter;
+
+
+// ── Clear all local caches (IndexedDB + memory) & hard-reload data ──
+function clearAppCache() {
+  Swal.fire({
+    title: 'Clear cache?',
+    html: 'Local data wipe hogi aur server se fresh load hoga.<br><small style="color:#94A3B8">Internet chahiye.</small>',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Clear & Reload',
+    cancelButtonText: 'Cancel',
+    background: '#0F172A',
+    color: '#E2E8F0',
+    confirmButtonColor: '#EA4335'
+  }).then(function(res) {
+    if (!res.isConfirmed) return;
+    _optimisticToast('Clearing cache…');
+    // Memory
+    try {
+      DB = null;
+      _retailData = { parsed: null, result: null, allRows: [], allLog: [] };
+      _lastUpdate = '0';
+      _loadedOnce = false;
+    } catch (e) {}
+    // IndexedDB
+    var p1 = (_idb && _idb.remove) ? _idb.remove('mainDB') : Promise.resolve();
+    // localStorage mode keep — only data
+    Promise.resolve(p1).then(function() {
+      // Force network refresh
+      var uname = (USER && USER.name) || URL_NAME || '';
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (data && data.success) {
+            DB = data;
+            _lastUpdate = data.lastUpdate || '0';
+            if (_idb && _idb.set) _idb.set('mainDB', data);
+            _loadedOnce = true;
+            _updateBadges();
+            _populateFilters();
+            _buildAllPartySS();
+            _reRenderCurrent();
+            _optimisticToast('✓ Fresh data loaded');
+          } else {
+            Swal.fire('Error', (data && data.error) || 'Reload failed', 'error');
+          }
+        })
+        .withFailureHandler(function(e) {
+          Swal.fire('Error', (e && e.message) || 'Network error', 'error');
+        })
+        .getAllData(uname, '0');
+    });
+  });
+}
+window.clearAppCache = clearAppCache;
