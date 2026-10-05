@@ -537,27 +537,17 @@ function _coalescedGetAll(uname, ts, callback) {
 
 
 function manualRefresh() {
+  // True force: server CacheService bust + sheet re-read + retail
   var icon = document.getElementById('refresh-icon');
   if (icon) { icon.classList.add('spinning'); icon.style.pointerEvents = 'none'; }
-  var uname = (USER && USER.name) || URL_NAME || '';
-  _coalescedGetAll(uname, '0', function(data, err) { // ts='0' forces full fetch
-    if (icon) { icon.classList.remove('spinning'); icon.style.pointerEvents = ''; }
-    if (err || !data || !data.success) {
-      Swal.fire('Error', (data && data.error) || (err && err.message) || 'Refresh failed', 'error');
-      return;
+  _forceFullRefresh(true);
+  // icon stop after process ends
+  var t = setInterval(function() {
+    if (!window._forceRefreshing) {
+      clearInterval(t);
+      if (icon) { icon.classList.remove('spinning'); icon.style.pointerEvents = ''; }
     }
-     DB = data;
-    _lastUpdate = data.lastUpdate || _lastUpdate;
-    _idb.set('mainDB', data);
-    _updateBadges();
-    _populateFilters();
-    _buildAllPartySS();
-    _reRenderCurrent();
-    _refreshRetailOutstanding();
-    if (typeof _refreshRetailViews === 'function') _refreshRetailViews();
-    var tb = document.getElementById('tb-crumb');
-    if (tb) { var prev = tb.textContent; tb.textContent = '✓ Refreshed'; setTimeout(() => { tb.textContent = prev; }, 1200); }
-  });
+  }, 400);
 }
 
 
@@ -7898,11 +7888,11 @@ window.renderRetailEscalations = renderRetailEscalations;
 window.setRPTFilter = setRPTFilter;
 
 
-// ── Clear all local caches (IndexedDB + memory) & hard-reload data ──
+// ── Clear ALL caches (client IndexedDB + server CacheService) & hard reload ──
 function clearAppCache() {
   Swal.fire({
     title: 'Clear cache?',
-    html: 'Local data wipe hogi aur server se fresh load hoga.<br><small style="color:#94A3B8">Internet chahiye.</small>',
+    html: 'Local + server cache wipe hogi, sheet se <b>fresh</b> data aayega.<br><small style="color:#94A3B8">Internet chahiye · 5–10 sec</small>',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Clear & Reload',
@@ -7912,44 +7902,148 @@ function clearAppCache() {
     confirmButtonColor: '#EA4335'
   }).then(function(res) {
     if (!res.isConfirmed) return;
-    _optimisticToast('Clearing cache…');
-    // Memory
-    try {
-      DB = null;
-      _retailData = { parsed: null, result: null, allRows: [], allLog: [] };
-      _lastUpdate = '0';
-      _loadedOnce = false;
-    } catch (e) {}
-    // IndexedDB
-    var p1 = (_idb && _idb.remove) ? _idb.remove('mainDB') : Promise.resolve();
-    // localStorage mode keep — only data
-    Promise.resolve(p1).then(function() {
-      // Force network refresh
-      var uname = (USER && USER.name) || URL_NAME || '';
+    _forceFullRefresh(true);
+  });
+}
+window.clearAppCache = clearAppCache;
+
+/** True force refresh: bust server cache → reload main DB + retail register */
+function _forceFullRefresh(showToast) {
+  if (window._forceRefreshing) return;
+  window._forceRefreshing = true;
+  if (typeof _showProcess === 'function') _showProcess('Fresh data laa rahe hain...', 'Server cache clear + sheet read');
+  if (showToast) _optimisticToast('Clearing caches…');
+
+  try {
+    DB = null;
+    _retailData = { parsed: null, result: null, allRows: [], allLog: [], keyIndex: {} };
+    _lastUpdate = '0';
+  } catch (e) {}
+
+  var uname = (USER && USER.name) || URL_NAME || '';
+
+  function finish(ok, msg) {
+    window._forceRefreshing = false;
+    if (typeof _hideProcess === 'function') _hideProcess();
+    if (ok) _optimisticToast(msg || '✓ Fresh data loaded');
+    else Swal.fire('Error', msg || 'Refresh failed', 'error');
+  }
+
+  // 1) Bust server CacheService
+  google.script.run
+    .withSuccessHandler(function() {
+      // 2) Full getAllData with force
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (!data || !data.success) {
+            finish(false, (data && data.error) || 'Load failed');
+            return;
+          }
+          if (data.unchanged) {
+            // Should not happen with force — but handle
+          }
+          DB = data;
+          _lastUpdate = data.lastUpdate || String(Date.now());
+          if (_idb && _idb.set) _idb.set('mainDB', data);
+          _loadedOnce = true;
+          try {
+            _updateBadges();
+            _populateFilters();
+            _buildAllPartySS();
+          } catch (e) {}
+
+          // 3) Force retail register too
+          google.script.run
+            .withSuccessHandler(function(rd) {
+              if (rd && rd.success) {
+                _retailData.allRows = rd.rows || [];
+                if (typeof _rebuildRetailKeyIndex === 'function') _rebuildRetailKeyIndex();
+              }
+              try { _reRenderCurrent(); } catch (e) {}
+              if (typeof renderRetailDashboard === 'function' && _activeView === 'retailDashboard') renderRetailDashboard();
+              if (typeof renderRetailSales === 'function' && _activeView === 'retailSales') renderRetailSales();
+              finish(true, '✓ Synced with Google Sheet');
+            })
+            .withFailureHandler(function() {
+              try { _reRenderCurrent(); } catch (e) {}
+              finish(true, '✓ Main data loaded (retail retry later)');
+            })
+            .getRetailData(true); // force=true bypasses server cache
+        })
+        .withFailureHandler(function(e) {
+          finish(false, (e && e.message) || 'Network error');
+        })
+        .getAllData(uname, 'force');
+    })
+    .withFailureHandler(function() {
+      // Even if bust fails, still force getAllData
       google.script.run
         .withSuccessHandler(function(data) {
           if (data && data.success) {
             DB = data;
             _lastUpdate = data.lastUpdate || '0';
             if (_idb && _idb.set) _idb.set('mainDB', data);
-            _loadedOnce = true;
-            _updateBadges();
-            _populateFilters();
-            _buildAllPartySS();
             _reRenderCurrent();
-            _optimisticToast('✓ Fresh data loaded');
-          } else {
-            Swal.fire('Error', (data && data.error) || 'Reload failed', 'error');
-          }
+            finish(true, '✓ Data reloaded');
+          } else finish(false, 'Reload failed');
         })
-        .withFailureHandler(function(e) {
-          Swal.fire('Error', (e && e.message) || 'Network error', 'error');
-        })
-        .getAllData(uname, '0');
-    });
-  });
+        .withFailureHandler(function(e) { finish(false, (e && e.message) || 'Network error'); })
+        .getAllData(uname, 'force');
+    })
+    .bustAllCaches();
 }
-window.clearAppCache = clearAppCache;
+window._forceFullRefresh = _forceFullRefresh;
+
+// Hook topbar Refresh to force path
+function doForceRefresh() {
+  _forceFullRefresh(true);
+}
+window.doForceRefresh = doForceRefresh;
+
+// ── Light polling: every 20s check if sheet changed (after onEdit trigger) ──
+var _pollTimer = null;
+function _startSheetPoll() {
+  if (_pollTimer) return;
+  _pollTimer = setInterval(function() {
+    if (document.hidden) return;
+    if (window._forceRefreshing || window._ruParsing || window._ruCommitting) return;
+    google.script.run
+      .withSuccessHandler(function(ts) {
+        if (!ts) return;
+        if (_lastUpdate && String(ts) !== String(_lastUpdate)) {
+          // Sheet changed elsewhere — soft silent refresh
+          var uname = (USER && USER.name) || URL_NAME || '';
+          google.script.run
+            .withSuccessHandler(function(data) {
+              if (!data || !data.success || data.unchanged) return;
+              DB = data;
+              _lastUpdate = data.lastUpdate || ts;
+              if (_idb && _idb.set) _idb.set('mainDB', data);
+              try {
+                _updateBadges();
+                _reRenderCurrent();
+              } catch (e) {}
+              _optimisticToast('↻ Sheet se update mila');
+              // retail too
+              google.script.run
+                .withSuccessHandler(function(rd) {
+                  if (rd && rd.success) {
+                    _retailData.allRows = rd.rows || [];
+                    if (typeof _rebuildRetailKeyIndex === 'function') _rebuildRetailKeyIndex();
+                    if (_activeView && String(_activeView).indexOf('retail') === 0) {
+                      try { _reRenderCurrent(); } catch (e) {}
+                    }
+                  }
+                })
+                .getRetailData(true);
+            })
+            .getAllData(uname, 'force');
+        }
+      })
+      .checkLastUpdate();
+  }, 20000);
+}
+window._startSheetPoll = _startSheetPoll;
 
 
 // ============================================================
