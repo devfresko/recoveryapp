@@ -16,16 +16,18 @@
 // Web App URL (Sheet menu → "Payment Follow-up" → "Show API URL (for app.js)").
 // ============================================================
 
-var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwfvU-2fjfWw--alhoB-SXVQWX6DpXue3Mk376O_fSCPu2IXOvnU6Z2leErOI7h2_dj/exec';
+var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbznI8MnN2opi8hkn2N9TnfR0N7lWbAGzjv2nPtB9ftWuRQvfZc0i80x6O74e3lWE9bY/exec';
 
 (function () {
   var _cbIdx = 0;
-  var JSONP_TIMEOUT_MS = 35000;
+  var JSONP_TIMEOUT_MS = 45000;
   // Keep each JSONP request's query string comfortably under safe URL-length
   // limits. Only matters for calls with big array payloads (bulk upload).
   var MAX_ARGS_JSON_LEN = 6000;
 
-  function _rawJsonpCall(fnName, args, onSuccess, onFailure) {
+  function _rawJsonpCall(fnName, args, onSuccess, onFailure, _attempt) {
+    var attempt = _attempt || 1;
+    var maxAttempts = 3;
     var cbName = '_gascb' + (++_cbIdx);
     var timeoutId;
 
@@ -33,7 +35,19 @@ var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwfvU-2fjfWw--alhoB-S
       clearTimeout(timeoutId);
       try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
       var tag = document.getElementById('_s_' + cbName);
-      if (tag) tag.parentNode.removeChild(tag);
+      if (tag && tag.parentNode) tag.parentNode.removeChild(tag);
+    }
+
+    function fail(err) {
+      cleanup();
+      // Auto-retry on network/timeout (Apps Script cold start is common)
+      if (attempt < maxAttempts) {
+        setTimeout(function () {
+          _rawJsonpCall(fnName, args, onSuccess, onFailure, attempt + 1);
+        }, 600 * attempt);
+        return;
+      }
+      if (onFailure) onFailure(err);
     }
 
     window[cbName] = function (result) {
@@ -42,8 +56,7 @@ var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwfvU-2fjfWw--alhoB-S
     };
 
     timeoutId = setTimeout(function () {
-      cleanup();
-      if (onFailure) onFailure({ message: 'Request timed out. Please check your connection and try again.' });
+      fail({ message: 'Request timed out (try ' + attempt + '/' + maxAttempts + '). Check connection.' });
     }, JSONP_TIMEOUT_MS);
 
     var url = GAS_API_URL +
@@ -51,12 +64,17 @@ var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwfvU-2fjfWw--alhoB-S
       '&fn=' + encodeURIComponent(fnName) +
       '&args=' + encodeURIComponent(JSON.stringify(args || []));
 
+    // Guard: URL too long → fail early with clear message
+    if (url.length > 18000) {
+      fail({ message: 'Request too large for network. Try fewer rows or refresh and retry.' });
+      return;
+    }
+
     var s = document.createElement('script');
     s.id = '_s_' + cbName;
     s.src = url;
     s.onerror = function () {
-      cleanup();
-      if (onFailure) onFailure({ message: 'Network error while reaching the server.' });
+      fail({ message: 'Network error while reaching the server.' });
     };
     document.head.appendChild(s);
   }
@@ -116,7 +134,7 @@ var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwfvU-2fjfWw--alhoB-S
   }
 
   // Retail PDF rows can be large — chunk checkRetailDuplicates + commitRetailData
-  var RETAIL_ROWS_PER_CHUNK = 15;
+  var RETAIL_ROWS_PER_CHUNK = 8;
 
   function _chunkedRetailCheck(args, onSuccess, onFailure) {
     var rows = args[0] || [];
