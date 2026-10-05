@@ -3613,13 +3613,13 @@
             style="display:none">
             <i class="fas fa-chart-pie" style="color:#7C3AED"></i><span class="sb-lbl">Dashboard</span>
           </div>
-          <div class="sb-nav-item" id="nav-retailUpload" data-tip="Upload Register" onclick="nav('retailUpload')"
+          <div class="sb-nav-item" id="nav-retailUpload" data-tip="Daily PDF Upload" onclick="nav('retailUpload')"
             style="display:none">
-            <i class="fas fa-cloud-upload-alt" style="color:#7C3AED"></i><span class="sb-lbl">Upload Register</span>
+            <i class="fas fa-cloud-upload-alt" style="color:#7C3AED"></i><span class="sb-lbl">Daily Upload</span>
           </div>
-          <div class="sb-nav-item" id="nav-retailSales" data-tip="Sales Register" onclick="nav('retailSales')"
+          <div class="sb-nav-item" id="nav-retailSales" data-tip="Customer Sale Register" onclick="nav('retailSales')"
             style="display:none">
-            <i class="fas fa-receipt" style="color:#7C3AED"></i><span class="sb-lbl">Sales Register</span>
+            <i class="fas fa-receipt" style="color:#7C3AED"></i><span class="sb-lbl">Sale Register</span>
           </div>
           <div class="sb-nav-divider" data-mode="retail" style="display:none"></div>
           <div class="sb-section-label" data-mode="retail" style="display:none">Manage</div>
@@ -3633,13 +3633,13 @@
           </div>
           <div class="sb-nav-divider" data-mode="retail" style="display:none"></div>
           <div class="sb-section-label" data-mode="retail" style="display:none">Follow-ups</div>
-          <div class="sb-nav-item" id="nav-retailFollowups" data-tip="All Follow-ups" onclick="nav('retailFollowups')"
+          <div class="sb-nav-item" id="nav-retailFollowups" data-tip="Retail Follow-ups" onclick="nav('retailFollowups')"
             style="display:none">
-            <i class="fas fa-phone-alt" style="color:#7C3AED"></i><span class="sb-lbl">All Follow-ups</span>
+            <i class="fas fa-phone-alt" style="color:#7C3AED"></i><span class="sb-lbl">Follow-up Log</span>
           </div>
           <div class="sb-nav-item" id="nav-retailPromises" data-tip="Promise Tracker" onclick="nav('retailPromises')"
             style="display:none">
-            <i class="fas fa-handshake" style="color:#7C3AED"></i><span class="sb-lbl">Promise Tracker</span>
+            <i class="fas fa-handshake" style="color:#7C3AED"></i><span class="sb-lbl">Promises</span>
           </div>
           <div class="sb-nav-item" id="nav-retailEscalations" data-tip="Escalations" onclick="nav('retailEscalations')"
             style="display:none">
@@ -3671,10 +3671,10 @@
 
           <div class="sb-nav-divider" data-mode="supply"></div>
           <div class="sb-section-label" data-mode="supply">Follow-ups</div>
-          <div class="sb-nav-item" id="nav-followups" data-tip="All Follow-ups" onclick="nav('followups')"><i
-              class="fas fa-phone-alt"></i><span class="sb-lbl">All Follow-ups</span></div>
+          <div class="sb-nav-item" id="nav-followups" data-tip="Retail Follow-ups" onclick="nav('followups')"><i
+              class="fas fa-phone-alt"></i><span class="sb-lbl">Follow-up Log</span></div>
           <div class="sb-nav-item" id="nav-promises" data-tip="Promise Tracker" onclick="nav('promises')"><i
-              class="fas fa-handshake"></i><span class="sb-lbl">Promise Tracker</span></div>
+              class="fas fa-handshake"></i><span class="sb-lbl">Promises</span></div>
           <div class="sb-nav-item nav-admin-only" id="nav-escalations" data-tip="Escalations"
             onclick="nav('escalations')" style="display:none"><i class="fas fa-arrow-up"></i><span
               class="sb-lbl">Escalations</span></div>
@@ -3703,6 +3703,11 @@
               <div class="sb-user-dept" id="sb-dept">...</div>
             </div>
           </div>
+          <button class="sb-logout-btn" onclick="clearAppCache()" title="Clear local cache &amp; reload fresh data"
+            style="margin-bottom:6px;background:transparent;border:1px solid rgba(255,255,255,.12);color:#94A3B8">
+            <i class="fas fa-broom"></i>
+            <span class="sb-logout-lbl">Clear Cache</span>
+          </button>
           <button class="sb-logout-btn" onclick="doLogout()">
             <i class="fas fa-sign-out-alt"></i>
             <span class="sb-logout-lbl">Sign Out</span>
@@ -5476,7 +5481,7 @@
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 340px;gap:16px">
+            <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px">
               <div class="card">
                 <div style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
                   <span><i class="fas fa-user-tag" style="color:#7C3AED;margin-right:6px"></i>Customer-wise Outstanding</span>
@@ -5498,35 +5503,15 @@
               </div>
 
               <div style="display:flex;flex-direction:column;gap:16px">
-                <div class="card">
-                  <div style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
-                    <i class="fas fa-bolt" style="color:#F9AB00;margin-right:6px"></i>Quick Actions
-                  </div>
-                  <div style="padding:10px 12px;display:flex;flex-direction:column;gap:6px">
-                    <button class="btn btn-secondary" onclick="_rdQuickUpload()" style="justify-content:flex-start;font-size:12px;padding:9px 14px">
-                      <i class="fas fa-cloud-upload-alt" style="color:#7C3AED;width:16px"></i> Upload Register
-                    </button>
-                    <button class="btn btn-secondary" onclick="_rdQuickAddCust()" style="justify-content:flex-start;font-size:12px;padding:9px 14px">
-                      <i class="fas fa-user-plus" style="color:#4285F4;width:16px"></i> Add Customer
-                    </button>
-                    <button class="btn btn-secondary" onclick="_rdQuickRecordPay()" style="justify-content:flex-start;font-size:12px;padding:9px 14px">
-                      <i class="fas fa-indian-rupee-sign" style="color:#34A853;width:16px"></i> Record Payment
-                    </button>
-                    <button class="btn btn-secondary" onclick="openRetailFUModal()" style="justify-content:flex-start;font-size:12px;padding:9px 14px">
-                      <i class="fas fa-phone-alt" style="color:#EA4335;width:16px"></i> Log Follow-up
-                    </button>
-                    <button class="btn btn-secondary" onclick="_rdQuickPayments()" style="justify-content:flex-start;font-size:12px;padding:9px 14px">
-                      <i class="fas fa-hand-holding-usd" style="color:#F9AB00;width:16px"></i> View Payments
-                    </button>
-                  </div>
-                </div>
-
-                <div class="card">
+                <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:280px">
                   <div style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
-                    <span><i class="fas fa-phone-alt" style="color:#EA4335;margin-right:6px"></i>Recent Follow-ups</span>
-                    <button onclick="nav('retailFollowups')" style="font-size:10px;color:#7C3AED;font-weight:600;background:none;border:none;cursor:pointer">All →</button>
+                    <span><i class="fas fa-phone-alt" style="color:#EA4335;margin-right:6px"></i>Follow-up Activity</span>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <button class="btn btn-sm btn-amber" onclick="openRetailFUModal()" style="font-size:10px;padding:4px 10px"><i class="fas fa-plus"></i> Log</button>
+                      <button onclick="nav('retailFollowups')" style="font-size:10px;color:#7C3AED;font-weight:600;background:none;border:none;cursor:pointer">All →</button>
+                    </div>
                   </div>
-                  <div id="rd-fu-list" style="padding:6px 14px 10px;max-height:220px;overflow-y:auto" class="scroll"></div>
+                  <div id="rd-fu-list" style="padding:6px 14px 10px;flex:1;max-height:360px;overflow-y:auto" class="scroll"></div>
                 </div>
                 <div class="card">
                   <div style="padding:12px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">
