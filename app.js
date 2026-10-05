@@ -903,17 +903,71 @@ function nav(v) {
       }
       function isPaid(inv) { return pending(inv) <= 0 || inv.status === 'Written-Off' || inv.status === 'Paid'; }
 
+      /** Parse dd/MM/yyyy or yyyy-MM-dd (optional time) as LOCAL date — never UTC */
       function parseIST(str) {
         if (!str) return null;
-        const s = str.toString().split(' ')[0].split('/');
-        if (s.length < 3) return null;
-        return new Date(+s[2], +s[1] - 1, +s[0]);
+        if (str instanceof Date) {
+          return isNaN(str.getTime()) ? null : str;
+        }
+        var raw = str.toString().trim();
+        // ISO datetime: 2026-10-05T10:30:00 or 2026-10-05T10:30:00.000Z
+        var iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+        if (iso) {
+          return new Date(+iso[1], +iso[2] - 1, +iso[3], +(iso[4] || 0), +(iso[5] || 0), +(iso[6] || 0));
+        }
+        // dd/MM/yyyy [HH:mm[:ss]]
+        var parts = raw.split(' ');
+        var dpart = parts[0].split('/');
+        if (dpart.length < 3) return null;
+        var hh = 0, mm = 0, ss = 0;
+        if (parts[1]) {
+          var t = parts[1].split(':');
+          hh = +t[0] || 0; mm = +t[1] || 0; ss = +t[2] || 0;
+        }
+        return new Date(+dpart[2], +dpart[1] - 1, +dpart[0], hh, mm, ss);
+      }
+
+      /** Local calendar date as yyyy-MM-dd (for <input type="date">) — NOT UTC */
+      function localDateISO(d) {
+        d = d || new Date();
+        return d.getFullYear() + '-' +
+          String(d.getMonth() + 1).padStart(2, '0') + '-' +
+          String(d.getDate()).padStart(2, '0');
+      }
+
+      /** Local datetime as yyyy-MM-ddTHH:mm (for datetime-local) — NOT UTC */
+      function localDateTimeISO(d) {
+        d = d || new Date();
+        return localDateISO(d) + 'T' +
+          String(d.getHours()).padStart(2, '0') + ':' +
+          String(d.getMinutes()).padStart(2, '0');
+      }
+
+      /** Format Date or yyyy-MM-dd string → dd/MM/yyyy in LOCAL tz */
+      function fmtLocalDate(d) {
+        if (!d) return '';
+        var dt = (d instanceof Date) ? d : parseIST(d);
+        if (!dt || isNaN(dt.getTime())) {
+          // last resort: yyyy-MM-dd string split
+          var m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (m) return m[3] + '/' + m[2] + '/' + m[1];
+          return String(d);
+        }
+        return String(dt.getDate()).padStart(2, '0') + '/' +
+          String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear();
+      }
+
+      /** Format Date → dd/MM/yyyy HH:mm:ss local */
+      function fmtLocalDateTime(d) {
+        d = d || new Date();
+        return fmtLocalDate(d) + ' ' +
+          String(d.getHours()).padStart(2, '0') + ':' +
+          String(d.getMinutes()).padStart(2, '0') + ':' +
+          String(d.getSeconds()).padStart(2, '0');
       }
 
       function todayStr() {
-        const d = new Date();
-        return String(d.getDate()).padStart(2, '0') + '/' +
-          String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+        return fmtLocalDate(new Date());
       }
       function isToday(dtStr) {
         if (!dtStr) return false;
@@ -971,8 +1025,8 @@ function nav(v) {
       }
 
       function _setDefaultDates() {
-        const today = new Date().toISOString().split('T')[0];
-        const now = new Date().toISOString().slice(0, 16);
+        const today = localDateISO();
+        const now = localDateTimeISO();
         ['ai-invdate', 'rp-date', 'rpt-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = today; });
         const fdt = document.getElementById('fu-dt'); if (fdt) fdt.value = now;
       }
@@ -2541,10 +2595,7 @@ function shortPage(d) {
         const cd = parseFloat(document.getElementById('ai-cd-disc').value) || 0;
         const net = gross - cgst - sgst - igst - tcs - other - cd;
 
-        const fmtDate = d => {
-          const dt = new Date(d);
-          return String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear();
-        };
+        const fmtDate = d => fmtLocalDate(d);
 
         const data = {
           partyID, partyName,
@@ -2780,7 +2831,7 @@ function shortPage(d) {
         if (modeEl) modeEl.value = 'RTGS';
         // Reset date to today
         const dateEl = document.getElementById('rp-date');
-        if (dateEl) dateEl.value = new Date().toISOString().split('T')[0];
+        if (dateEl) dateEl.value = localDateISO();
         // Reset modal searchable select
         const inp1 = document.getElementById('rp-modal-ss-inp');
         if (inp1) { inp1.value = ''; inp1.dataset.val = ''; }
@@ -2819,7 +2870,7 @@ function shortPage(d) {
           return;
         }
 
-        const fmtDate = d => { const dt = new Date(d); return String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear(); };
+        const fmtDate = d => fmtLocalDate(d);
 
         // Allocate cash across invoices. When cash=0 (TDS-only), still include invoice
         // with amount=0 so backend closes it via TDS.
@@ -2960,8 +3011,12 @@ function shortPage(d) {
         }
 
         const dtRaw = document.getElementById('fu-dt').value;
-        const fmtDT = dtRaw ? dtRaw.replace('T', ' ') : '';
-        const fmtDate = d => d ? (() => { const dt = new Date(d); return String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear(); })() : '';
+        // datetime-local is local wall-clock — format as dd/MM/yyyy HH:mm:ss (IST display)
+        const fmtDT = dtRaw ? (function() {
+          var dt = parseIST(dtRaw);
+          return dt ? fmtLocalDateTime(dt) : dtRaw.replace('T', ' ') + ':00';
+        })() : fmtLocalDateTime(new Date());
+        const fmtDate = d => d ? fmtLocalDate(d) : '';
 
         const data = {
           partyID: isRetailFU ? 'RETAIL' : partyID,
@@ -2985,19 +3040,47 @@ function shortPage(d) {
           attachmentURL: document.getElementById('fu-attach').value
         };
 
-        Swal.fire({ title: 'Saving...', didOpen: () => Swal.showLoading(), background: '#0F172A', color: '#fff' });
+        // Optimistic: close modal + toast immediately, sync in background
+        var tempId = 'TMP-' + Date.now();
+        var optimistic = Object.assign({}, data, {
+          followUpID: tempId,
+          promiseKept: data.promiseKept || 'Pending',
+          loggedBy: (USER && USER.name) || URL_NAME || '',
+          loggedOn: data.datetime
+        });
+        DB.followups = DB.followups || [];
+        DB.followups.unshift(optimistic);
+        closeFUModal();
+        _optimisticToast('✓ Follow-up saved');
+        if (typeof _reRenderCurrent === 'function') _reRenderCurrent();
+        if (typeof renderRetailFollowups === 'function') {
+          try { renderRetailFollowups(); } catch (e) {}
+        }
+        if (typeof _paintRetailDashboardFollowups === 'function') {
+          try { _paintRetailDashboardFollowups(); } catch (e) {}
+        }
+
         google.script.run
           .withSuccessHandler(r => {
-            if (r.success) {
-              Swal.fire({ icon: 'success', title: 'Follow-up Logged!', text: r.msg, timer: 1800, showConfirmButton: false });
-              closeFUModal();
-              _silentDataRefresh();
-              if (typeof renderRetailFollowups === 'function' && document.getElementById('view-retailFollowups') && document.getElementById('view-retailFollowups').classList.contains('active')) {
-                setTimeout(function() { renderRetailFollowups(); }, 600);
-              }
-            } else Swal.fire('Error', r.error, 'error');
+            if (r && r.success) {
+              // Replace temp id with real id
+              var fu = (DB.followups || []).find(function(f) { return f.followUpID === tempId; });
+              if (fu) fu.followUpID = r.followUpID || tempId;
+              _idb.set('mainDB', DB);
+              // Soft refresh lastUpdate only — no full reload spinner
+              if (typeof _silentDataRefresh === 'function') _silentDataRefresh();
+            } else {
+              // Rollback
+              DB.followups = (DB.followups || []).filter(function(f) { return f.followUpID !== tempId; });
+              if (typeof _reRenderCurrent === 'function') _reRenderCurrent();
+              Swal.fire('Error', (r && r.error) || 'Save failed', 'error');
+            }
           })
-          .withFailureHandler(e => Swal.fire('Error', e.message, 'error'))
+          .withFailureHandler(e => {
+            DB.followups = (DB.followups || []).filter(function(f) { return f.followUpID !== tempId; });
+            if (typeof _reRenderCurrent === 'function') _reRenderCurrent();
+            Swal.fire('Error', (e && e.message) || 'Network error', 'error');
+          })
           .saveFollowUp(data, URL_NAME);
       }
 
@@ -6316,17 +6399,24 @@ function _rptSubmit() {
     remarks: document.getElementById('rpt-remarks').value
   };
 
-  Swal.fire({ title: 'Recording...', didOpen: () => Swal.showLoading(), background: '#0F172A', color: '#fff' });
+  _optimisticToast('✓ Recording payment…');
+  // Instant UI feedback
+  closeRPModal();
+  _rptResetRetailTab();
+
   google.script.run
     .withSuccessHandler(function(r) {
-      if (r.success) {
-        Swal.fire({ icon: 'success', title: 'Payment Recorded!', html: r.msg, timer: 2500, showConfirmButton: false });
-        _rptResetRetailTab();
-        _loadRetailCustomers();
-        // Refresh dashboard card
-        _refreshRetailOutstanding();
+      if (r && r.success) {
+        _optimisticToast('✓ ' + (r.msg || 'Payment recorded'));
+        // Soft refresh retail + payments
+        if (typeof _refreshRetailOutstanding === 'function') _refreshRetailOutstanding();
+        if (typeof _silentDataRefresh === 'function') _silentDataRefresh();
+        // Bust retail cache so pending amounts update
+        _retailData.allRows = [];
+        if (typeof renderRetailDashboard === 'function' && _activeView === 'retailDashboard') renderRetailDashboard();
+        if (typeof renderRetailSales === 'function' && _activeView === 'retailSales') renderRetailSales();
       } else {
-        Swal.fire('Error', r.error || 'Failed', 'error');
+        Swal.fire('Error', (r && r.error) || 'Failed', 'error');
       }
     })
     .withFailureHandler(function(e) {
@@ -6935,6 +7025,8 @@ function _renderRetailDashboardContent() {
       }).join('');
     }
   }
+
+  if (typeof _paintRetailDashboardFollowups === 'function') _paintRetailDashboardFollowups();
 
   // ── Recent Activity ──────────────────────────────────────
   _renderRetailRecentActivity();
@@ -7600,11 +7692,32 @@ function renderRetailEscalations() {
   }).join('');
 }
 
-/** Paint recent retail follow-ups on retail dashboard */
+/** Paint recent retail follow-ups + stats on retail dashboard */
 function _paintRetailDashboardFollowups() {
+  var all = (DB.followups || []).filter(_isRetailFollowUp);
+  var today = todayStr();
+  var todayCount = 0, openPromises = 0, overduePromises = 0, openEsc = 0;
+  var now = new Date(); now.setHours(0, 0, 0, 0);
+
+  all.forEach(function(f) {
+    if (isToday(f.datetime) || isToday(f.loggedOn)) todayCount++;
+    var kept = f.promiseKept || 'Pending';
+    if ((f.promiseAmt || f.promiseDate) && (kept === 'Pending' || !f.promiseKept)) {
+      openPromises++;
+      var pd = f.promiseDate ? parseIST(f.promiseDate) : null;
+      if (pd && pd < now) overduePromises++;
+    }
+    if (f.escalated === 'Yes' && kept !== 'Yes' && kept !== 'Kept') openEsc++;
+  });
+
+  txt('rd-fu-today', todayCount);
+  txt('rd-fu-promises', openPromises);
+  txt('rd-fu-overdue', overduePromises);
+  txt('rd-fu-esc', openEsc);
+
   var el = document.getElementById('rd-fu-list');
   if (!el) return;
-  var list = (DB.followups || []).filter(_isRetailFollowUp)
+  var list = all
     .sort(function(a, b) { return String(b.datetime || '').localeCompare(String(a.datetime || '')); })
     .slice(0, 8);
 
